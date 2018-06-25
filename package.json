@@ -1,0 +1,32 @@
+{
+  "name": "web-cpp",
+  "version": "0.1.0",
+  "description": "a c++ compiler in typescript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/zurl/web-cpp.git"
+  },
+  "author": "Chengyi Zhang",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/zurl/web-cpp/issues"
+  },
+  "homepage": "https://github.com/zurl/web-cpp#readme",
+  "devDependencies": {
+    "@types/long": "^4.0.0",
+    "@types/pegjs": "^0.10.1",
+    "chai": "^4.1.2",
+    "mocha": "^5.2.0",
+    "typescript": "^2.9.2"
+  },
+  "dependencies": {
+    "@types/source-map": "0.5.0",
+    "long": "^4.0.0",
+    "pegjs": "^0.10.0",
+    "source-map": "^0.5.6"
+  }
+}
