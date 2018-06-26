@@ -1,4 +1,3 @@
-'use strict';
 import * as PegJs from 'pegjs'
 import CGrammar from './c.lang';
 import CPPGrammar from './c.lang';

@@ -6,7 +6,7 @@
 import {CompiledObject} from "../codegen/context";
 import {Type} from "../common/type";
 import {FunctionEntity, Scope, Variable, VariableStorageType} from "../codegen/scope";
-import {OpCode, OpCodeLimit} from "../codegen/instruction";
+import {OpCode, OpCodeLimit} from "../common/instruction";
 import {LinkerError} from "../common/error";
 
 interface LinkOptions {

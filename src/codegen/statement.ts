@@ -12,7 +12,7 @@ import {
     IfStatement,
     ReturnStatement, WhileStatement
 } from "../common/ast";
-import {OpCode} from "./instruction";
+import {OpCode} from "../common/instruction";
 import {loadIntoStack} from "./stack";
 
 CompoundStatement.prototype.codegen = function (ctx: CompileContext) {

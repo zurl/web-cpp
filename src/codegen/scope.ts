@@ -6,7 +6,7 @@
 
 
 import {FunctionType, Type} from "../common/type";
-import {Assembly} from "./instruction";
+import {Assembly} from "../common/instruction";
 import {FunctionDefinition} from "../common/ast";
 
 export enum VariableStorageType {

@@ -1,4 +1,4 @@
-import {OpCode} from "../codegen/instruction";
+import {OpCode} from "../common/instruction";
 
 /**
  *  @file

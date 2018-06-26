@@ -15,7 +15,7 @@ import {
     Type, UnsignedInt64Type
 } from "../common/type";
 import {Node, ExpressionResult, ExpressionResultType} from "../common/ast";
-import {OpCode} from "./instruction";
+import {OpCode} from "../common/instruction";
 import {InternalError, SyntaxError} from "../common/error";
 
 

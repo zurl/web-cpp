@@ -1,5 +1,5 @@
-import {isArrayEqual} from "../codegen/utils";
-import {Assembly} from "../codegen/instruction";
+import {isArrayEqual} from "./utils";
+import {Assembly} from "./instruction";
 import {InternalError} from "./error";
 
 const MACHINE_POINTER_LENGTH = 4;

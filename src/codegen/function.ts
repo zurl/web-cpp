@@ -15,11 +15,11 @@ import {
 import {CompileContext} from "./context";
 import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
 import {assertType, InternalError, SyntaxError} from "../common/error";
-import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "./utils";
+import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionEntity, Variable, VariableStorageType} from "./scope";
 import {loadIntoStack} from "./stack";
-import {OpCode} from "./instruction";
+import {OpCode} from "../common/instruction";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {

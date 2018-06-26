@@ -7,7 +7,7 @@ import {Node} from "../common/ast"
 
 import {Type} from "../common/type";
 import {MemoryLayout} from "./memory";
-import {Assembly, InstructionBuilder, OpCode} from "./instruction";
+import {Assembly, InstructionBuilder, OpCode} from "../common/instruction";
 import {InternalError} from "../common/error";
 import {FunctionEntity, Scope} from "./scope";
 interface CompileOptions {

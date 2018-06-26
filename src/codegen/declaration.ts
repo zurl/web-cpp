@@ -15,7 +15,7 @@ import {
 } from "../common/ast";
 import {assertType, SyntaxError} from "../common/error";
 import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
-import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "./utils";
+import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {Variable, VariableStorageType} from "./scope";
 
 export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForError: Node): Type{

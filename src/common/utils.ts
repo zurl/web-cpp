@@ -3,7 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
-import {PrimitiveType, PrimitiveTypesNameMap} from "../common/type";
+import {PrimitiveType, PrimitiveTypesNameMap} from "./type";
 
 export function isArrayEqual(array1: any[], array2: any[]): boolean {
     if (array1.length != array2.length) return false;

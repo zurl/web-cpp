@@ -44,7 +44,7 @@ import {
 } from "../common/ast";
 import {CompileContext} from "./context";
 import * as Long from "long";
-import {OpCode} from "./instruction";
+import {OpCode} from "../common/instruction";
 import {FunctionEntity, VariableStorageType} from "./scope";
 import {convertTypeOnStack, loadAddress, loadIntoStack, loadReference, popFromStack} from "./stack";
 

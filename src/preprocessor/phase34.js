@@ -3,14 +3,19 @@
 
 import {SourceMapGenerator, SourceNode} from 'source-map';
 
-const Library = {};
+const Library = {
+    files: new Map([
+        ["math.h", "#define PI 3.14\n"]
+    ])
+};
+
 import {
     ConstantExpressionParser, HeaderNameParser, PreprocessingFileParser, PreprocessingTokenParser
 } from '../parser';
 import {PreprocessingError} from '../common/error'
 import Preprocessor from '.';
 import { getFileNameForPhase } from '.';
-import Long from 'long';
+import * as Long from 'long';
 
 import {
     BinaryExpression, CharacterConstant, ConditionalExpression, Directive, ElifGroup, ElseGroup, ErrorDirective,

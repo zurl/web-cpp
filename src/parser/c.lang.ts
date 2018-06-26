@@ -1,8 +1,6 @@
 export default `
 // TODO: Clean up for null or empty array.
-
 // NOTE: &! is a custom peg.js transformation implemented in the custom loader.
-
 {
     //const Long = require('long');
     //const Ty = require('../type');
