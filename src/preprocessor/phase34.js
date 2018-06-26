@@ -7,7 +7,7 @@ const Library = {};
 import {
     ConstantExpressionParser, HeaderNameParser, PreprocessingFileParser, PreprocessingTokenParser
 } from '../parser';
-
+import {PreprocessingError} from '../common/error'
 import Preprocessor from '.';
 import { getFileNameForPhase } from '.';
 import Long from 'long';
@@ -19,20 +19,10 @@ import {
     PpChar, PpNumber, PragmaDirective, PreprocessingFile, Punctuator, SourceLocation, StringLiteral, TextBlock,
     UnaryExpression, UndefDirective
 } from '../common/ast';
-function SyntaxError(message, node) {
-    Error.call(this);
-    if (Error.captureStackTrace) {
-        Error.captureStackTrace(this, this.constructor);
-    }
+import {SyntaxError} from "../common/error";
+import {PreprocessingContext} from './context';
 
-    this.name = this.constructor.name;
-    this.message = message;
-    this.node = node;
-    this.location = node.location;
-}
-SyntaxError.prototype = Object.create(Error.prototype);
-SyntaxError.prototype.constructor = SyntaxError;
-export function getIntegerValueFromCharacterConstantValue(constant, errorType = SyntaxError) {
+export function getIntegerValueFromCharacterConstantValue(constant) {
     // An integer character constant has type int. The value of an integer character constant containing a single
     // character that maps to a single-byte execution character is the numerical value of the representation of the
     // mapped character interpreted as an integer. The value of an integer character constant containing more than one
@@ -47,14 +37,14 @@ export function getIntegerValueFromCharacterConstantValue(constant, errorType = 
     // character constant '\xFF' has the value +255.
     if (constant.value.length > 1) {
         // UNDEFINED_BEHAVIOR
-        throw new errorType(`Multi-character character constant '${constant.value}'`, constant);
+        throw new SyntaxError(`Multi-character character constant '${constant.value}'`, constant);
     }
     const value = constant.value.charCodeAt(constant.value.length - 1);
     // In fact not possible, but just leave this check here for future.
     // > The charCodeAt() method returns an integer between 0 and 65535 representing the UTF-16 code unit at the given
     // > index.
     if (value > 0x7FFFFFFF) {
-        throw new errorType('Character too large for enclosing character literal type', constant);
+        throw new SyntaxError('Character too large for enclosing character literal type', constant);
     }
     return Long.fromInt(value);
 }
@@ -83,160 +73,7 @@ function process(fileName, source, context) {
     return sourceNode.toStringWithSourceMap({ file: getFileNameForPhase(fileName, 4) });
 }
 
-/**
- * @constructor
- * @param {string} message
- * @param {Node} node
- */
-export function PreprocessingError(message, node) {
 
-    Error.call(this);
-    Error.captureStackTrace && Error.captureStackTrace(this, this.constructor);
-
-    this.name = this.constructor.name;
-    this.message = message;
-    this.node = node;
-    this.location = node.location;
-}
-PreprocessingError.prototype = Object.create(Error.prototype);
-PreprocessingError.prototype.constructor = PreprocessingError;
-
-class PreprocessingContext {
-
-    /**
-     * @param {string|null} fileName
-     * @param {string|null} source
-     * @param {PreprocessingContext|null} parent
-     */
-    constructor(fileName = null, source = null, parent = null) {
-        this._fileName = fileName;
-        this._source = source;
-        this._parent = parent;
-        this._macros = parent ? null : new Map();
-        this._macroNamesBeingReplaced = new Set();
-    }
-
-    /**
-     * @return {string|null}
-     */
-    getFileName() {
-        if (this._fileName) {
-            return this._fileName;
-        }
-        if (this._parent) {
-            return this._parent.getFileName();
-        }
-        return null;
-    }
-
-    /**
-     * @return {string|null}
-     */
-    getSource() {
-        if (this._source) {
-            return this._source;
-        }
-        if (this._parent) {
-            return this._parent.getSource();
-        }
-        return null;
-    }
-
-    /**
-     * @param {ObjectLikeDefineDirective|FunctionLikeDefineDirective} macro
-     */
-    defineMacro(macro) {
-
-        if (this._parent) {
-            return this._parent.defineMacro(macro);
-        }
-
-        const definedMacro = this.findMacro(macro.name.name);
-        if (definedMacro) {
-            if (!this.isMacroIdentical(definedMacro, macro)) {
-                throw new PreprocessingError(`Macro ${definedMacro.name.name} redefined`, macro.name);
-            }
-        } else {
-            this._macros.set(macro.name.name, macro);
-        }
-    }
-
-    /**
-     * @param {ObjectLikeDefineDirective|FunctionLikeDefineDirective} macro1
-     * @param {ObjectLikeDefineDirective|FunctionLikeDefineDirective} macro2
-     * @return {boolean}
-     */
-    isMacroIdentical(macro1, macro2) {
-        // Two replacement lists are identical if and only if the preprocessing tokens in both have the same number,
-        // ordering, spelling, and white-space separation, where all white-space separations are considered identical.
-        // FIXME: The Punctuator-Identifier case.
-        return macro1.name == macro2.name;
-    }
-
-    /**
-     * @param {string} name
-     * @return {boolean}
-     */
-    undefineMacro(name) {
-
-        if (this._parent) {
-            return this._parent.undefineMacro(name);
-        }
-
-        return this._macros.delete(name);
-    }
-
-    /**
-     * @param {string} name
-     * @return {ObjectLikeDefineDirective|FunctionLikeDefineDirective|null}
-     */
-    findMacro(name) {
-
-        if (this._parent) {
-            return this._parent.findMacro(name);
-        }
-
-        return this._macros.get(name);
-    }
-
-    /**
-     * @param {string} name
-     * @return {boolean}
-     */
-    isMacroDefined(name) {
-        return !!this.findMacro(name);
-    }
-
-    /**
-     * @param {string} name
-     * @return {boolean}
-     */
-    isMacroBeingReplaced(name) {
-        if (this._macroNamesBeingReplaced.has(name)) {
-            return true;
-        }
-        if (this._parent) {
-            return this._parent.isMacroBeingReplaced(name);
-        }
-        return false;
-    }
-
-    /**
-     * @param {string} name
-     */
-    markMacroAsBeingReplaced(name) {
-        this._macroNamesBeingReplaced.add(name);
-    }
-
-    /**
-     * @param {string|null} fileName
-     * @param {string|null} source
-     * @return {PreprocessingContext}
-     */
-    newChildContext(fileName = null, source = null) {
-        return new PreprocessingContext(fileName, source, this);
-    }
-}
 
 /**
  * @param {string} fileName

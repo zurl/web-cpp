@@ -2,15 +2,16 @@
 
 import { SourceMapConsumer } from 'source-map';
 
-import { ParserError } from '../parser';
+import phase12 from './phase12';
+import phase34, {  } from './phase34';
+import {SourceLocation} from "../common/ast";
+import {PreprocessingContext} from "./context";
 
+import { ParserError, PreprocessingError } from '../common/error';
 
-/**
- * @param {string} fileName
- * @param {string} extensionOrExpectedExtension
- * @param {string?} extension
- */
-export function replaceFileNameExtension(fileName, extensionOrExpectedExtension, extension) {
+export function replaceFileNameExtension(fileName: string,
+                                         extensionOrExpectedExtension: string,
+                                         extension?: string) {
     let expectedExtension;
     if (typeof extension === 'undefined') {
         extension = extensionOrExpectedExtension;
@@ -25,14 +26,9 @@ export function replaceFileNameExtension(fileName, extensionOrExpectedExtension,
     return (indexOfDot >= 0 ? fileName.substring(0, indexOfDot) : fileName) + extension;
 }
 
-
-/**
- * @param {SourceLocation|{ start: { offset: int, line: int, column: int}, end: { offset: int, line: int, column: int} }} location
- * @param {string} source
- * @param {string} map
- */
-
-export function transformSourceLocationWithSourceMap(location, source, map) {
+export function transformSourceLocationWithSourceMap(location: SourceLocation,
+                                                     source: string,
+                                                     map: string) {
     const mapConsumer = new SourceMapConsumer(map);
     let { line: startLine, column: startColumn } = mapConsumer.originalPositionFor({
         line: location.start.line,
@@ -67,21 +63,12 @@ export function transformSourceLocationWithSourceMap(location, source, map) {
 
 
 
-import phase12 from './phase12';
-import phase34, { PreprocessingError } from './phase34';
-
-/**
- * @param {string} fileName
- * @param {string} source
- * @param {PreprocessingContext?} context
- * @return {{ code: string, map: string }}
- */
-function process(fileName, source, context = null) {
+function process(fileName: string, source: string, context?: PreprocessingContext) {
     const { code: phase12Code, map: phase12MapGenerator } = phase12.process(fileName, source);
     const phase12Map = phase12MapGenerator.toString();
     let phase34Code, phase34MapGenerator;
     try {
-        ({ code: phase34Code, map: phase34MapGenerator } = phase34.process(fileName, phase12Code, context));
+        ({ code: phase34Code, map: phase34MapGenerator } = phase34.process(fileName, phase12Code, context!));
     } catch (e) {
         if (e instanceof ParserError || e instanceof PreprocessingError) {
             if (e instanceof ParserError) {
@@ -97,12 +84,7 @@ function process(fileName, source, context = null) {
     return { code: phase34Code, map: phase34Map };
 }
 
-/**
- * @param {string} fileName
- * @param {int} phase
- * @return {string}
- */
-export function getFileNameForPhase(fileName, phase) {
+export function getFileNameForPhase(fileName: string, phase: number) {
     if (phase === 4) {
         return replaceFileNameExtension(fileName, '.c', '.ii');
     }

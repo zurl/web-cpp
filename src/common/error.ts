@@ -4,8 +4,10 @@
  *  Created at 16/06/2018
  */
 
-import {Node, SourceLocation} from '../common/index';
+import {Node, SourceLocation} from './ast';
 import {Type} from "./type";
+import {PEG, PegjsError} from "pegjs";
+import LocationRange = PEG.LocationRange;
 
 export class FatalError extends Error {
 }
@@ -13,7 +15,8 @@ export class FatalError extends Error {
 export class InternalError extends Error {
 }
 
-export class LinkerError extends Error {}
+export class LinkerError extends Error {
+}
 
 
 export class CompilerError extends Error {
@@ -34,6 +37,23 @@ export class TypeError extends CompilerError {
 
 export class SyntaxError extends CompilerError {
 }
+
+export class PreprocessingError extends CompilerError {
+}
+
+export class ParserError extends Error {
+    pegError: PegjsError;
+    name: string;
+    location: SourceLocation;
+
+    constructor(pegError: PegjsError) {
+        super(pegError.message);
+        this.pegError = pegError;
+        this.name = pegError.name;
+        this.location = pegError.location as any;
+    }
+}
+
 
 export function assertType<T extends Node>(object: Node | Node[], type: { new(...args: any[]): T }) {
     if (object instanceof Array) {

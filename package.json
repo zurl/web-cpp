@@ -19,12 +19,12 @@
   "devDependencies": {
     "@types/long": "^4.0.0",
     "@types/pegjs": "^0.10.1",
+    "@types/source-map": "0.5.0",
     "chai": "^4.1.2",
     "mocha": "^5.2.0",
     "typescript": "^2.9.2"
   },
   "dependencies": {
-    "@types/source-map": "0.5.0",
     "long": "^4.0.0",
     "pegjs": "^0.10.0",
     "source-map": "^0.5.6"

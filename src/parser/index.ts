@@ -1,23 +1,26 @@
 'use strict';
-import PegJs from 'pegjs'
+import * as PegJs from 'pegjs'
 import CGrammar from './c.lang';
 import CPPGrammar from './c.lang';
 import * as fs from 'fs';
-import Long_ from 'long';
+import * as Long_ from 'long';
 import * as CTree_ from '../common/ast';
-import {TypeError} from "../common/error"
-import {Node} from '../common/ast';
+import {TypeError, ParserError} from "../common/error"
+import {Node, SpecifierType} from '../common/ast';
 
 const storageClassSpecifierStringToEnum = [
     'typedef', 'extern', 'static', '_Thread_local', 'auto', 'register'
 ];
 
-export function getStorageClassSpecifierFromSpecifiers(specifiers, nodeForError) {
+export function getStorageClassSpecifierFromSpecifiers(specifiers: SpecifierType[],
+                                                       nodeForError: Node) {
 
     const storageClassSpecifiers = [];
     for (const specifier of specifiers) {
-        if (storageClassSpecifierStringToEnum.includes(specifier)) {
-            storageClassSpecifiers.push(specifier);
+        if(typeof(specifier) == "string"){
+            if (storageClassSpecifierStringToEnum.includes(specifier)) {
+                storageClassSpecifiers.push(specifier);
+            }
         }
     }
 
@@ -47,7 +50,7 @@ const Ty_ = {
     getStorageClassSpecifierFromSpecifiers
 };
 
-function loadParser(source, query) {
+function loadParser(source: string, query: any) {
     /** Inject into eval **/
     const Long = Long_;
     const Ty = Ty_;
@@ -59,7 +62,8 @@ function loadParser(source, query) {
         const ret = eval(code);
         return ret;
     }
-    source = source.replace(/&!'((\\.|[^'])*)'/g, (match, rule) => `(expected:'${rule}'? {
+    source = source.replace(/&!'((\\.|[^'])*)'/g, (match,
+                                                   rule) => `(expected:'${rule}'? {
         if (!expected) {${rule.includes('}') ? '/*{*/' : ''}
             error('Missing \\\'${rule}\\\'');
         }
@@ -77,7 +81,7 @@ function loadParser(source, query) {
         console.log('fuck');
         fs.writeFileSync('/tmp/' + query.parserName + '.js', code);
     }
-    return eval(code);
+    return eval(code as any);
 }
 
 const ConstantExpressionPegParser = loadParser(CGrammar, {parserName: 'ConstantExpression', allowedStartRules: 'ConstantExpression'});
@@ -87,52 +91,11 @@ const PreprocessingTokenPegParser= loadParser(CGrammar, {parserName: 'Preprocess
 const TranslationUnitPegParser= loadParser(CGrammar, {parserName: 'TranslationUnitPegParser'});
 const CPPTranslationUnitPegParser= loadParser(CPPGrammar, {parserName: 'CPPTranslationUnitPegParser'});
 
-function setParentNodeForAST(ctree) {
-    let queue = [];
-    queue.push(ctree);
-    while (queue.length > 0) {
-        let node = queue.pop();
-        for (let name in node) {
-            if (name === 'parentNode') {
-                continue;
-            }
-            let prop = node[name];
-            if (prop instanceof Node) {
-                prop.parentNode = node;
-                queue.push(prop);
-            } else if (prop instanceof Array) {
-                for (let elm of prop) {
-                    if (elm instanceof Node) {
-                        elm.parentNode = node;
-                        queue.push(elm);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * @constructor
- * @param {peg$SyntaxError} pegError
- */
-export function ParserError(pegError) {
-
-    Error.call(this);
-    Error.captureStackTrace && Error.captureStackTrace(this, this.constructor);
-
-    
-}
-ParserError.prototype = Object.create(Error.prototype);
-ParserError.prototype.constructor = ParserError;
-
-function wrapPegParser(parser) {
+function wrapPegParser(parser: any) {
     return {
-        parse(source, options) {
+        parse(source: string, options: any) {
             try {
-                let r = parser.parse(source, options);
-                setParentNodeForAST(r, null);
-                return r;
+                return parser.parse(source, options);
             } catch (e) {
                 if (e instanceof parser.SyntaxError) {
                     throw new ParserError(e);

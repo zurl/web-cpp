@@ -5,9 +5,7 @@ export default `
 
 {
     //const Long = require('long');
-    //const parseHexFloat = require('js-hexfloat');
     //const Ty = require('../type');
-    //const Decl = require('../syntax-check/declaration.js'); 
   
     const getStorageClassSpecifierFromSpecifiers = Ty.getStorageClassSpecifierFromSpecifiers;
    
