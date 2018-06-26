@@ -5,37 +5,68 @@
  */
 
 import {toHexString} from "./utils";
-
+//          12|  param 2    |
+//           8|  param 1    |
+//           4|  saved $pc  |
+//  $bp ->   0|  saved $bp  |
+//          -4|  local 1    |
+//          -8|  local 2    |
+//  $sp -> -12|   retval    |
 export enum OpCode{
     // 1 = [op]
     // S_TOP....  address  .....S_END
     LM8,LM16,LM32,LM64,
     // S_TOP....  address item .....S_END
     SM8,SM16,SM32,SM64,
+
     ADD,SUB,MUL,DIV,MOD,
-    ADDU,SUBU,//MULU,DIVU,MODU,
+    ADDU,SUBU,MULU,DIVU,MODU,
     ADDF,SUBF,MULF,DIVF,MODF,
-    RET,END,PRINT,
-    F2D,D2F,I2D,D2I,
+    GT0,LT0,EQ0,NEQ0,LTE0,GTE0,
+
+    NOP,END,PRINT,
+    U2I,I2U,F2D,D2F,I2D,D2I,
     // 5 = [op u32 u32 u32 u32]
-    LUI32,
-    LDATA, // = LUI32
-    LBSS,  // = LUI32
-    JAL,
+    PUI32, // push u32
+    PDATA, // push $data + u32
+    PBSS,  // push $bss + u32
+    CALL,  // [++$sp] = $pc
+           // [++$sp] = $bp
+           // $bp = $sp
+           // $pc = u32
+    RET,   // t0 = $sp
+           // $sp = $bp - 8
+           // $bp = [$bp]
+           // $pc = [$sp + 4]
+           // push t0
     // 5 = [op i32 i32 i32 i32]
-    LI32,
-    LBP,
-    LSP,
-    J,
-    JZ,
-    JNZ,
-    // 9 = [op f64 * 8]
-    LF64,
+    PI32,  // push i32
+    PBP,   // push $bp + i32
+    SSP,   // $sp = $sp + i32
+    J,     // $pc = $pc + i32
+    JZ,    // if [$sp--] == 0: $pc = $pc + i32
+    JNZ,   // if [$sp--] != 0: $pc = $pc + i32
+    // 9 = [op f64 f64 f64 f64 f64 f64 f64 f64]
+    PF64,  // push f64
 }
+
+/* CALL:
+    1. [$sp++] = $pc
+    2. [$sp++] = $bp
+    3. $bp = $sp - 2
+    4. $pc = target_addr
+   func_header:
+    1. $sp = $sp + space
+
+   RET:
+    1. $sp = $bp - param_space
+ *
+ *
+ */
 
 export const OpCodeLimit = {
     L1: OpCode.D2I,
-    L5U: OpCode.JAL,
+    L5U: OpCode.CALL,
     L5I: OpCode.JNZ
 };
 
@@ -70,6 +101,13 @@ export class InstructionBuilder {
     sourceMap: [number, number][];
     labels: Map<number, string>;
 
+    static showCode(code: DataView, options: any){
+        const ib = new InstructionBuilder(0);
+        ib.codeView = code;
+        ib.now = code.buffer.byteLength;
+        console.log(ib.toString(options));
+    }
+
     constructor(maxLength: number) {
         this.now = 0;
         this.codeBuffer = new ArrayBuffer(maxLength);
@@ -92,7 +130,6 @@ export class InstructionBuilder {
     }
 
     build(line:number, op: OpCode, imm: string | number | undefined) {
-        //console.log(`${OpCode[op]} ${imm}`)
         this.sourceMap.push([this.now, line]);
         if (op <= OpCodeLimit.L1) {
             this.codeView.setUint8(this.now++, op);
@@ -109,7 +146,7 @@ export class InstructionBuilder {
             this.codeView.setUint32(this.now, parseInt(imm as string));
             this.now += 4;
         }
-        else if( op === OpCode.LF64){
+        else if( op === OpCode.PF64){
             assertFloat(imm);
             this.codeView.setUint8(this.now++, op);
             this.codeView.setFloat64(this.now, parseFloat(imm as string));
@@ -164,7 +201,7 @@ export class InstructionBuilder {
                 result += `\t${OpCode[op]} ${this.codeView.getInt32(i)}`;
                 i += 4;
             }
-            else if (op == OpCode.LF64) {
+            else if (op == OpCode.PF64) {
                 result += `\t${OpCode[op]} ${this.codeView.getFloat64(i)}`;
                 i += 8;
             }

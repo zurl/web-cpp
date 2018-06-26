@@ -99,6 +99,7 @@ CallExpression.prototype.codegen = function (ctx: CompileContext): ExpressionRes
     if (!(callee.type instanceof FunctionType)) {
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
     }
+    // TODO:: call function pointer
     const fullName = callee.value as string;
     if (this.arguments.length != callee.type.parameterTypes.length) {
         throw new SyntaxError(`expected ${callee.type.parameterTypes.length} parameters, actual is ${this.arguments.length}`, this);
@@ -113,7 +114,7 @@ CallExpression.prototype.codegen = function (ctx: CompileContext): ExpressionRes
     }
     // TODO:: mangled name
     ctx.unresolve(fullName);
-    ctx.build(OpCode.JAL, 0);
+    ctx.build(OpCode.CALL, 0);
     return {
         form: ExpressionResultType.RVALUE,
         type: callee.type.returnType,

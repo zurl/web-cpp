@@ -2,7 +2,7 @@ const Preprocess = require('../../dist/preprocessor').default;
 const {CParser} = require('../../dist/parser');
 const {codegen} = require('../../dist/codegen/index');
 const {CompileContext} = require('../../dist/codegen/context');
-const {InstructionBuilder} = require('../../dist/codegen/instruction');
+const {InstructionBuilder} = require('../../dist/common/instruction');
 const Linker = require('../../dist/linker');
 const Assert = require('chai');
 
@@ -16,8 +16,8 @@ function compile(name, source) {
 
 function generateAsm(testCode) {
     const obj = compile("test.cpp", testCode);
+    const ib = new InstructionBuilder();
     const bin = Linker.link([obj]);
-    const ib = new InstructionBuilder(0);
     ib.codeView = bin.code;
     ib.now = bin.code.buffer.byteLength;
     ib.labels = bin.labelMap;

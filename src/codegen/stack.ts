@@ -5,7 +5,7 @@
  */
 import {CompileContext} from "./context";
 import {
-    DoubleType, extractArithmeticType,
+    DoubleType, extractRealType,
     FloatingType,
     FloatType,
     Int64Type,
@@ -61,13 +61,13 @@ function unsupportInt64(type: Type) {
 }
 
 export function loadConstant(ctx: CompileContext, value: ExpressionResult) {
-    const rawType = extractArithmeticType(value.type);
+    const rawType = extractRealType(value.type);
     if (rawType instanceof IntegerType) {
         unsupportInt64(rawType);
-        ctx.build(OpCode.LI32, value.value.toString());
+        ctx.build(OpCode.PI32, value.value.toString());
     }
     else if (rawType instanceof DoubleType || rawType instanceof FloatType) {
-        ctx.build(OpCode.LF64, value.value as number);
+        ctx.build(OpCode.PF64, value.value as number);
     }
     else {
         throw new InternalError(`load unsupport type into stack ${value.type.toString()}`);
@@ -80,17 +80,17 @@ export function loadAddress(ctx: CompileContext, expr: ExpressionResult) {
         //ctx.build(OpCode.LSP, 0);
     }
     else if (expr.form === ExpressionResultType.LVALUE_STACK) {
-        ctx.build(OpCode.LBP, expr.value as number)
+        ctx.build(OpCode.PBP, expr.value as number)
     }
     else if (expr.form === ExpressionResultType.LVALUE_MEMORY_DATA) {
-        ctx.build(OpCode.LDATA, expr.value as number)
+        ctx.build(OpCode.PDATA, expr.value as number)
     }
     else if (expr.form === ExpressionResultType.LVALUE_MEMORY_BSS) {
-        ctx.build(OpCode.LBSS, expr.value as number)
+        ctx.build(OpCode.PBSS, expr.value as number)
     }
     else if (expr.form === ExpressionResultType.LVALUE_MEMORY_EXTERN) {
         ctx.unresolve(expr.value as string);
-        ctx.build(OpCode.LDATA, 0)
+        ctx.build(OpCode.PDATA, 0)
     }
     else {
         throw new InternalError(`no_impl at load Address`);
@@ -158,7 +158,7 @@ export function loadIntoStack(ctx: CompileContext, expr: ExpressionResult) {
         loadFromMemory(ctx, expr.type.elementType);
         return;
     }
-    const rawType = extractArithmeticType(expr.type);
+    const rawType = extractRealType(expr.type);
     unsupportInt64(rawType);
     unsupportRRef(expr.type);
     if (expr.form === ExpressionResultType.CONSTANT) {
@@ -219,7 +219,7 @@ export function popFromStack(ctx: CompileContext, expr: ExpressionResult) {
         saveToMemory(ctx, expr.type.elementType);
         return
     }
-    const rawType = extractArithmeticType(expr.type);
+    const rawType = extractRealType(expr.type);
     unsupportInt64(rawType);
     unsupportRRef(expr.type);
     loadAddress(ctx, expr);

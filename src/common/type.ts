@@ -343,7 +343,7 @@ export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
 ]);
 
 
-export function extractArithmeticType(rawType: Type) {
+export function extractRealType(rawType: Type) {
     if (rawType instanceof ArrayType) {
         return new PointerType(rawType.elementType);
     }
@@ -353,6 +353,5 @@ export function extractArithmeticType(rawType: Type) {
     else {
         return rawType;
     }
-
 }
 

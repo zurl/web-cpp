@@ -106,17 +106,17 @@ function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: numbe
     let i = codeOffset;
     while (i < codeOffset + codeLength) {
         const op = code.getUint8(i);
-        if( op === OpCode.JAL){
+        if( op === OpCode.CALL){
             const val = code.getUint32(i + 1);
             code.setUint32(i + 1,  val + codeOffset);
             i += 5;
         }
-        else if( op === OpCode.LDATA){
+        else if( op === OpCode.PDATA){
             const val = code.getUint32(i + 1);
             code.setUint32(i + 1,  val + dataOffset);
             i += 5;
         }
-        else if (op === OpCode.LBSS) {
+        else if (op === OpCode.PBSS) {
             const val = code.getUint32(i + 1);
             code.setUint32(i + 1,  val + bssOffset);
             i += 5;
@@ -130,7 +130,7 @@ function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: numbe
         else if (op <= OpCodeLimit.L5I) {
             i += 5;
         }
-        else if (op === OpCode.LF64) {
+        else if (op === OpCode.PF64) {
             i += 9;
         }
         else{
@@ -143,7 +143,7 @@ function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: numbe
  * The C/C++ Linker
  *
  * 1. compare the unresolved symbol;
- * 2. resolve unresolved function call (JAL)
+ * 2. resolve unresolved function call (CALL)
  * 3. resolve unresolved variables (extern memory)
  * 4. adjust inner global memory reference (LM, LMP, SM, SMP)
  * 5. merge into one code buffer;
@@ -163,7 +163,7 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
         .map(input => [input.globalAssembly.size, input.assembly.size, input.dataSize, input.bssSize])
         .reduce((x, y) => x.map((_, i)=> x[i] + y[i]));
 
-    globalCodeSize += 6; // 6 for JAL MAIN; END
+    globalCodeSize += 6; // 6 for CALL MAIN; END
 
     const codeBuffer = new ArrayBuffer(globalCodeSize + codeSize + dataSize);
     const code = new DataView(codeBuffer);
@@ -215,7 +215,7 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
             }
             else if(symbol.storageType == VariableStorageType.MEMORY_BSS){
-                code.setUint8(globalCodeNow + tuple[0], OpCode.LBSS);
+                code.setUint8(globalCodeNow + tuple[0], OpCode.PBSS);
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);
             }
@@ -256,7 +256,7 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
             }
             else if(symbol.storageType == VariableStorageType.MEMORY_BSS){
-                code.setUint8(codeNow + tuple[0], OpCode.LBSS);
+                code.setUint8(codeNow + tuple[0], OpCode.PBSS);
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);
             }
@@ -275,9 +275,9 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
 
     const entry = resolveSymbol("@root@main", newScope);
     const entryLoc = (codeLocMap.get(entry.fileName) as number) + (entry.location as number);
-    // JAL main
+    // CALL main
     // END
-    code.setUint8(globalCodeSize - 6, OpCode.JAL);
+    code.setUint8(globalCodeSize - 6, OpCode.CALL);
     code.setUint32(globalCodeSize - 5, entryLoc);
     code.setUint8(globalCodeSize - 1, OpCode.END);
 

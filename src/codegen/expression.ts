@@ -10,7 +10,7 @@ import {
     ClassType,
     CompoundType,
     DoubleType,
-    extractArithmeticType,
+    extractRealType,
     FloatingType,
     FloatType,
     Int64Type,
@@ -56,8 +56,8 @@ AssignmentExpression.prototype.codegen = function (ctx: CompileContext): Express
     ctx.currentNode = this;
 
     const right = this.right.codegen(ctx);
-    const leftType = extractArithmeticType(this.left.deduceType(ctx));
-    const rightType = extractArithmeticType(right.type);
+    const leftType = extractRealType(this.left.deduceType(ctx));
+    const rightType = extractRealType(right.type);
     if (rightType instanceof ClassType) {
         throw new SyntaxError(`unsupport operator overload`, this);
     }
@@ -233,16 +233,25 @@ function doConstantCompute(left: ExpressionResult, right: ExpressionResult, ope:
 
 const ArithmeticOpTable = new Map<string, OpCode[]>([
     ["+", [OpCode.ADD, OpCode.ADDU, OpCode.ADDF]],
-    ["-", [OpCode.SUB, OpCode.ADDU, OpCode.ADDF]],
-    ["*", [OpCode.MUL, OpCode.ADDU, OpCode.ADDF]],
-    ["/", [OpCode.DIV, OpCode.ADDU, OpCode.ADDF]],
-    ["%", [OpCode.MOD, OpCode.ADDU, OpCode.ADDF]]
+    ["-", [OpCode.SUB, OpCode.SUBU, OpCode.ADDF]],
+    ["*", [OpCode.MUL, OpCode.NOP, OpCode.ADDF]],
+    ["/", [OpCode.DIV, OpCode.NOP, OpCode.ADDF]],
+    ["%", [OpCode.MOD, OpCode.NOP, OpCode.ADDF]],
+]);
+
+const RelationOpTable = new Map<string, OpCode>([
+    [">", OpCode.GT0],
+    ["<", OpCode.LT0],
+    [">=", OpCode.GTE0],
+    ["<=", OpCode.LTE0],
+    ["==", OpCode.EQ0],
+    ["!=", OpCode.NEQ0],
 ]);
 
 function genArithmeticExpression(expr: BinaryExpression, ctx: CompileContext,
                                  left: ExpressionResult, right: ExpressionResult): ExpressionResult {
-    const leftType = extractArithmeticType(left.type);
-    const rightType = extractArithmeticType(right.type);
+    const leftType = extractRealType(left.type);
+    const rightType = extractRealType(right.type);
     if (leftType instanceof ArithmeticType && rightType instanceof ArithmeticType) {
         if (left.form == ExpressionResultType.CONSTANT && right.form == ExpressionResultType.CONSTANT) {
             return doConstantCompute(left, right, expr.operator);
@@ -263,17 +272,37 @@ function genArithmeticExpression(expr: BinaryExpression, ctx: CompileContext,
             if (rightType instanceof IntegerType && leftType instanceof FloatingType) {
                 ctx.build(OpCode.I2D);
             }
-            if (leftType instanceof FloatingType || rightType instanceof FloatingType) {
-                ctx.build((ArithmeticOpTable.get(expr.operator) as OpCode[])[2]);
-                type = PrimitiveTypes.double;
+            if("+-*/%".includes(expr.operator)) {
+                if (leftType instanceof FloatingType || rightType instanceof FloatingType) {
+                    ctx.build((ArithmeticOpTable.get(expr.operator)!)[2]);
+                    type = PrimitiveTypes.double;
+                }
+                else if (leftType instanceof UnsignedIntegerType || rightType instanceof UnsignedIntegerType) {
+                    ctx.build((ArithmeticOpTable.get(expr.operator)!)[1]);
+                    type = PrimitiveTypes.uint32;
+                }
+                else {
+                    ctx.build((ArithmeticOpTable.get(expr.operator)!)[0]);
+                    type = PrimitiveTypes.int32;
+                }
             }
-            else if (leftType instanceof UnsignedIntegerType || rightType instanceof UnsignedIntegerType) {
-                ctx.build((ArithmeticOpTable.get(expr.operator) as OpCode[])[1]);
-                type = PrimitiveTypes.uint32;
+            else if([">", "<", ">=", "<=", "==", "!="].includes(expr.operator)){
+                if (leftType instanceof FloatingType || rightType instanceof FloatingType) {
+                    ctx.build(OpCode.SUBF);
+                    ctx.build(OpCode.D2I);
+                }
+                else if (leftType instanceof UnsignedIntegerType || rightType instanceof UnsignedIntegerType) {
+                    ctx.build(OpCode.SUBU);
+                    ctx.build(OpCode.U2I);
+                }
+                else {
+                    ctx.build(OpCode.SUB);
+                }
+                ctx.build(RelationOpTable.get(expr.operator)!);
+                type = PrimitiveTypes.bool;
             }
-            else {
-                ctx.build((ArithmeticOpTable.get(expr.operator) as OpCode[])[0]);
-                type = PrimitiveTypes.int32;
+            else{
+                throw new InternalError("no_impl at arith ope");
             }
             return {
                 form: ExpressionResultType.RVALUE,
@@ -317,11 +346,15 @@ BinaryExpression.prototype.codegen = function (ctx: CompileContext): ExpressionR
     // 救救刘人语小姐姐
     const left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
+    const leftType = extractRealType(left.type);
+    const rightType = extractRealType(right.type);
+    // left type contains
+    // arith, pointer, [class, union, enum](dead), function(dead), [void, nullptr](dead)
     ctx.currentNode = this;
-    if (left.type instanceof ClassType || right.type instanceof ClassType) {
+    if (leftType instanceof ClassType || leftType instanceof ClassType) {
         throw new InternalError(`unsupport operator overload`);
     }
-    if( left.type instanceof PointerType || right.type instanceof PointerType){
+    if( rightType instanceof PointerType || rightType instanceof PointerType){
         if("+-".indexOf(this.operator) != - 1){
             return genPointerCompute(ctx, this.operator, left, right);
         }
@@ -329,7 +362,8 @@ BinaryExpression.prototype.codegen = function (ctx: CompileContext): ExpressionR
             throw new SyntaxError(`unsupport ope between ${left.type.toString()} an ${right.type.toString()}`, this);
         }
     }
-    else if ("+-*/%".indexOf(this.operator) != -1) {
+    // assert left & right is arith
+    else if (["+","-","*","/","%","<",">",">=","<=","==","!="].includes(this.operator)) {
         return genArithmeticExpression(this, ctx, left, right);
     }
     else {

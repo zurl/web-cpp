@@ -70,12 +70,12 @@ export class VirtualMachine{
             this.memory.setInt32(this.sp + 4, this.memory.getInt32(this.sp) + this.memory.getInt32(this.sp + 4));
             this.sp += 4;
         }
-        else if( op == OpCode.LI32){
+        else if( op == OpCode.PI32){
             this.sp -= 4;
             this.memory.setInt32(this.sp, this.memory.getInt32(this.pc));
             this.pc += 4;
         }
-        else if( op == OpCode.LUI32){
+        else if( op == OpCode.PUI32){
             this.sp -= 4;
             this.memory.setUint32(this.sp, this.memory.getUint32(this.pc));
             this.pc += 4;
