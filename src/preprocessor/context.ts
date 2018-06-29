@@ -17,7 +17,7 @@ export class PreprocessingContext {
     _macros: Map<string, Marcos>;
     _macroNamesBeingReplaced: Set<string>;
 
-    constructor(fileName?: string, source?: string, parent?: PreprocessingContext) {
+    constructor(fileName: string, source: string, parent?: PreprocessingContext) {
         this._fileName = fileName!;
         this._source = source!;
         this._parent = parent;
@@ -25,24 +25,24 @@ export class PreprocessingContext {
         this._macroNamesBeingReplaced = new Set<string>();
     }
 
-    getFileName(): string | null {
+    getFileName(): string {
         if (this._fileName) {
             return this._fileName;
         }
         if (this._parent) {
             return this._parent.getFileName();
         }
-        return null;
+        return "";
     }
 
-    getSource(): string | null{
+    getSource(): string {
         if (this._source) {
             return this._source;
         }
         if (this._parent) {
             return this._parent.getSource();
         }
-        return null;
+        return "";
     }
 
     defineMacro(macro: Marcos) {
@@ -102,7 +102,7 @@ export class PreprocessingContext {
         this._macroNamesBeingReplaced.add(name);
     }
 
-    newChildContext(fileName: string, source: string) {
-        return new PreprocessingContext(fileName, source, this);
+    newChildContext() {
+        return new PreprocessingContext(this._fileName, this._source, this);
     }
 }

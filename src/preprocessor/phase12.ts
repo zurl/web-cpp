@@ -21,7 +21,7 @@ const backslashNewLineReplacements = {
     '\\\r\n': ''
 };
 
-interface PreprocessedSource {
+export interface PreprocessedSource {
     code: string;
     map: SourceMapGenerator;
 }

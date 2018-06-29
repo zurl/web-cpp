@@ -3,6 +3,8 @@
 
 import {SourceMapGenerator, SourceNode} from 'source-map';
 
+type TokenType = Identifier | PpNumber | CharacterConstant | StringLiteral | Punctuator | PpChar;
+type PreprocessDirective = ObjectLikeDefineDirective | FunctionLikeDefineDirective;
 const Library = {
     files: new Map([
         ["math.h", "#define PI 3.14\n"]
@@ -12,9 +14,9 @@ const Library = {
 import {
     ConstantExpressionParser, HeaderNameParser, PreprocessingFileParser, PreprocessingTokenParser
 } from '../parser';
-import {PreprocessingError} from '../common/error'
+import {InternalError, PreprocessingError} from '../common/error'
 import Preprocessor from '.';
-import { getFileNameForPhase } from '.';
+import {getFileNameForPhase} from '.';
 import * as Long from 'long';
 
 import {
@@ -22,12 +24,14 @@ import {
     FunctionLikeDefineDirective, Identifier, IfGroup, IfSection, IfdefGroup, IfndefGroup, IncludeDirective,
     IntegerConstant, LineDirective, Node, NonDirective, NullDirective, ObjectLikeDefineDirective, ParenthesisExpression,
     PpChar, PpNumber, PragmaDirective, PreprocessingFile, Punctuator, SourceLocation, StringLiteral, TextBlock,
-    UnaryExpression, UndefDirective
+    UnaryExpression, UndefDirective, Position, Expression, HeaderName
 } from '../common/ast';
 import {SyntaxError} from "../common/error";
 import {PreprocessingContext} from './context';
+import {PEG} from "pegjs";
+import {PreprocessedSource} from "./phase12";
 
-export function getIntegerValueFromCharacterConstantValue(constant) {
+export function getIntegerValueFromCharacterConstantValue(constant: CharacterConstant) {
     // An integer character constant has type int. The value of an integer character constant containing a single
     // character that maps to a single-byte execution character is the numerical value of the representation of the
     // mapped character interpreted as an integer. The value of an integer character constant containing more than one
@@ -53,20 +57,15 @@ export function getIntegerValueFromCharacterConstantValue(constant) {
     }
     return Long.fromInt(value);
 }
-/**
- * @param {string} fileName
- * @param {string} source
- * @param {PreprocessingContext|null} context
- * @return {{ code: string, map: SourceMapGenerator }}
- */
-function process(fileName, source, context) {
+
+function process(fileName: string, source: string, context: PreprocessingContext): PreprocessedSource {
 
     // 3. The source file is decomposed into preprocessing tokens and sequences of white-space characters
     // (including comments). A source file shall not end in a partial preprocessing token or in a partial comment.
     // Each comment is replaced by one space character. New-line characters are retained. Whether each nonempty
     // sequence of white-space characters other than new-line is retained or replaced by one space character is
     // implementation-defined.
-    const preprocessingFile = PreprocessingFileParser.parse(source, { preprocessing: true });
+    const preprocessingFile = PreprocessingFileParser.parse(source, {preprocessing: true});
 
     // 4. Preprocessing directives are executed, macro invocations are expanded, and _Pragma unary operator
     // expressions are executed. If a character sequence that matches the syntax of a universal character name is
@@ -75,30 +74,18 @@ function process(fileName, source, context) {
     // preprocessing directives are then deleted.
     const sourceNode = processFile(getFileNameForPhase(fileName, 2), preprocessingFile, context);
 
-    return sourceNode.toStringWithSourceMap({ file: getFileNameForPhase(fileName, 4) });
+    return sourceNode.toStringWithSourceMap({file: getFileNameForPhase(fileName, 4)});
 }
 
-
-
-/**
- * @param {string} fileName
- * @param {PreprocessingFile} preprocessingFile
- * @param {PreprocessingContext|null} context
- * @return {SourceNode}
- */
-function processFile(fileName, preprocessingFile, context) {
+function processFile(fileName:string, preprocessingFile: PreprocessingFile, context: PreprocessingContext) {
     context = new PreprocessingContext(fileName, preprocessingFile.location.source, context);
     return getSourceNodeFromNodeBody(preprocessingFile, context);
 }
 
-/**
- * @param {PreprocessingFile|IfGroup|IfdefGroup|IfndefGroup|ElifGroup|ElseGroup} node
- * @param {PreprocessingContext} context
- * @return {SourceNode}
- */
-function getSourceNodeFromNodeBody(node, context) {
+function getSourceNodeFromNodeBody(node: PreprocessingFile|IfGroup|IfdefGroup|IfndefGroup|ElifGroup|ElseGroup,
+                                   context: PreprocessingContext): SourceNode {
     return getSourceNodeFromNodeWithChildren(node, node.body, context,
-        node => processBodyElement(node, context));
+        node => processBodyElement(node, context)!);
 }
 
 /**
@@ -106,7 +93,7 @@ function getSourceNodeFromNodeBody(node, context) {
  * @param {PreprocessingContext} context
  * @return {SourceNode|null}
  */
-function processBodyElement(node, context) {
+function processBodyElement(node: Node, context: PreprocessingContext): SourceNode | null {
     if (node instanceof Directive) {
         return processDirective(node, context);
     } else if (node instanceof IfSection) {
@@ -118,12 +105,7 @@ function processBodyElement(node, context) {
     }
 }
 
-/**
- * @param {Directive} directive
- * @param {PreprocessingContext} context
- * @return {SourceNode|null}
- */
-function processDirective(directive, context) {
+function processDirective(directive: Directive, context: PreprocessingContext):SourceNode| null {
     if (directive instanceof IfGroup || directive instanceof IfdefGroup || directive instanceof IfndefGroup) {
         throw new PreprocessingError('Internal: Should have used processIfSectionGroup() instead', directive);
     } else if (directive instanceof IncludeDirective) {
@@ -137,14 +119,14 @@ function processDirective(directive, context) {
             // replacements shall match one of the two previous forms. 170) The method by which a sequence of
             // preprocessing tokens between a < and a > preprocessing token pair or a pair of " characters is combined
             // into a single header name preprocessing token is implementation-defined.
-            if (!directive.tokens.length) {
+            if (!(directive.tokens instanceof Array)) {
                 throw new PreprocessingError('#include expects "FILENAME" or <FILENAME>', directive);
             }
             const tokens = replaceMacroInvocations(directive.tokens, context);
             const directiveForSpacing = cloneNodeWithOffsetForSpacingAsChildren(directive, tokens);
             const source = getCodeFromNodeWithChildren(directiveForSpacing, tokens, context);
             try {
-                headerName = HeaderNameParser.parse(source, { preprocessing: true });
+                headerName = HeaderNameParser.parse(source, {preprocessing: true}) as HeaderName;
                 headerName.location.start = tokens[0].location.start;
                 headerName.location.end = tokens[tokens.length - 1].location.end;
             } catch (e) {
@@ -169,7 +151,7 @@ function processDirective(directive, context) {
         // with the identical contained sequence (including > characters, if any) from the original directive.
         if (Library.files.has(headerName.name)) {
             return new SourceNode(1, 0, headerName.name, Preprocessor.process(headerName.name,
-                Library.files.get(headerName.name), context).code);
+                Library.files.get(headerName.name)!, context).code);
         } else {
             throw new PreprocessingError(`'${headerName.name}' file not found`, headerName);
         }
@@ -190,8 +172,9 @@ function processDirective(directive, context) {
             }
             for (let j = 0; j < directive.replacements.length; ++j) {
                 if (isPunctuator(directive.replacements[j], '#')) {
-                    if (!(directive.replacements[j + 1] instanceof Identifier
-                        && parameterNames.has(directive.replacements[j + 1].name))) {
+                    const repl = directive.replacements[j + 1];
+                    if (!(repl instanceof Identifier
+                        && parameterNames.has(repl.name))) {
                         throw new PreprocessingError('\'#\' is not followed by a macro parameter',
                             directive.replacements[j]);
                     }
@@ -201,7 +184,7 @@ function processDirective(directive, context) {
                 }
             }
         }
-        if (directive.replacements.length) {
+        if (directive.replacements instanceof Array) {
             // A ## preprocessing token shall not occur at the beginning or at the end of a replacement list for either
             // form of macro definition.
             if (isPunctuator(directive.replacements[0], '##')) {
@@ -240,21 +223,16 @@ function processDirective(directive, context) {
     } else if (directive instanceof NullDirective) {
         return null;
     } else if (directive instanceof NonDirective) {
-        throw new PreprocessingError(`Error: Unknown directive '${directive.tokens[0].value}'.`, directive);
+        throw new PreprocessingError(`Error: Unknown directive '${directive.tokens![0].value}'.`, directive);
     } else {
         throw new PreprocessingError(`Internal: Unknown directive.`, directive);
     }
 }
 
-/**
- * @param {IfSection} ifSection
- * @param {PreprocessingContext} context
- * @return {SourceNode|null}
- */
-function processIfSection(ifSection, context) {
+function processIfSection(ifSection: IfSection, context: PreprocessingContext): SourceNode | null {
     for (const group of [ifSection.ifGroup, ...ifSection.elseIfGroups,
-    ...(ifSection.elseGroup ? [ifSection.elseGroup] : [])]) {
-        const { test, sourceNode } = processIfSectionGroup(group, context);
+        ...(ifSection.elseGroup ? [ifSection.elseGroup] : [])]) {
+        const {test, sourceNode} = processIfSectionGroup(group, context);
         if (test) {
             return sourceNode;
         }
@@ -267,9 +245,11 @@ function processIfSection(ifSection, context) {
  * @param {PreprocessingContext} context
  * @return {{ test: boolean, sourceNode: SourceNode|null }}
  */
-function processIfSectionGroup(group, context) {
+function processIfSectionGroup(group: IfGroup|IfdefGroup|IfndefGroup|ElifGroup|ElseGroup,
+                               context: PreprocessingContext) {
     let test = null;
     if (group instanceof IfGroup || group instanceof ElifGroup) {
+        if( group.tokens === null ) throw new InternalError(` group.tokens === null `);
         const tokens = replaceMacroInvocations(group.tokens, context, true);
         // If the token defined is generated as a result of this replacement process or use of the defined unary
         // operator does not match one of the two specified forms prior to macro replacement, the behavior is
@@ -278,17 +258,18 @@ function processIfSectionGroup(group, context) {
         // and clang.
         for (let i = 0; i < tokens.length; ++i) {
             if (tokens[i] instanceof Identifier) {
-                const replaceWithNumber = (numberSource, length) => {
+                const replaceWithNumber = (numberSource: string, length: number) => {
                     const number = new PpNumber(new SourceLocation(numberSource, tokens[i].location.start,
                         tokens[i + length - 1].location.end), numberSource);
                     tokens.splice(i, length, number);
                 };
-                if (tokens[i].name === 'defined') {
-                    const replaceDefined = (index, length) => {
+
+                if ((tokens[i] as Identifier).name === 'defined') {
+                    const replaceDefined = (index: number, length: number) => {
                         // evaluate to 1 if the identifier is currently defined as a macro name (that is, if it is
                         // predefined or if it has been the subject of a #define preprocessing directive without an
                         // intervening #undef directive with the same subject identifier), 0 if it is not.
-                        const numberSource = context.isMacroDefined(tokens[i + index].name) ? '1' : '0';
+                        const numberSource = context.isMacroDefined((tokens[i + index] as Identifier).name) ? '1' : '0';
                         replaceWithNumber(numberSource, length);
                     };
                     if (tokens[i + 1] instanceof Identifier) {
@@ -315,7 +296,7 @@ function processIfSectionGroup(group, context) {
         // # ifndef identifier new-line group opt
         // check whether the identifier is or is not currently defined as a macro name. Their conditions are
         // equivalent to #if defined identifier and #if !defined identifier respectively.
-        test = (group instanceof IfndefGroup) ^ context.isMacroDefined(group.test.name);
+        test = (group instanceof IfndefGroup) !== context.isMacroDefined(group.test.name);
     } else if (group instanceof ElseGroup) {
         test = true;
     } else {
@@ -325,7 +306,7 @@ function processIfSectionGroup(group, context) {
         const groupForSpacing = cloneNodeWithOffsetForSpacingAsChildren(group, group.body);
         return {
             test,
-            sourceNode: getSourceNodeFromNodeBody(groupForSpacing, context),
+            sourceNode: getSourceNodeFromNodeBody(groupForSpacing as any, context),
         };
     } else {
         return {
@@ -335,32 +316,19 @@ function processIfSectionGroup(group, context) {
     }
 }
 
-/**
- * @param {boolean} boolean
- * @return {Long}
- */
-function booleanToLong(boolean) {
+function booleanToLong(boolean: boolean) {
     return boolean ? Long.ONE : Long.ZERO;
 }
 
-/**
- * @param {Long} long
- * @return {boolean}
- */
-function longToBoolean(long) {
+function longToBoolean(long: Long) {
     return !long.isZero();
 }
 
-/**
- * @param {[Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar]} tokens
- * @param {[Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar]} originalTokens
- * @return {Expression}
- */
-function parseConstantExpression(tokens, originalTokens) {
+function parseConstantExpression(tokens: TokenType[], originalTokens:TokenType[]): Expression {
     // HACK: Stringify and parse again, since we only need evaluation here.
     const source = tokens.map(token => token.location.source).join(' ');
     try {
-        const constantExpression = ConstantExpressionParser.parse(source, { preprocessing: true });
+        const constantExpression = ConstantExpressionParser.parse(source, {preprocessing: true});
         constantExpression.location.start = originalTokens[0].location.start;
         constantExpression.location.end = originalTokens[originalTokens.length - 1].location.end;
         return constantExpression;
@@ -371,11 +339,8 @@ function parseConstantExpression(tokens, originalTokens) {
     }
 }
 
-/**
- * @param {Expression} expression
- * @return {Long}
- */
-function evaluateIntegerConstantExpression(expression) {
+
+function evaluateIntegerConstantExpression(expression: Expression): Long {
     // The resulting tokens compose the controlling constant expression which is evaluated according to the rules of
     // 6.6. For the purposes of this token conversion and evaluation, all signed integer types and all unsigned integer
     // types act as if they hav e the same representation as, respectively, the types intmax_t and uintmax_t defined in
@@ -463,19 +428,14 @@ function evaluateIntegerConstantExpression(expression) {
     } else if (expression instanceof IntegerConstant) {
         return expression.value;
     } else if (expression instanceof CharacterConstant) {
-        return getIntegerValueFromCharacterConstantValue(expression, PreprocessingError);
+        return getIntegerValueFromCharacterConstantValue(expression);
     } else {
-        throw new PreprocessingError(`Expression type "${expression.type}" is not valid in preprocessor expressions`,
+        throw new PreprocessingError(`Expression type "${expression.constructor}" is not valid in preprocessor expressions`,
             expression);
     }
 }
 
-/**
- * @param {TextBlock} textBlock
- * @param {PreprocessingContext} context
- * @return {SourceNode}
- */
-function processTextBlock(textBlock, context) {
+function processTextBlock(textBlock: TextBlock, context: PreprocessingContext): SourceNode {
     const tokens = replaceMacroInvocations(textBlock.tokens, context);
     return getSourceNodeFromNodeWithChildren(textBlock, tokens, context,
         node => {
@@ -486,21 +446,16 @@ function processTextBlock(textBlock, context) {
 
 const placemarkerPpToken = Symbol('PlacemarkerPpToken');
 
-/**
- * @param {[Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar]} tokens
- * @param {PreprocessingContext} context
- * @param {boolean} enableDefined
- * @return {[Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar]}
- */
-function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) {
+function replaceMacroInvocationsInPlace(tokens: TokenType[], context: PreprocessingContext, enableDefined = false): TokenType[] {
     for (let i = 0; i < tokens.length; ++i) {
-        if (tokens[i] instanceof Identifier) {
+        const token = tokens[i];
+        if (token instanceof Identifier) {
             // Prior to evaluation, macro invocations in the list of preprocessing tokens that will become the
             // controlling constant expression are replaced (except for those macro names modified by the defined
             // unary operator), just as in normal text. If the token defined is generated as a result of this
             // replacement process or use of the defined unary operator does not match one of the two specified
             // forms prior to macro replacement, the behavior is undefined.
-            if (enableDefined && tokens[i].name === 'defined') {
+            if (enableDefined && token.name === 'defined') {
                 if (tokens[i + 1] instanceof Identifier) {
                     // 'defined' Identifier
                     ++i;
@@ -522,16 +477,17 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
                 }
             }
             /**
-             * @type {ObjectLikeDefineDirective|FunctionLikeDefineDirective}
+             * @type {}
              */
-            const macro = context.findMacro(tokens[i].name);
-            if (macro && !context.isMacroBeingReplaced(tokens[i].name)) {
-                let replacements = null;
+            const macro = context.findMacro(token.name);
+            if (macro && !context.isMacroBeingReplaced(token.name)) {
+                let replacements :any = null;
                 let macroLength = null;
                 if (macro instanceof ObjectLikeDefineDirective) {
                     // ... an object-like macro that causes each subsequent instance of the macro name 171) to be
                     // replaced by the replacement list of preprocessing tokens that constitute the remainder of the
                     // directive. The replacement list is then rescanned for more macro names ...
+                    if( !(macro.replacements instanceof Array)) throw new InternalError(`!(replacements instanceof Array)`);
                     replacements = macro.replacements.map(e => {
                         let cloned = cloneNode(e);
                         inplaceCloneLocation(cloned);
@@ -634,7 +590,7 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
                         // replace it.
                         argumentMap.set('__VA_ARGS__', variableArguments);
                     }
-                    const isArgument = token => token instanceof Identifier && argumentMap.has(token.name);
+                    const isArgument = (token: TokenType) => token instanceof Identifier && argumentMap.has(token.name);
                     replacements = macro.replacements.slice();
                     for (let j = 0; j < replacements.length; ++j) {
                         if (isArgument(replacements[j])) {
@@ -680,8 +636,8 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
                             let stringValue = '';
                             for (let k = 0; k < argument.length; ++k) {
                                 if (k > 0) {
-                                    stringValue += ' '.repeat(getNodeStartPositionForSpacing(argument[k])
-                                        - getNodeEndPositionForSpacing(argument[k - 1]));
+                                    stringValue += ' '.repeat(getNodeStartPositionForSpacing(argument[k]).offset
+                                        - getNodeEndPositionForSpacing(argument[k - 1]).offset );
                                 }
                                 stringValue += argument[k].location.source;
                             }
@@ -696,7 +652,7 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
                             // corresponding argument’s preprocessing token sequence; however, if an argument
                             // consists of no preprocessing tokens, the parameter is replaced by a placemarker
                             // preprocessing token instead. 173)
-                            const replaceParameter = index => {
+                            const replaceParameter = (index:number) => {
                                 const argument = argumentMap.get(replacements[index].name);
                                 if (argument.length) {
                                     argument[0] = cloneNodeWithStartPositionForSpacing(argument[0],
@@ -751,7 +707,7 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
                             const source = replacements[j - 1].location.source
                                 + replacements[j + 1].location.source;
                             try {
-                                const token = PreprocessingTokenParser.parse(source, { preprocessing: true });
+                                const token = PreprocessingTokenParser.parse(source, {preprocessing: true});
                                 token.location.start = replacements[j - 1].location.start;
                                 token.location.end = replacements[j + 1].location.end;
                                 // We are creating a new token, no need to clone.
@@ -789,7 +745,7 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
                 // The resulting completely macro-replaced preprocessing token sequence is not processed as a
                 // preprocessing directive even if it resembles one, but all pragma unary operator expressions
                 // within it are then processed as specified in 6.10.9 below.
-                replacements = replacements.filter(replacement => replacement !== placemarkerPpToken);
+                replacements = replacements.filter((replacement: any) => replacement !== placemarkerPpToken);
                 const childContext = context.newChildContext();
                 childContext.markMacroAsBeingReplaced(macro.name.name);
                 replacements = replaceMacroInvocations(replacements, context.newChildContext(),
@@ -809,13 +765,7 @@ function replaceMacroInvocationsInPlace(tokens, context, enableDefined = false) 
     return tokens;
 }
 
-/**
- * @param {[Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar]} tokens
- * @param {PreprocessingContext} context
- * @param {boolean} preserveDefined
- * @return {[Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar]}
- */
-function replaceMacroInvocations(tokens, context, preserveDefined = false) {
+function replaceMacroInvocations(tokens: TokenType[], context: PreprocessingContext, preserveDefined = false): TokenType[] {
     tokens = tokens.slice();
     replaceMacroInvocationsInPlace(tokens, context, preserveDefined);
     return tokens;
@@ -823,44 +773,25 @@ function replaceMacroInvocations(tokens, context, preserveDefined = false) {
 
 const isInReplacementListProperty = Symbol('isInReplacementList');
 
-/**
- * @param {Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar} token
- */
-function markTokenAsInReplacementList(token) {
+function markTokenAsInReplacementList(token: any) {
     token[isInReplacementListProperty] = true;
 }
 
-/**
- * @param {Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar} token
- * @return {boolean}
- */
-function isTokenInReplacementList(token) {
+function isTokenInReplacementList(token: any) {
     return !!token[isInReplacementListProperty];
 }
 
 const isConcatenatedProperty = Symbol('isConcatenated');
 
-/**
- * @param {Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar} token
- */
-function markTokenAsConcatenated(token) {
+function markTokenAsConcatenated(token: any) {
     token[isConcatenatedProperty] = true;
 }
 
-/**
- * @param {Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar} token
- * @return {boolean}
- */
-function isTokenConcatenated(token) {
+function isTokenConcatenated(token: any) {
     return !!token[isConcatenatedProperty];
 }
 
-/**
- * @param {Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar} token
- * @param {string} punctuator
- * @return {boolean}
- */
-function isPunctuator(token, punctuator) {
+function isPunctuator(token: TokenType, punctuator: string) {
     if (typeof token === 'undefined') {
         return false;
     }
@@ -870,18 +801,11 @@ function isPunctuator(token, punctuator) {
     return token instanceof Punctuator && token.value === punctuator;
 }
 
-/**
- * @param {*} node
- * @return {*}
- */
-function cloneNode(node) {
+function cloneNode(node: any): any {
     return Object.assign(Object.create(node), node);
 }
 
-/**
- * @param {Node} node 
- */
-function inplaceCloneLocation(node) {
+function inplaceCloneLocation(node: Node) {
     node.location.start = cloneNode(node.location.start);
     node.location.end = cloneNode(node.location.end);
     node.location = cloneNode(node.location);
@@ -890,31 +814,18 @@ function inplaceCloneLocation(node) {
 
 const spacingStartPositionProperty = Symbol('spacingStartPosition');
 
-/**
- * @param {Node} node
- * @param {Position} position
- * @deprecated Use #cloneNodeWithStartPositionForSpacing instead.
- */
-function overrideNodeStartPositionForSpacing(node, position) {
+function overrideNodeStartPositionForSpacing(node: any, position: Position) {
     node[spacingStartPositionProperty] = position;
 }
 
-/**
- * @param {Node} node
- * @param {Position} position
- */
-function cloneNodeWithStartPositionForSpacing(node, position) {
+function cloneNodeWithStartPositionForSpacing(node: Node, position: Position) {
     node = cloneNode(node);
     //noinspection JSDeprecatedSymbols
     overrideNodeStartPositionForSpacing(node, position);
     return node;
 }
 
-/**
- * @param {Node} node
- * @return {Position}
- */
-function getNodeStartPositionForSpacing(node) {
+function getNodeStartPositionForSpacing(node: any): Position {
     let offset = node[spacingStartPositionProperty];
     if (typeof offset === 'undefined') {
         offset = node.location.start;
@@ -924,31 +835,18 @@ function getNodeStartPositionForSpacing(node) {
 
 const spacingEndPositionProperty = Symbol('spacingEndPosition');
 
-/**
- * @param {Node} node
- * @param {Position} position
- * @deprecated Use #cloneNodeWithEndPositionForSpacing instead.
- */
-function overrideNodeEndPositionForSpacing(node, position) {
+function overrideNodeEndPositionForSpacing(node: any, position: Position) {
     node[spacingEndPositionProperty] = position;
 }
 
-/**
- * @param {Node} node
- * @param {Position} position
- */
-function cloneNodeWithEndPositionForSpacing(node, position) {
+function cloneNodeWithEndPositionForSpacing(node: Node, position: Position) {
     node = cloneNode(node);
     //noinspection JSDeprecatedSymbols
     overrideNodeEndPositionForSpacing(node, position);
     return node;
 }
 
-/**
- * @param {Node} node
- * @return {Position}
- */
-function getNodeEndPositionForSpacing(node) {
+function getNodeEndPositionForSpacing(node: any): Position {
     let position = node[spacingEndPositionProperty];
     if (typeof position === 'undefined') {
         position = node.location.end;
@@ -956,39 +854,29 @@ function getNodeEndPositionForSpacing(node) {
     return position;
 }
 
-/**
- * @param {Node} node
- * @param {[Node]} children
- */
-function cloneNodeWithOffsetForSpacingAsChildren(node, children) {
+function cloneNodeWithOffsetForSpacingAsChildren(node: Node, children: Node[]) {
     node = cloneNodeWithStartPositionForSpacing(node, getNodeStartPositionForSpacing(children[0]));
     //noinspection JSDeprecatedSymbols
     overrideNodeEndPositionForSpacing(node, getNodeEndPositionForSpacing(children[children.length - 1]));
     return node;
 }
 
-/**
- * @param {Node} node
- * @param {[Node]} children
- * @param {PreprocessingContext} context
- * @return {string}
- */
-function getCodeFromNodeWithChildren(node, children, context) {
+function getCodeFromNodeWithChildren(node: Node, children: Node[], context: PreprocessingContext) {
     let code = '';
     const source = context.getSource();
     let lastOffset = getNodeStartPositionForSpacing(node).offset;
     for (const child of children) {
         // TODO: Remove.
-        if (lastOffset > getNodeStartPositionForSpacing(child)) {
+        if (lastOffset > getNodeStartPositionForSpacing(child).offset) {
             debugger;
             throw new PreprocessingError('Internal: lastOffset > getNodeStartPositionForSpacing(child).offset', child);
         }
         code += source.substring(lastOffset, getNodeStartPositionForSpacing(child).offset);
         code += child.location.source;
-        lastOffset = getNodeEndPositionForSpacing(child);
+        lastOffset = getNodeEndPositionForSpacing(child).offset;
     }
     // TODO: Remove.
-    if (lastOffset > getNodeEndPositionForSpacing(node)) {
+    if (lastOffset > getNodeEndPositionForSpacing(node).offset) {
         debugger;
         throw new PreprocessingError('Internal: lastOffset > getNodeEndPositionForSpacing(node).offset', node);
     }
@@ -996,31 +884,13 @@ function getCodeFromNodeWithChildren(node, children, context) {
     return code;
 }
 
-/**
- * @param {Node} node
- * @param {[Node]} children
- * @param {PreprocessingContext} context
- * @param {function(Node):(SourceNode|null)} toSourceNode
- * @return {SourceNode}
- */
-function getSourceNodeFromNodeWithChildren(node, children, context, toSourceNode) {
+
+function getSourceNodeFromNodeWithChildren(node: Node, children: Node[], context: PreprocessingContext,
+                                           toSourceNode: (node: Node) => SourceNode): SourceNode {
     let sourceNode = new SourceNode(node.location.start.line, node.location.start.column, context.getFileName());
     const source = context.getSource();
     let lastPosition = getNodeStartPositionForSpacing(node);
-    const addSpaceSourceNode = endPosition => {
-        // DISABLED: Shouldn't do the line separation here, as we won't do it for included files.
-        //const spaceSource = source.substring(lastPosition.offset, endPosition.offset);
-        //const spaceSourceLines = spaceSource.split('\n');
-        //for (let i = 0; i < spaceSourceLines.length - 1; ++i) {
-        //    spaceSourceLines[i] += '\n';
-        //}
-        //if (!spaceSourceLines[spaceSourceLines.length - 1]) {
-        //    spaceSourceLines.splice(-1, 1);
-        //}
-        //for (const [i, spaceSourceLine] of spaceSourceLines.entries()) {
-        //    sourceNode.add(new SourceNode(lastPosition.line + i, i === 0 ? lastPosition.column : 0,
-        //            context.getFileName(), spaceSourceLine));
-        //}
+    const addSpaceSourceNode = (endPosition: Position) => {
         sourceNode.add(new SourceNode(lastPosition.line, lastPosition.column, context.getFileName(),
             source.substring(lastPosition.offset, endPosition.offset)));
     };

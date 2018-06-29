@@ -18,12 +18,10 @@ export enum OpCode{
     LM8,LM16,LM32,LM64,
     // S_TOP....  address item .....S_END
     SM8,SM16,SM32,SM64,
-
     ADD,SUB,MUL,DIV,MOD,
     ADDU,SUBU,MULU,DIVU,MODU,
     ADDF,SUBF,MULF,DIVF,MODF,
     GT0,LT0,EQ0,NEQ0,LTE0,GTE0,
-
     NOP,END,PRINT,
     U2I,I2U,F2D,D2F,I2D,D2I,
     // 5 = [op u32 u32 u32 u32]
@@ -49,20 +47,6 @@ export enum OpCode{
     // 9 = [op f64 f64 f64 f64 f64 f64 f64 f64]
     PF64,  // push f64
 }
-
-/* CALL:
-    1. [$sp++] = $pc
-    2. [$sp++] = $bp
-    3. $bp = $sp - 2
-    4. $pc = target_addr
-   func_header:
-    1. $sp = $sp + space
-
-   RET:
-    1. $sp = $bp - param_space
- *
- *
- */
 
 export const OpCodeLimit = {
     L1: OpCode.D2I,

@@ -62,18 +62,13 @@ AssignmentExpression.prototype.codegen = function (ctx: CompileContext): Express
         throw new SyntaxError(`unsupport operator overload`, this);
     }
     loadIntoStack(ctx, right);
-    // OK, Value on the top of stack, then retrieve
+    // 在赋值运算符中，右运算数的值被转换成左运算数的无限定类型
     convertTypeOnStack(ctx, leftType, rightType, this);
-
     const left = this.left.codegen(ctx);
-
     if (leftType instanceof ClassType) {
         throw new SyntaxError(`unsupport operator overload`, this);
     }
-
-
     popFromStack(ctx, left);
-    //TODO:: 我都不知道我在干啥
     return {
         type: leftType,
         form: left.form,

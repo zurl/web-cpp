@@ -810,8 +810,8 @@ export class FunctionLikeDefineDirective extends Directive {
     name: Identifier;
     parameters: Identifier[];
     variableArguments: boolean;
-    replacements: Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar[];
-    constructor(location: SourceLocation, name: Identifier, parameters: Identifier[], variableArguments: boolean, replacements: Identifier|PpNumber|CharacterConstant|StringLiteral|Punctuator|PpChar[]) {
+    replacements: PpChar[];
+    constructor(location: SourceLocation, name: Identifier, parameters: Identifier[], variableArguments: boolean, replacements: PpChar[]) {
         super(location, null);
         this.name = name;
         this.parameters = parameters;
