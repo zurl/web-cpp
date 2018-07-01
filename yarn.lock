@@ -86,6 +86,10 @@
   version "4.0.0"
   resolved "http://registry.npm.taobao.org/@types/long/download/@types/long-4.0.0.tgz#719551d2352d301ac8b81db732acb6bdc28dbdef"
 
+"@types/node@^10.5.1":
+  version "10.5.1"
+  resolved "http://registry.npm.taobao.org/@types/node/download/@types/node-10.5.1.tgz#d578446f4abff5c0b49ade9b4e5274f6badaadfc"
+
 "@types/pegjs@^0.10.1":
   version "0.10.1"
   resolved "http://registry.npm.taobao.org/@types/pegjs/download/@types/pegjs-0.10.1.tgz#9a2f3961dc62430fdb21061eb0ddbd890f9e3b94"

@@ -1,29 +1,28 @@
-import {isArrayEqual} from "./utils";
-import {Assembly} from "./instruction";
 import {InternalError} from "./error";
+import {Assembly} from "./instruction";
+import {isArrayEqual} from "./utils";
 
 const MACHINE_POINTER_LENGTH = 4;
 
-
 export abstract class Type {
 
-    isExtern: boolean;
+    public isExtern: boolean;
 
-    constructor(){
+    constructor() {
         this.isExtern = false;
     }
 
     abstract get length(): number;
 
-    equals(type: Type) {
-        return this.constructor == type.constructor;
+    public equals(type: Type) {
+        return this.constructor === type.constructor;
     }
 
-    abstract toString(): string;
+    public abstract toString(): string;
 }
 
 export abstract class CompoundType extends Type {
-    elementType: Type;
+    public elementType: Type;
 
     constructor(elementType: Type) {
         super();
@@ -34,7 +33,7 @@ export abstract class CompoundType extends Type {
         return MACHINE_POINTER_LENGTH;
     }
 
-    equals(type: Type): boolean {
+    public equals(type: Type): boolean {
         return super.equals(type) &&
             type instanceof CompoundType &&
             this.elementType.equals(type.elementType);
@@ -42,7 +41,7 @@ export abstract class CompoundType extends Type {
 }
 
 export class PointerType extends CompoundType {
-    toString() {
+    public toString() {
         return this.elementType.toString() + "*";
     }
 }
@@ -51,27 +50,27 @@ export abstract class ReferenceType extends CompoundType {
 
     constructor(elementType: Type) {
         super(elementType);
-        if( elementType instanceof ReferenceType){
+        if (elementType instanceof ReferenceType) {
             throw new InternalError(`ref to ref is illegal`);
         }
     }
 }
 
 export class LeftReferenceType extends ReferenceType {
-    toString() {
+    public toString() {
         return this.elementType.toString() + "&";
     }
 }
 
 export class RightReferenceType extends ReferenceType {
-    toString() {
+    public toString() {
         return this.elementType.toString() + "&&";
     }
 }
 
 export class QualifiedType extends CompoundType {
-    isConst: boolean;
-    isVolatile: boolean;
+    public isConst: boolean;
+    public isVolatile: boolean;
 
     constructor(elementType: Type, isConst: boolean, isVolatile: boolean) {
         super(elementType);
@@ -83,17 +82,19 @@ export class QualifiedType extends CompoundType {
         return this.elementType.length;
     }
 
-
-    toString(): string {
-        if (this.isConst) return "const " + this.elementType.toString();
-        else return this.elementType.toString();
+    public toString(): string {
+        if (this.isConst) {
+            return "const " + this.elementType.toString();
+        } else {
+            return this.elementType.toString();
+        }
     }
 
 }
 
 export abstract class PrimitiveType extends Type {
-    toString() {
-        return this.constructor.name.replace('Type', '');
+    public toString() {
+        return this.constructor.name.replace("Type", "");
     }
 }
 
@@ -192,11 +193,10 @@ export class DoubleType extends FloatingType {
 }
 
 export class FunctionType extends Type {
-    name: string;
-    returnType: Type;
-    parameterTypes: Type[];
-    parameterNames: string[];
-
+    public name: string;
+    public returnType: Type;
+    public parameterTypes: Type[];
+    public parameterNames: string[];
 
     constructor(name: string, returnType: Type, parameterTypes: Type[], parameterNames: string[]) {
         super();
@@ -210,14 +210,14 @@ export class FunctionType extends Type {
         return 0;
     }
 
-    equals(type: Type): boolean {
+    public equals(type: Type): boolean {
         return super.equals(type) &&
             type instanceof FunctionType &&
             this.returnType.equals(type.returnType) &&
             isArrayEqual(this.parameterTypes, type.parameterTypes);
     }
 
-    toString() {
+    public toString() {
         return "[Function]";
     }
 }
@@ -225,7 +225,7 @@ export class FunctionType extends Type {
 enum AccessControl {
     Public,
     Private,
-    Protected
+    Protected,
 }
 
 export class ClassType extends Type {
@@ -233,7 +233,7 @@ export class ClassType extends Type {
         return 0;
     }
 
-    toString() {
+    public toString() {
         return "[Class]";
     }
 }
@@ -275,11 +275,10 @@ export class ClassType extends Type {
 // }
 //
 
-
 export class ArrayType extends Type {
 
-    elementType: Type;
-    size: number;
+    public elementType: Type;
+    public size: number;
 
     constructor(elementType: Type, size: number) {
         super();
@@ -291,15 +290,15 @@ export class ArrayType extends Type {
         return this.elementType.length * this.size;
     }
 
-    equals(type: Type): boolean {
+    public equals(type: Type): boolean {
         return super.equals(type) &&
             type instanceof ArrayType &&
             this.elementType.equals(type.elementType) &&
-            this.size == type.size;
+            this.size === type.size;
     }
 
-    toString() {
-        return this.elementType.toString() + `[${this.length}]`
+    public toString() {
+        return this.elementType.toString() + `[${this.length}]`;
     }
 }
 
@@ -316,30 +315,30 @@ export const PrimitiveTypes = {
     int64: new Int64Type(),
     uint64: new UnsignedInt64Type(),
     float: new FloatType(),
-    double: new DoubleType()
+    double: new DoubleType(),
 };
 
 export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
-    [[['void']], PrimitiveTypes.void],
-    [[['bool']], PrimitiveTypes.bool],
-    [[['char'], ['signed', 'char'].sort()], PrimitiveTypes.char],
-    [[['unsigned', 'char'].sort()], PrimitiveTypes.uchar],
-    [[['short'], ['signed', 'short'].sort(), ['short', 'int'].sort(), ['signed', 'short', 'int'].sort()],
+    [[["void"]], PrimitiveTypes.void],
+    [[["bool"]], PrimitiveTypes.bool],
+    [[["char"], ["signed", "char"].sort()], PrimitiveTypes.char],
+    [[["unsigned", "char"].sort()], PrimitiveTypes.uchar],
+    [[["short"], ["signed", "short"].sort(), ["short", "int"].sort(), ["signed", "short", "int"].sort()],
         PrimitiveTypes.int16],
-    [[['unsigned', 'short'].sort(), ['unsigned', 'short', 'int'].sort()], PrimitiveTypes.uint16],
-    [[['int'], ['signed'], ['signed', 'int'].sort()], PrimitiveTypes.int32],
-    [[['unsigned'], ['unsigned', 'int'].sort()], PrimitiveTypes.uint32],
-    [[['long'], ['signed', 'long'].sort(), ['long', 'int'].sort(), ['signed', 'long', 'int'].sort()],
+    [[["unsigned", "short"].sort(), ["unsigned", "short", "int"].sort()], PrimitiveTypes.uint16],
+    [[["int"], ["signed"], ["signed", "int"].sort()], PrimitiveTypes.int32],
+    [[["unsigned"], ["unsigned", "int"].sort()], PrimitiveTypes.uint32],
+    [[["long"], ["signed", "long"].sort(), ["long", "int"].sort(), ["signed", "long", "int"].sort()],
         PrimitiveTypes.int32],
-    [[['unsigned', 'long'].sort(), ['unsigned', 'long', 'int'].sort()], PrimitiveTypes.uint32],
-    [[['long', 'long'], ['signed', 'long', 'long'].sort(), ['long', 'long', 'int'].sort(),
-        ['signed', 'long', 'long', 'int'].sort()], PrimitiveTypes.int64],
-    [[['unsigned', 'long', 'long'].sort(), ['unsigned', 'long', 'long', 'int'].sort()],
+    [[["unsigned", "long"].sort(), ["unsigned", "long", "int"].sort()], PrimitiveTypes.uint32],
+    [[["long", "long"], ["signed", "long", "long"].sort(), ["long", "long", "int"].sort(),
+        ["signed", "long", "long", "int"].sort()], PrimitiveTypes.int64],
+    [[["unsigned", "long", "long"].sort(), ["unsigned", "long", "long", "int"].sort()],
         PrimitiveTypes.uint64],
-    [[['float']], PrimitiveTypes.float],
-    [[['double']], PrimitiveTypes.double],
-    //[[['long', 'double'].sort()],                                               PrimitiveTypes.longDouble],
-    //[[['_Bool']],                                                               PrimitiveTypes._Bool]
+    [[["float"]], PrimitiveTypes.float],
+    [[["double"]], PrimitiveTypes.double],
+    // [[['long', 'double'].sort()],                                               PrimitiveTypes.longDouble],
+    // [[['_Bool']],                                                               PrimitiveTypes._Bool]
 ]);
 
 /**
@@ -352,12 +351,9 @@ export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
 export function extractRealType(rawType: Type) {
     if (rawType instanceof ArrayType) {
         return new PointerType(rawType.elementType);
-    }
-    else if (rawType instanceof ReferenceType) {
+    } else if (rawType instanceof ReferenceType) {
         return rawType.elementType;
-    }
-    else {
+    } else {
         return rawType;
     }
 }
-

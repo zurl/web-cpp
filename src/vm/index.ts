@@ -3,13 +3,14 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
-import {OpCode} from "../common/instruction";
+import {RuntimeError} from "../common/error";
+import {OpCode, OpCodeLimit} from "../common/instruction";
 
-export class VirtualMachine{
-    memory: DataView;
-    pc: number;
-    bp: number;
-    sp: number;
+export class VirtualMachine {
+    public memory: DataView;
+    public pc: number;
+    public bp: number;
+    public sp: number;
 
     constructor(memory: DataView) {
         this.memory = memory;
@@ -18,7 +19,121 @@ export class VirtualMachine{
         this.sp = this.bp;
     }
 
-    runOneStep(){
+    public popUint32(): number {
+        const val = this.memory.getUint32(this.sp);
+        this.sp += 4;
+        return val;
+    }
 
+    public runOneStep(): boolean {
+        const op = this.memory.getUint8(this.pc);
+        if (op <= OpCodeLimit.L1) {
+            if (op <= OpCode.LM64) {
+                const addr = this.memory.getUint32(this.sp);
+                if (op === OpCode.LM8) {
+                    this.memory.setUint32(this.sp, this.memory.getUint8(addr));
+                } else if (op === OpCode.LM16) {
+                    this.memory.setUint32(this.sp, this.memory.getUint16(addr));
+                } else if (op === OpCode.LM32) {
+                    this.memory.setUint32(this.sp, this.memory.getUint32(addr));
+                } else if (op === OpCode.LM64) {
+                    this.memory.setUint32(this.sp - 4, this.memory.getUint32(addr));
+                    this.memory.setUint32(this.sp, this.memory.getUint32(addr + 4));
+                    this.sp -= 4;
+                }
+            } else if (op <= OpCode.SM32) {
+                const item = this.popUint32();
+                const addr = this.popUint32();
+                if (op === OpCode.SM8) {
+                    this.memory.setUint8(addr, item);
+                } else if (op === OpCode.SM16) {
+                    this.memory.setUint16(addr, item);
+                } else if (op === OpCode.SM32) {
+                    this.memory.setUint32(addr, item);
+                }
+            } else if (op === OpCode.SM64) {
+                const item0 = this.popUint32();
+                const item1 = this.popUint32();
+                const addr = this.popUint32();
+                this.memory.setUint32(addr, item1);
+                this.memory.setUint32(addr + 4, item0);
+            } else if (op <= OpCode.MOD) {
+                const i1 = this.memory.getInt32(this.sp);
+                const i0 = this.memory.getInt32(this.sp + 4);
+                let ret = 0;
+                if (op === OpCode.ADD) {
+                    ret = i0 + i1;
+                } else if (op === OpCode.SUB) {
+                    ret = i0 - i1;
+                } else if (op === OpCode.MUL) {
+                    ret = i0 * i1;
+                } else if (op === OpCode.DIV) {
+                    ret = parseInt((i0 / i1) as any);
+                } else {
+                    ret = i0 % i1;
+                }
+                this.memory.setInt32(this.sp + 4, ret);
+                this.sp += 4;
+            } else if (op <= OpCode.MODU) {
+                const i1 = this.memory.getUint32(this.sp);
+                const i0 = this.memory.getUint32(this.sp + 4);
+                let ret = 0;
+                if (op === OpCode.ADDU) {
+                    ret = i0 + i1;
+                } else if (op === OpCode.SUBU) {
+                    ret = i0 - i1;
+                } else if (op === OpCode.MULU) {
+                    ret = i0 * i1;
+                } else if (op === OpCode.DIVU) {
+                    ret = parseInt((i0 / i1) as any);
+                } else {
+                    ret = i0 % i1;
+                }
+                this.memory.setUint32(this.sp + 4, ret);
+                this.sp += 4;
+            } else if (op <= OpCode.MODF) {
+                const i1 = this.memory.getFloat64(this.sp);
+                const i0 = this.memory.getFloat64(this.sp + 8);
+                let ret = 0;
+                if (op === OpCode.ADDF) {
+                    ret = i0 + i1;
+                } else if (op === OpCode.SUBF) {
+                    ret = i0 - i1;
+                } else if (op === OpCode.MULF) {
+                    ret = i0 * i1;
+                } else if (op === OpCode.DIVF) {
+                    ret = i0 / i1;
+                } else {
+                    ret = i0 % i1;
+                }
+                this.memory.setFloat64(this.sp + 8, ret);
+                this.sp += 8;
+            } else if (op === OpCode.END) {
+                return false;
+            }
+            this.pc++;
+        } else if (op <= OpCodeLimit.L5U) {
+            const imm = this.memory.getUint32(this.pc + 1);
+            if (op === OpCode.PUI32 || op === OpCode.PDATA || op === OpCode.PBSS) {
+                this.sp -= 4;
+                this.memory.setUint32(this.sp, imm);
+            }
+            this.pc += 5;
+        } else if (op <= OpCodeLimit.L5I) {
+            const imm = this.memory.getInt32(this.pc + 1);
+            if (op === OpCode.PI32) {
+                this.sp -= 4;
+                this.memory.setInt32(this.sp, imm);
+            }
+            this.pc += 5;
+        } else if (op === OpCode.PF64) {
+            const imm = this.memory.getFloat64(this.pc + 1);
+            this.sp -= 8;
+            this.memory.setFloat64(this.sp, imm);
+            this.pc += 9;
+        } else {
+            throw new RuntimeError("unknown instruction");
+        }
+        return true;
     }
 }

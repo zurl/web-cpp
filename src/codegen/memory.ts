@@ -5,12 +5,12 @@
  */
 export class MemoryLayout {
 
-    stackScope: number[];
-    dataPtr: number;
-    bssPtr: number;
-    stackPtr: number;
-    data: DataView;
-    dataBuffer: ArrayBuffer;
+    public stackScope: number[];
+    public dataPtr: number;
+    public bssPtr: number;
+    public stackPtr: number;
+    public data: DataView;
+    public dataBuffer: ArrayBuffer;
 
     constructor(dataSize: number) {
         this.dataPtr = 0;
@@ -21,20 +21,20 @@ export class MemoryLayout {
         this.data = new DataView(this.dataBuffer);
     }
 
-    allocBSS(size: number): number {
+    public allocBSS(size: number): number {
         const result = this.bssPtr;
         this.bssPtr += size;
         return result;
     }
 
-    allocData(size: number): number {
+    public allocData(size: number): number {
         const result = this.dataPtr;
         this.dataPtr += size;
         return result;
     }
 
-    allocStack(size: number): number {
-        if( size % 4 !== 0 ){
+    public allocStack(size: number): number {
+        if ( size % 4 !== 0 ) {
             size += 4 - (size % 4);     // align to 4;
         }
         const result = this.stackPtr;
@@ -42,16 +42,16 @@ export class MemoryLayout {
         return result;
     }
 
-    enterFunction() {
+    public enterFunction() {
         this.stackPtr = 0;
         this.stackScope = [];
     }
 
-    enterInnerScope() {
+    public enterInnerScope() {
         this.stackScope.push(this.stackPtr);
     }
 
-    exitInnerScope() {
+    public exitInnerScope() {
         this.stackPtr = this.stackScope.pop() as number;
     }
 

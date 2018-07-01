@@ -4,26 +4,26 @@
  *  Created at 18/06/2018
  */
 
-
-import {FunctionType, Type} from "../common/type";
-import {Assembly} from "../common/instruction";
 import {FunctionDefinition} from "../common/ast";
+import {Assembly} from "../common/instruction";
+import {FunctionType, Type} from "../common/type";
 
 export enum VariableStorageType {
     STACK,
     MEMORY_DATA,
     MEMORY_BSS,
-    MEMORY_EXTERN
+    MEMORY_EXTERN,
 }
 
 export class Variable {
-    name: string;
-    fileName: string;
-    type: Type;
-    storageType: VariableStorageType;
-    location: number | string;
+    public name: string;
+    public fileName: string;
+    public type: Type;
+    public storageType: VariableStorageType;
+    public location: number | string;
 
-    constructor(name: string, fileName: string, type: Type, storageType: VariableStorageType, location: number | string) {
+    constructor(name: string, fileName: string, type: Type,
+                storageType: VariableStorageType, location: number | string) {
         this.name = name;
         this.fileName = fileName;
         this.type = type;
@@ -31,18 +31,18 @@ export class Variable {
         this.location = location;
     }
 
-    toString(){
+    public toString() {
         return `${this.name}:${this.type.toString()}`;
     }
 }
 
-export class FunctionEntity{
-    name: string;
-    fileName: string;
-    code: Assembly | null;
-    location: string | number;
-    type: FunctionType;
-    fullName: string;
+export class FunctionEntity {
+    public name: string;
+    public fileName: string;
+    public code: Assembly | null;
+    public location: string | number;
+    public type: FunctionType;
+    public fullName: string;
 
     constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
         this.name = name;
@@ -54,13 +54,12 @@ export class FunctionEntity{
     }
 }
 
-
 export class Scope {
-    name: string;
-    map: Map<string, Variable | FunctionEntity | Type>;
-    parent: Scope | null;
-    isRoot: boolean;
-    children: Scope[];
+    public name: string;
+    public map: Map<string, Variable | FunctionEntity | Type>;
+    public parent: Scope | null;
+    public isRoot: boolean;
+    public children: Scope[];
 
     constructor(name: string, parent: Scope | null) {
         this.name = name;
@@ -70,26 +69,25 @@ export class Scope {
         this.children = [];
     }
 
-    get(key: string): Variable | FunctionEntity | Type | null {
+    public get(key: string): Variable | FunctionEntity | Type | null {
         const value = this.map.get(key);
-        if (value !== undefined) return value;
-        if (this.parent != null) return this.parent.get(key);
+        if (value !== undefined) { return value; }
+        if (this.parent != null) { return this.parent.get(key); }
         return null;
     }
 
-    getInCurrentScope(key: string): Variable | FunctionEntity | Type | null {
+    public getInCurrentScope(key: string): Variable | FunctionEntity | Type | null {
         const value = this.map.get(key);
-        if (value !== undefined) return value;
+        if (value !== undefined) { return value; }
         return null;
     }
 
-    set(key: string, value: Variable | FunctionEntity | Type) {
+    public set(key: string, value: Variable | FunctionEntity | Type) {
         this.map.set(key, value);
     }
 
-    getScopeName(): string {
-        if (this.parent == null) return this.name;
-        else return this.parent.getScopeName() + "@" + this.name;
+    public getScopeName(): string {
+        if (this.parent == null) { return this.name; } else { return this.parent.getScopeName() + "@" + this.name; }
     }
 }
 
@@ -100,9 +98,9 @@ export class Scope {
  * @param {Map<string, Scope>[][]} scopeMap
  * @returns {Map<string, Scope>[]}
  */
-//export function mergeScopeMap(scopeMap: Map<string, Scope>[][]): Map<string, Scope>[]{
+// export function mergeScopeMap(scopeMap: Map<string, Scope>[][]): Map<string, Scope>[]{
 
-//}
+// }
 
 // export class Function {
 //     codes: Instruction[];

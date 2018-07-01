@@ -4,9 +4,9 @@
  *  Created at 16/06/2018
  */
 
-import {Node, SourceLocation} from './ast';
-import {Type} from "./type";
 import {PEG, PegjsError} from "pegjs";
+import {Node, SourceLocation} from "./ast";
+import {Type} from "./type";
 import LocationRange = PEG.LocationRange;
 
 export class FatalError extends Error {
@@ -18,11 +18,14 @@ export class InternalError extends Error {
 export class LinkerError extends Error {
 }
 
+export class RuntimeError extends Error {
+
+}
 
 export class CompilerError extends Error {
-    name: string;
-    node: Node;
-    location: SourceLocation;
+    public name: string;
+    public node: Node;
+    public location: SourceLocation;
     constructor(message: string, node: Node) {
         super(message);
         this.name = this.constructor.name;
@@ -41,9 +44,9 @@ export class PreprocessingError extends CompilerError {
 }
 
 export class ParserError extends Error {
-    pegError: PegjsError;
-    name: string;
-    location: SourceLocation;
+    public pegError: PegjsError;
+    public name: string;
+    public location: SourceLocation;
 
     constructor(pegError: PegjsError) {
         super(pegError.message);
@@ -53,14 +56,12 @@ export class ParserError extends Error {
     }
 }
 
-
 export function assertType<T extends Node>(object: Node | Node[], type: { new(...args: any[]): T }) {
     if (object instanceof Array) {
-        if (object.length == 0) {
+        if (object.length === 0) {
             throw new FatalError(`the node expect to be ${type.prototype.constructor.name}`
                 + `, but actual is a empty array.`);
-        }
-        else {
+        } else {
             throw new SyntaxError(`the node expect to be ${type.prototype.constructor.name}`
                 + `, but actual is a array of ${object[0].constructor.name}.`, object[0]);
         }
@@ -68,6 +69,6 @@ export function assertType<T extends Node>(object: Node | Node[], type: { new(..
     if (!(object instanceof type)) {
         throw new SyntaxError(`the node expect to be ${type.prototype.constructor.name}`
             + `, but actual is ${object.constructor.name}.`
-            , object)
+            , object);
     }
 }

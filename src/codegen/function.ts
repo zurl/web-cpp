@@ -3,20 +3,21 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
-import {CallExpression,
+import {
+    CallExpression,
     Declarator, ExpressionResult, ExpressionResultType,
     FunctionDeclarator,
     FunctionDefinition,
     IdentifierDeclarator,
     ParameterList,
 } from "../common/ast";
-import {CompileContext} from "./context";
-import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
 import {assertType, InternalError, SyntaxError} from "../common/error";
+import {OpCode} from "../common/instruction";
+import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
+import {CompileContext} from "./context";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionEntity, Variable, VariableStorageType} from "./scope";
 import {loadIntoStack} from "./stack";
-import {OpCode} from "../common/instruction";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
@@ -24,24 +25,22 @@ function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
         assertType(node.parameters, ParameterList);
         const [parameterTypes, parameterNames] = (node.parameters as ParameterList).codegen(ctx);
         return new FunctionType(node.declarator.identifier.name, resultType, parameterTypes, parameterNames);
-    }
-    else if (node.declarator != null) {
+    } else if (node.declarator != null) {
         const newResultType = mergeTypeWithDeclarator(ctx, resultType, node);
         return parseFunctionDeclarator(ctx, node.declarator, newResultType);
-    }
-    else {
+    } else {
         throw new SyntaxError("UnsupportNodeType:" + node.constructor.name, node);
     }
 }
 
-ParameterList.prototype.codegen = function (ctx: CompileContext): [Type[], string[]] {
+ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[]] {
     ctx.currentNode = this;
     // TODO:: deal with abstract Declarator
-    const parameters = this.parameters.map(parameter =>
+    const parameters = this.parameters.map((parameter) =>
         parseDeclarator(ctx, parameter.declarator as Declarator,
             parseTypeFromSpecifiers(parameter.specifiers, this)));
-    const parameterTypes = parameters.map(x => x[0]);
-    const parameterNames = parameters.map(x => x[1]);
+    const parameterTypes = parameters.map((x) => x[0]);
+    const parameterNames = parameters.map((x) => x[1]);
     return [parameterTypes, parameterNames];
 };
 
@@ -54,7 +53,7 @@ ParameterList.prototype.codegen = function (ctx: CompileContext): [Type[], strin
  *  bp + ..=> arg2
  * @param {CompileContext} ctx
  */
-FunctionDefinition.prototype.codegen = function (ctx: CompileContext) {
+FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
     const resultType = parseTypeFromSpecifiers(this.specifiers, this);
     if (resultType == null) {
@@ -79,27 +78,28 @@ FunctionDefinition.prototype.codegen = function (ctx: CompileContext) {
             throw new SyntaxError(`unnamed parameter`, this);
         }
         ctx.currentScope.set(name, new Variable(
-            name, ctx.fileName, type, VariableStorageType.STACK, loc
+            name, ctx.fileName, type, VariableStorageType.STACK, loc,
         ));
         loc += type.length;
     }
-    this.body.body.map(item => item.codegen(ctx));
+    this.body.body.map((item) => item.codegen(ctx));
     ctx.exitFunction();
 };
 
-CallExpression.prototype.codegen = function (ctx: CompileContext): ExpressionResult {
+CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     ctx.currentNode = this;
-    let callee = this.callee.codegen(ctx);
+    const callee = this.callee.codegen(ctx);
     if (callee.type instanceof PointerType) {
-        callee.type = callee.type.elementType
+        callee.type = callee.type.elementType;
     }
     if (!(callee.type instanceof FunctionType)) {
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
     }
     // TODO:: call function pointer
     const fullName = callee.value as string;
-    if (this.arguments.length != callee.type.parameterTypes.length) {
-        throw new SyntaxError(`expected ${callee.type.parameterTypes.length} parameters, actual is ${this.arguments.length}`, this);
+    if (this.arguments.length !== callee.type.parameterTypes.length) {
+        throw new SyntaxError(`expected ${callee.type.parameterTypes.length} parameters,`
+            + `actual is ${this.arguments.length}`, this);
     }
     for (let i = this.arguments.length - 1; i >= 0; i--) {
         const val = this.arguments[i].codegen(ctx);
@@ -115,10 +115,9 @@ CallExpression.prototype.codegen = function (ctx: CompileContext): ExpressionRes
     return {
         form: ExpressionResultType.RVALUE,
         type: callee.type.returnType,
-        value: 0
-    }
+        value: 0,
+    };
 };
-
 
 export function functions() {
     const a = 1;

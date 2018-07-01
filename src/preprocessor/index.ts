@@ -1,23 +1,23 @@
-import { SourceMapConsumer } from 'source-map';
+import { SourceMapConsumer } from "source-map";
 
-import phase12 from './phase12';
-import phase34, {  } from './phase34';
 import {SourceLocation} from "../common/ast";
 import {PreprocessingContext} from "./context";
+import phase12 from "./phase12";
+import phase34 from "./phase34";
 
-import { ParserError, PreprocessingError } from '../common/error';
+import { ParserError, PreprocessingError } from "../common/error";
 
 export function replaceFileNameExtension(fileName: string,
                                          extensionOrExpectedExtension: string,
                                          extension?: string) {
     let expectedExtension;
-    if (typeof extension === 'undefined') {
+    if (typeof extension === "undefined") {
         extension = extensionOrExpectedExtension;
         expectedExtension = null;
     } else {
         expectedExtension = extensionOrExpectedExtension;
     }
-    const indexOfDot = fileName.lastIndexOf('.');
+    const indexOfDot = fileName.lastIndexOf(".");
     if (expectedExtension !== null && fileName.substring(indexOfDot) !== expectedExtension) {
         return fileName + extension;
     }
@@ -28,20 +28,20 @@ export function transformSourceLocationWithSourceMap(location: SourceLocation,
                                                      source: string,
                                                      map: string) {
     const mapConsumer = new SourceMapConsumer(map);
-    let { line: startLine, column: startColumn } = mapConsumer.originalPositionFor({
+    const { line: startLine, column: startColumn } = mapConsumer.originalPositionFor({
         line: location.start.line,
-        column: location.start.column
+        column: location.start.column,
     });
     let { line: endLine, column: endColumn } = mapConsumer.originalPositionFor({
         line: location.end.line,
-        column: location.end.column
+        column: location.end.column,
     });
     if (endLine == null || endColumn == null) {
         endLine = startLine;
         endColumn = startColumn;
     }
     let offset = 0;
-    const sourceLines = source.split('\n');
+    const sourceLines = source.split("\n");
     for (let line = 1; line <= endLine; ++line) {
         // Line is 1-based, column is 0-based, and this is source map.
         const sourceLine = sourceLines[line - 1];
@@ -58,8 +58,6 @@ export function transformSourceLocationWithSourceMap(location: SourceLocation,
         offset += sourceLine.length + 1;
     }
 }
-
-
 
 function process(fileName: string, source: string, context?: PreprocessingContext) {
     const { code: phase12Code, map: phase12MapGenerator } = phase12.process(fileName, source);
@@ -84,11 +82,11 @@ function process(fileName: string, source: string, context?: PreprocessingContex
 
 export function getFileNameForPhase(fileName: string, phase: number) {
     if (phase === 4) {
-        return replaceFileNameExtension(fileName, '.c', '.ii');
+        return replaceFileNameExtension(fileName, ".c", ".ii");
     }
     return `${fileName}<phase${phase}>`;
 }
 
 export default {
-    process
+    process,
 };

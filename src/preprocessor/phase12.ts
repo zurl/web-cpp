@@ -1,22 +1,22 @@
-import * as PegJs from 'pegjs';
-import {SourceMapConsumer, SourceMapGenerator, SourceNode} from 'source-map';
-import {getFileNameForPhase} from '.';
+import * as PegJs from "pegjs";
+import {SourceMapConsumer, SourceMapGenerator, SourceNode} from "source-map";
+import {getFileNameForPhase} from ".";
 
 const trigraghSequenceReplacements = {
-    '??=': '#',
-    '??(': '[',
-    '??/': '\\',
-    '??)': ']',
-    '??\'': '^',
-    '??<': '{',
-    '??!': '|',
-    '??>': '}',
-    '??-': '~'
+    "??=": "#",
+    "??(": "[",
+    "??/": "\\",
+    "??)": "]",
+    "??'": "^",
+    "??<": "{",
+    "??!": "|",
+    "??>": "}",
+    "??-": "~",
 };
 
 const backslashNewLineReplacements = {
-    '\\\n': '',
-    '\\\r\n': ''
+    "\\\n": "",
+    "\\\r\n": "",
 };
 
 export interface PreprocessedSource {
@@ -46,11 +46,11 @@ function process(fileName: string, source: string): PreprocessedSource {
     // character immediately preceded by a backslash character before any such splicing takes place, shall be processed
     // as if an additional new-line character were appended to the file.
     // TODO: Emit a warning here?
-    let code = phase2Code;
+    const code = phase2Code;
 
     return {
         code,
-        map: phase2Map
+        map: phase2Map,
     };
 }
 
@@ -63,7 +63,8 @@ const replacementsParserCache = new Map();
  * @param {string} generatedFileName
  * @return {{ code: string, map: SourceMapGenerator }}
  */
-function replaceWithSourceMap(sourceFileName: string, source: string, replacements: any, generatedFileName: string): PreprocessedSource {
+function replaceWithSourceMap(sourceFileName: string, source: string,
+                              replacements: any, generatedFileName: string): PreprocessedSource {
 
     let parser = replacementsParserCache.get(replacements);
     if (!parser) {
@@ -83,7 +84,7 @@ Node
     }
 
 Replacement
-    = ${Object.keys(replacements).map(text => `${JSON.stringify(text)} {
+    = ${Object.keys(replacements).map((text) => `${JSON.stringify(text)} {
         const start = location().start;
         return {
             line: start.line,
@@ -97,23 +98,23 @@ Replacement
         replacementsParserCache.set(replacements, parser);
     }
 
-    const nodes = parser.parse(source).map((node: any)=>
-    new SourceNode(node.line, node.column, sourceFileName, node.source)
+    const nodes = parser.parse(source).map((node: any) =>
+    new SourceNode(node.line, node.column, sourceFileName, node.source),
 )
     ;
     const rootNode = new SourceNode(1, 0, sourceFileName, nodes);
     return rootNode.toStringWithSourceMap({file: generatedFileName});
 }
-function balanceCurlyBraces(string: string): string {
-    if (string.includes('{')) {
-        return string + '/*}*/'
-    } else if (string.includes('}')) {
-        return '/*{*/' + string;
+function balanceCurlyBraces(str: string): string {
+    if (str.includes("{")) {
+        return str + "/*}*/";
+    } else if (str.includes("}")) {
+        return "/*{*/" + str;
     } else {
-        return string;
+        return str;
     }
 }
 
 export default {
-    process
+    process,
 };

@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "test": "mocha test/**/*.test.js",
+    "lint": "tslint -c tslint.json 'src/**/*.ts'",
     "coverage": "nyc --reporter=lcov --reporter=text mocha test/**/*.test.js"
   },
   "repository": {
@@ -19,6 +20,7 @@
   },
   "homepage": "https://github.com/zurl/web-cpp#readme",
   "devDependencies": {
+    "@types/node": "^10.5.1",
     "@types/long": "^4.0.0",
     "@types/pegjs": "^0.10.1",
     "@types/source-map": "0.5.0",

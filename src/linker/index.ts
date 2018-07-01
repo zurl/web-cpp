@@ -4,10 +4,10 @@
  *  Created at 18/06/2018
  */
 import {CompiledObject} from "../codegen/context";
-import {Type} from "../common/type";
 import {FunctionEntity, Scope, Variable, VariableStorageType} from "../codegen/scope";
-import {OpCode, OpCodeLimit} from "../common/instruction";
 import {LinkerError} from "../common/error";
+import {OpCode, OpCodeLimit} from "../common/instruction";
+import {Type} from "../common/type";
 
 interface LinkOptions {
     debugMode?: boolean;
@@ -23,7 +23,7 @@ export interface BinaryObject {
 
 function resolveSymbol(path: string, scopeMap: Map<string, Scope>): Variable | FunctionEntity {
     const tokens = path.split("@");
-    const scopeName = tokens.slice(0, tokens.length - 1).join('@');
+    const scopeName = tokens.slice(0, tokens.length - 1).join("@");
     const name = tokens[tokens.length - 1];
     const scope = scopeMap.get(scopeName);
     if (scope === undefined) {
@@ -33,10 +33,10 @@ function resolveSymbol(path: string, scopeMap: Map<string, Scope>): Variable | F
     if (item === null) {
         throw new LinkerError(`undefined symbol ${name} at ${path}`);
     }
-    if (item instanceof Type){
+    if (item instanceof Type) {
         throw new LinkerError(`symbol ${name} is a type....`);
     }
-    if (item instanceof Variable && item.storageType === VariableStorageType.MEMORY_EXTERN){
+    if (item instanceof Variable && item.storageType === VariableStorageType.MEMORY_EXTERN) {
         throw new LinkerError(`no definition for symbol ${name} at ${path}`);
     }
     return item;
@@ -47,17 +47,16 @@ function mergeScopeTo(dst: Scope, src: Scope) {
         const dstval = dst.map.get(tuple[0]);
         if (dstval === undefined) {
             dst.map.set(tuple[0], tuple[1]);
-        }
-        else {
+        } else {
             const srcval = tuple[1];
             if (srcval instanceof FunctionEntity
                 && dstval instanceof FunctionEntity
                 && srcval.type.equals(dstval.type)) {
-                if (srcval.code === null && dstval.code === null) continue;
+                if (srcval.code === null && dstval.code === null) { continue; }
                 if (srcval.code !== null && dstval.code === null) {
                     dst.map.set(tuple[0], tuple[1]);
                 }
-                if (srcval.code === null && dstval.code !== null) continue;
+                if (srcval.code === null && dstval.code !== null) { continue; }
                 if (srcval.code !== null && dstval.code !== null) {
                     throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
                 }
@@ -66,13 +65,13 @@ function mergeScopeTo(dst: Scope, src: Scope) {
                 && dstval instanceof Variable
                 && srcval.type.equals(dstval.type)) {
                 if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) continue;
+                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) { continue; }
                 if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
                     && dstval.storageType === VariableStorageType.MEMORY_EXTERN) {
                     dst.map.set(tuple[0], tuple[1]);
                 }
                 if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) continue;
+                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) { continue; }
                 if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
                     && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) {
                     throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
@@ -84,15 +83,14 @@ function mergeScopeTo(dst: Scope, src: Scope) {
     }
 }
 
-function mergeScopeMap(scopeMaps: Map<string, Scope>[]): Map<string, Scope> {
+function mergeScopeMap(scopeMaps: Array<Map<string, Scope>>): Map<string, Scope> {
     const result = new Map<string, Scope>();
     for (const scopeMap of scopeMaps) {
         for (const tuple of scopeMap.entries()) {
             const item = result.get(tuple[0]);
             if (item === undefined) {
                 result.set(tuple[0], tuple[1]);
-            }
-            else {
+            } else {
                 mergeScopeTo(item, tuple[1]);
             }
         }
@@ -100,40 +98,32 @@ function mergeScopeMap(scopeMaps: Map<string, Scope>[]): Map<string, Scope> {
     return result;
 }
 
-
 function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: number,
                            dataOffset: number, bssOffset: number) {
     let i = codeOffset;
     while (i < codeOffset + codeLength) {
         const op = code.getUint8(i);
-        if( op === OpCode.CALL){
+        if ( op === OpCode.CALL) {
             const val = code.getUint32(i + 1);
             code.setUint32(i + 1,  val + codeOffset);
             i += 5;
-        }
-        else if( op === OpCode.PDATA){
+        } else if ( op === OpCode.PDATA) {
             const val = code.getUint32(i + 1);
             code.setUint32(i + 1,  val + dataOffset);
             i += 5;
-        }
-        else if (op === OpCode.PBSS) {
+        } else if (op === OpCode.PBSS) {
             const val = code.getUint32(i + 1);
             code.setUint32(i + 1,  val + bssOffset);
             i += 5;
-        }
-        else if (op <= OpCodeLimit.L1) {
+        } else if (op <= OpCodeLimit.L1) {
             i += 1;
-        }
-        else if (op <= OpCodeLimit.L5U) {
+        } else if (op <= OpCodeLimit.L5U) {
             i += 5;
-        }
-        else if (op <= OpCodeLimit.L5I) {
+        } else if (op <= OpCodeLimit.L5I) {
             i += 5;
-        }
-        else if (op === OpCode.PF64) {
+        } else if (op === OpCode.PF64) {
             i += 9;
-        }
-        else{
+        } else {
             throw new LinkerError(`unknown ins`);
         }
     }
@@ -153,17 +143,17 @@ function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: numbe
  * @param {LinkOptions} linkOptions
  * @returns {BinaryObject}
  */
-export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): BinaryObject {
+export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): BinaryObject {
     // merge Scope
-    const scopeMaps = inputs.map(input => input.scopeMap);
+    const scopeMaps = inputs.map((input) => input.scopeMap);
     const newScope = mergeScopeMap(scopeMaps);
 
     // merge code
-    let [globalCodeSize, codeSize, dataSize, bssSize] = inputs
-        .map(input => [input.globalAssembly.size, input.assembly.size, input.dataSize, input.bssSize])
-        .reduce((x, y) => x.map((_, i)=> x[i] + y[i]));
+    const [globalCodeSizeRaw, codeSize, dataSize, bssSize] = inputs
+        .map((input) => [input.globalAssembly.size, input.assembly.size, input.dataSize, input.bssSize])
+        .reduce((x, y) => x.map((_, i) => x[i] + y[i]));
 
-    globalCodeSize += 6; // 6 for CALL MAIN; END
+    const globalCodeSize = globalCodeSizeRaw + 6; // 6 for CALL MAIN; END
 
     const codeBuffer = new ArrayBuffer(globalCodeSize + codeSize + dataSize);
     const code = new DataView(codeBuffer);
@@ -175,17 +165,14 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
     const labelMap = new Map<number, string>();
     const sourceMap = new Map<number, [string, number]>();
 
-
-
     let globalCodeNow = 0;
     let codeNow = globalCodeSize;
     let dataNow = globalCodeSize + codeSize;
     let bssNow = globalCodeSize + codeSize + dataSize;
 
-
     // 1. compute offset
     for (const input of inputs) {
-        if( dataLocMap.get(input.fileName) !== undefined){
+        if ( dataLocMap.get(input.fileName) !== undefined) {
             throw new LinkerError(`duplicated file name ${input.fileName}`);
         }
         dataLocMap.set(input.fileName, dataNow);
@@ -204,23 +191,20 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
     for (const input of inputs) {
         codeArray.set(new Uint8Array(input.globalAssembly.code.buffer
             .slice(0, input.globalAssembly.size)), globalCodeNow);
-        for (let tuple of input.globalAssembly.unresolvedSymbols) {
+        for (const tuple of input.globalAssembly.unresolvedSymbols) {
             const symbol = resolveSymbol(tuple[1], newScope);
-            if(symbol instanceof FunctionEntity){
+            if (symbol instanceof FunctionEntity) {
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (codeLocMap.get(symbol.fileName) as number) - codeNow);
-            }
-            else if(symbol.storageType == VariableStorageType.MEMORY_DATA){
+            } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
-            }
-            else if(symbol.storageType == VariableStorageType.MEMORY_BSS){
+            } else if (symbol.storageType === VariableStorageType.MEMORY_BSS) {
                 code.setUint8(globalCodeNow + tuple[0], OpCode.PBSS);
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);
-            }
-            else{
-                throw new LinkerError(`unknown symbol storage type`)
+            } else {
+                throw new LinkerError(`unknown symbol storage type`);
             }
         }
         shiftMemoryOffset(code, globalCodeNow, input.globalAssembly.size, dataNow, bssNow);
@@ -235,33 +219,30 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
 
     // 3. link function assembly
     for (const input of inputs) {
-        if(linkOptions.debugMode){
-            for(const item of input.assembly.sourceMap){
+        if (linkOptions.debugMode) {
+            for (const item of input.assembly.sourceMap) {
                 sourceMap.set(item[0] + codeNow, [input.fileName, item[1]]);
             }
         }
-        for(const item of input.labels){
+        for (const item of input.labels) {
             labelMap.set(codeNow + item[0], item[1]);
         }
         codeArray.set(new Uint8Array(input.assembly.code.buffer
             .slice(0, input.assembly.size)), codeNow);
-        for (let tuple of input.assembly.unresolvedSymbols) {
+        for (const tuple of input.assembly.unresolvedSymbols) {
             const symbol = resolveSymbol(tuple[1], newScope);
-            if(symbol instanceof FunctionEntity){
+            if (symbol instanceof FunctionEntity) {
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (codeLocMap.get(symbol.fileName) as number) - codeNow);
-            }
-            else if(symbol.storageType == VariableStorageType.MEMORY_DATA){
+            } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
-            }
-            else if(symbol.storageType == VariableStorageType.MEMORY_BSS){
+            } else if (symbol.storageType === VariableStorageType.MEMORY_BSS) {
                 code.setUint8(codeNow + tuple[0], OpCode.PBSS);
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);
-            }
-            else{
-                throw new LinkerError(`unknown symbol storage type`)
+            } else {
+                throw new LinkerError(`unknown symbol storage type`);
             }
         }
         shiftMemoryOffset(code, codeNow, input.assembly.size, dataNow, bssNow);
@@ -286,6 +267,6 @@ export function link(inputs: CompiledObject[], linkOptions : LinkOptions = {}): 
         labelMap,
         sourceMap,
         dataStart: codeSize,
-        bssSize: bssSize
+        bssSize,
     };
 }
