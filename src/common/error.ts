@@ -23,7 +23,6 @@ export class CompilerError extends Error {
     name: string;
     node: Node;
     location: SourceLocation;
-
     constructor(message: string, node: Node) {
         super(message);
         this.name = this.constructor.name;

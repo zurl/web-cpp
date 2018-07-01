@@ -95,6 +95,10 @@ export class CompileContext {
         this.currentBuilder.build(this.currentNode.location.start.line, op, imm);
     }
 
+    raiseWarning(content: string){
+        console.log('[Warning]: ' + content);
+    }
+
     get buildNow(): number {
         if (this.currentBuilder == null) throw new InternalError(`this.currentBuilder==null`);
         return this.currentBuilder.now;

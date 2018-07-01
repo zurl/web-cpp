@@ -1,5 +1,3 @@
-'use strict';
-
 import * as PegJs from 'pegjs';
 import {SourceMapConsumer, SourceMapGenerator, SourceNode} from 'source-map';
 import {getFileNameForPhase} from '.';

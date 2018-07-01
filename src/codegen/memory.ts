@@ -34,7 +34,9 @@ export class MemoryLayout {
     }
 
     allocStack(size: number): number {
-        if( size < 4 ) size = 4;     // align to 4
+        if( size % 4 !== 0 ){
+            size += 4 - (size % 4);     // align to 4;
+        }
         const result = this.stackPtr;
         this.stackPtr -= size;
         return result;

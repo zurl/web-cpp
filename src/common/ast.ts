@@ -2,6 +2,7 @@ import * as Long from 'long';
 import {CompileContext} from "../codegen/context";
 import {Type} from "./type";
 import {FunctionEntity} from "../codegen/scope";
+import {InternalError} from "./error";
 
 export type SpecifierType = string|AtomicTypeSpecifier|StructOrUnionSpecifier|EnumSpecifier|TypedefName|AlignmentSpecifier;
 export enum ExpressionResultType{
@@ -90,7 +91,7 @@ export class Expression extends Node {
         return super.codegen(ctx);
     }
     deduceType(ctx: CompileContext): Type {
-        throw 0;
+        throw new InternalError(`not impl at ${this.constructor.name}`);
     }
 }
 export class Identifier extends Expression {

@@ -40,7 +40,7 @@ import {
     Identifier,
     IntegerConstant,
     UnaryExpression,
-    ParenthesisExpression
+    ParenthesisExpression, SubscriptExpression
 } from "../common/ast";
 import {CompileContext} from "./context";
 import * as Long from "long";
@@ -314,7 +314,9 @@ function genArithmeticExpression(expr: BinaryExpression, ctx: CompileContext,
 
 
 function genPointerCompute(ctx: CompileContext, ope: string,  left: ExpressionResult, right: ExpressionResult): ExpressionResult {
-    if(left.type instanceof PointerType && right.type instanceof PointerType){
+    const leftType = extractRealType(left.type);
+    const rightType = extractRealType(right.type);
+    if(leftType instanceof PointerType && rightType instanceof PointerType){
         throw new SyntaxError(`unsupport operation between`, ctx.currentNode!);
     }
     else{
@@ -349,7 +351,7 @@ BinaryExpression.prototype.codegen = function (ctx: CompileContext): ExpressionR
     if (leftType instanceof ClassType || leftType instanceof ClassType) {
         throw new InternalError(`unsupport operator overload`);
     }
-    if( rightType instanceof PointerType || rightType instanceof PointerType){
+    if( leftType instanceof PointerType || rightType instanceof PointerType){
         if("+-".indexOf(this.operator) != - 1){
             return genPointerCompute(ctx, this.operator, left, right);
         }
@@ -370,7 +372,7 @@ UnaryExpression.prototype.codegen = function (ctx: CompileContext): ExpressionRe
     const expr = this.operand.codegen(ctx);
     ctx.currentNode = this;
     if( this.operator === "*"){
-        if( expr.type instanceof PointerType){
+        if( expr.type instanceof PointerType || expr.type instanceof ArrayType){
             //
             //* lval value表示指针的地址     => LADDR, LM32
             //* rval 指针在stop             => LM32
@@ -385,7 +387,8 @@ UnaryExpression.prototype.codegen = function (ctx: CompileContext): ExpressionRe
             }
         }
         else if( expr.type instanceof LeftReferenceType
-            && expr.type.elementType instanceof PointerType){
+            && (expr.type.elementType instanceof PointerType
+                || expr.type.elementType instanceof ArrayType)){
             // 这是一个pointer的引用，所以pointer本身的地址在rvalue里
             //
             loadReference(ctx, expr);
@@ -414,6 +417,19 @@ UnaryExpression.prototype.codegen = function (ctx: CompileContext): ExpressionRe
     else{
         throw new InternalError(`no_impl at unary ope=${this.operator}`);
     }
+};
+
+SubscriptExpression.prototype.codegen = function (ctx: CompileContext): ExpressionResult {
+    return new UnaryExpression(
+        this.location,
+        '*',
+        new BinaryExpression(
+            this.location,
+            '+',
+            this.array,
+            this.subscript
+        )
+    ).codegen(ctx);
 };
 
 /*

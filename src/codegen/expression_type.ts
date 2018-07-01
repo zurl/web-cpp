@@ -3,11 +3,11 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    ParenthesisExpression, UnaryExpression
+    ParenthesisExpression, SubscriptExpression, UnaryExpression
 } from "../common/ast";
 import {CompileContext} from "./context";
 import {
-    ArithmeticType,
+    ArithmeticType, ArrayType, extractRealType,
     FloatType,
     FunctionType, Int64Type,
     IntegerType,
@@ -45,8 +45,8 @@ Identifier.prototype.deduceType = function(ctx: CompileContext): Type{
 };
 
 BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type{
-    const left = this.left.deduceType(ctx);
-    const right = this.right.deduceType(ctx);
+    const left = extractRealType(this.left.deduceType(ctx));
+    const right = extractRealType(this.right.deduceType(ctx));
     if("+-*%/".indexOf(this.operator) != -1){
         if (left instanceof ArithmeticType && right instanceof ArithmeticType) {
             if(left instanceof FloatType || right instanceof FloatType) return PrimitiveTypes.double;
@@ -60,12 +60,12 @@ BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type{
                 throw new TypeError(`could not apply ope on two pointer`, this);
             if(left instanceof PointerType){
                 if(!(right instanceof IntegerType))throw new TypeError(`could not apply ${right.toString()} to pointer`, this);
-                return right;
+                return left;
             }
             else if(right instanceof PointerType){
                 if(!(left instanceof IntegerType))throw new TypeError(`could not apply ${left.toString()} to pointer`, this);
                 if(this.operator == "-") throw new TypeError(`could - a pointer`, this);
-                return left;
+                return right;
             }
             else {
                 new TypeError(`bad operator on pointer`, this);
@@ -82,9 +82,10 @@ BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type{
 UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type{
     const itemType = this.operand.deduceType(ctx);
     if( this.operator === "*" ){
-        if( itemType instanceof PointerType ) return itemType.elementType;
+        if( itemType instanceof PointerType || itemType instanceof ArrayType) return itemType.elementType;
         else if( itemType instanceof LeftReferenceType
-        && itemType.elementType instanceof PointerType) return itemType.elementType.elementType;
+        && (itemType.elementType instanceof PointerType
+            || itemType.elementType instanceof ArrayType)) return itemType.elementType.elementType;
         else throw new TypeError(`could not apply * on ${itemType.toString()}`, this);
     }
     else if( this.operator === "&"){
@@ -100,6 +101,20 @@ CallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     }
     return calleeType.returnType;
 };
+
+SubscriptExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    return new UnaryExpression(
+        this.location,
+        '*',
+        new BinaryExpression(
+            this.location,
+            '+',
+            this.array,
+            this.subscript
+        )
+    ).deduceType(ctx);
+};
+
 
 export function expression_type(){
     const a = 1;

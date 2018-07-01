@@ -5,6 +5,7 @@
  */
 import {CompileContext} from "./context";
 import {
+    ArrayType,
     DoubleType, extractRealType,
     FloatingType,
     FloatType,
@@ -122,6 +123,9 @@ export function loadReference(ctx: CompileContext, expr: ExpressionResult){
 }
 
 export function loadFromMemory(ctx: CompileContext, type: Type){
+    if( type instanceof ArrayType){
+        type = extractRealType(type);
+    }
     if (type instanceof IntegerType || type instanceof FloatingType || type instanceof PointerType) {
         if (type.length == 1) {
             ctx.build(OpCode.LM8);

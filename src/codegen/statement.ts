@@ -35,7 +35,7 @@ ReturnStatement.prototype.codegen = function (ctx: CompileContext) {
     else{
         //TODO: empty return
     }
-    ctx.build(OpCode.RET);
+    //ctx.build(OpCode.RET);
 };
 
 /*

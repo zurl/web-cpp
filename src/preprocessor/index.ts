@@ -1,5 +1,3 @@
-'use strict';
-
 import { SourceMapConsumer } from 'source-map';
 
 import phase12 from './phase12';

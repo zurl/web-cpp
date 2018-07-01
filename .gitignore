@@ -11,4 +11,5 @@ yarn-error.log*
 *.zip
 *.sh
 *.js.map
+ast.map
 coverage/

@@ -1,6 +1,3 @@
-//@ts-check
-'use strict';
-
 import {SourceMapGenerator, SourceNode} from 'source-map';
 
 type TokenType = Identifier | PpNumber | CharacterConstant | StringLiteral | Punctuator | PpChar;

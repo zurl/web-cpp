@@ -11,12 +11,13 @@ import {
     FunctionDeclarator,
     ParameterList, PointerDeclarator,
     SpecifierType,
-    TranslationUnit, IdentifierDeclarator, Pointer
+    TranslationUnit, IdentifierDeclarator, Pointer, ArrayDeclarator, ExpressionResultType
 } from "../common/ast";
-import {assertType, SyntaxError} from "../common/error";
-import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
+import {assertType, InternalError, SyntaxError} from "../common/error";
+import {ArrayType, FunctionType, IntegerType, PointerType, QualifiedType, Type} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {Variable, VariableStorageType} from "./scope";
+import * as Long from "long";
 
 export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForError: Node): Type{
     let resultType: Type | null = null;
@@ -25,6 +26,7 @@ export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForErro
     if( typeNodes.length != 0 ){
         // complex types
         // TODO::
+        throw new InternalError(`unsupport type`);
     }
     else{
         // primitive types
@@ -78,6 +80,19 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type, declara
             pointer = pointer.pointer;
         }
         return result;
+    }
+    else if(declarator instanceof ArrayDeclarator){
+        const length = declarator.length.codegen(ctx);
+        if( length.form != ExpressionResultType.CONSTANT){
+            throw new SyntaxError("var length array is not support currently", declarator);
+        }
+        if( !(length.type instanceof IntegerType) ){
+            throw new SyntaxError("length of array must be integer", declarator);
+        }
+        if( declarator.qualifiers.length != 0){
+            ctx.raiseWarning('unsupport array qualifier');
+        }
+        return new ArrayType(type, (length.value as Long).toNumber());
     }
     else{
         throw new SyntaxError("UnsupportDeclaratorType:" + declarator.constructor.name,

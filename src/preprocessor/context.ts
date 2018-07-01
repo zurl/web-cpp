@@ -1,11 +1,10 @@
-import {PreprocessingError} from "../common/error";
-import {FunctionLikeDefineDirective, ObjectLikeDefineDirective} from "../common/ast";
-
 /**
  *  @file
  *  @author zcy <zurl@live.com>
  *  Created at 26/06/2018
  */
+import {PreprocessingError} from "../common/error";
+import {FunctionLikeDefineDirective, ObjectLikeDefineDirective} from "../common/ast";
 
 type Marcos = ObjectLikeDefineDirective|FunctionLikeDefineDirective;
 

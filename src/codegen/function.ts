@@ -3,19 +3,16 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
-import {
-    AbstractDeclarator, CallExpression,
+import {CallExpression,
     Declarator, ExpressionResult, ExpressionResultType,
     FunctionDeclarator,
     FunctionDefinition,
     IdentifierDeclarator,
-    Node,
-    ParameterList, PointerDeclarator, SpecifierType
+    ParameterList,
 } from "../common/ast";
 import {CompileContext} from "./context";
 import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
 import {assertType, InternalError, SyntaxError} from "../common/error";
-import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionEntity, Variable, VariableStorageType} from "./scope";
 import {loadIntoStack} from "./stack";

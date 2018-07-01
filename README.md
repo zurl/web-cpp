@@ -6,21 +6,21 @@ a c++ compiler in typescript
 
 ## C language
 
-> function call codegen / return codegen
-> & && | || >> <<
-> + - ! ~ ++ --
-> vm
-> array
-> typedef
-> enum
-> js native function
-> string
-> var init
-> data segment data
-> doConstant < > <= >= ==
-> struct / class
-> cast
-> const
+- [ ] function call codegen / return codegen
+- [ ] & && | || >> <<
+- [ ] \+ \- ! ~ ++ --
+- [ ] vm
+- [ ] array
+- [ ] typedef
+- [ ] enum
+- [ ] js native function
+- [ ] string
+- [ ] var initilizer
+- [ ] data segment data
+- [ ] doConstant < > <= >= ==
+- [ ] struct / class
+- [ ] cast
+- [ ] const
 
 ## C++ Language
 
