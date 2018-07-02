@@ -13,10 +13,10 @@ a c++ compiler in typescript
 - [X] array
 - [ ] typedef
 - [ ] enum
-- [ ] js native function
+- [X] js native function
 - [X] string
 - [X] var initilizer
-- [ ] data segment data
+- [X] data segment data
 - [ ] doConstant < > <= >= ==
 - [ ] struct / class
 - [ ] cast

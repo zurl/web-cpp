@@ -23,11 +23,13 @@ ABCD
 #undef ABCD
 ABCD
 `;
-const result = `"Should Exists 1"
+const result = `
+"Should Exists 1"
 "Should Exists 2"
 "Should Exists 3"
 2
 ABCD
+
 `;
 const Preprocess = require('../../dist/preprocessor').default;
 const Assert = require('chai');

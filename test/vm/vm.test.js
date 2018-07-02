@@ -13,21 +13,21 @@ describe('vm test cases', function () {
         TestBase.testASMCode('PF64 7171.7171', {sp: -8, stop_f64: 7171.7171});
     });
     it('SM', function () {
-        TestBase.testASMCode(['PUI32 256', 'PUI32 123', 'SM8'],
+        TestBase.testASMCode(['PUI32 123', 'PUI32 256', 'SM8'],
             {sp: 0, mem_u32: {addr: 256, val: 123 << 24}});
-        TestBase.testASMCode(['PUI32 256', 'PUI32 9999', 'SM8'],
+        TestBase.testASMCode(['PUI32 9999','PUI32 256', 'SM8'],
             {sp: 0, mem_u32: {addr: 256, val: (9999 & 0xFF) << 24}});
-        TestBase.testASMCode(['PUI32 256', 'PUI32 123', 'SM16'],
+        TestBase.testASMCode(['PUI32 123', 'PUI32 256', 'SM16'],
             {sp: 0, mem_u32: {addr: 256, val: 123 << 16}});
-        TestBase.testASMCode(['PUI32 256', 'PUI32 214000000', 'SM16'],
+        TestBase.testASMCode([ 'PUI32 214000000','PUI32 256', 'SM16'],
             {sp: 0, mem_u32: {addr: 256, val: (214000000 & 0xFFFF) << 16}});
-        TestBase.testASMCode(['PUI32 256', 'PUI32 7171', 'SM32'],
+        TestBase.testASMCode(['PUI32 7171', 'PUI32 256', 'SM32'],
             {sp: 0, mem_u32: {addr: 256, val: 7171}});
-        TestBase.testASMCode(['PUI32 256', 'PUI32 7171', 'PUI32 7172', 'SM64'],
+        TestBase.testASMCode(['PUI32 7171', 'PUI32 7172', 'PUI32 256', 'SM64'],
             {sp: 0, mem_u32: [{addr: 256, val: 7171}, {addr: 260, val: 7172}] });
     });
     it('LM', function () {
-        const pre = ['PUI32 256', 'PUI32 214000000', 'SM32'];
+        const pre = ['PUI32 214000000', 'PUI32 256', 'SM32'];
         TestBase.testASMCode([...pre, 'PUI32 256', 'LM8'],
             {sp: -4, stop_u32: (214000000 & 0xFF000000) >> 24});
         TestBase.testASMCode([...pre, 'PUI32 256', 'LM16'],

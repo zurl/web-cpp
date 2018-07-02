@@ -8,21 +8,21 @@ const TestRunScopeMap = CodeGenTestBase.mergeScopeMap([
 `).scopeMap]
 );
 
-function testRun(source){
+function testRun(source, debug){
+    let options = {};
+    if(debug) options = {debugMode: true};
     let result = "";
     const print = (vm) => {
         console.log("print");
         result += vm.popInt32() + "\n";
     };
-    const obj = CodeGenTestBase.compile('main.cpp', source, TestRunScopeMap,{
-        debugMode: true
-    });
+    const obj = CodeGenTestBase.compile('main.cpp', source, TestRunScopeMap, options);
     const bin = CodeGenTestBase.components.Linker.link([obj],
         {
             ...CodeGenTestBase.JsAPIMap,
             print
-        }, {debugMode: true});
-    CodeGenTestBase.showASM(source, bin);
+        }, options);
+    if(debug)CodeGenTestBase.showASM(source, bin);
     const memoryBuffer = new ArrayBuffer(10000);
     const memory = new DataView(memoryBuffer);
     const memoryArray = new Uint8Array(memoryBuffer);
