@@ -24,7 +24,7 @@ export class CompileContext {
 
     public currentNode: Node | null;
     public globalBuilder: InstructionBuilder;
-    public currentBuilder: InstructionBuilder | null;
+    public currentBuilder: InstructionBuilder;
     public options: CompileOptions;
     public fileName: string;
 
@@ -37,7 +37,7 @@ export class CompileContext {
         this.currentScope.isRoot = true;
         this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
         this.globalBuilder = new InstructionBuilder(1024);
-        this.currentBuilder = null;
+        this.currentBuilder = this.globalBuilder;
         this.options = compileOptions;
         this.fileName = fileName;
         this.currentNode = null;
@@ -83,20 +83,17 @@ export class CompileContext {
         }
         this.currentFunction.code = this.currentBuilder.toAssembly();
         // this.currentFunction = null;
-        // this.currentBuilder = null;
+        this.currentBuilder = this.globalBuilder;
         this.exitScope();
     }
 
     public unresolve(name: string) {
-        if (this.currentBuilder == null) {
-            throw new InternalError(`this.currentBuilder==null`);
-        }
         this.currentBuilder.unresolve(name);
     }
 
     public build(op: OpCode, imm?: string | number) {
-        if (this.currentBuilder == null || this.currentNode == null) {
-            throw new InternalError(`this.currentBuilder==null`);
+        if (this.currentNode == null) {
+            throw new InternalError(`this.currentNode==null`);
         }
         this.currentBuilder.build(this.currentNode.location.start.line, op, imm);
     }
@@ -152,16 +149,18 @@ export class CompileContext {
                 sourceMap,
             },
             globalAssembly: this.globalBuilder.toAssembly(),
+            labels,
             scopeMap: this.scopeMap,
             dataSize: this.memory.dataPtr,
             bssSize: this.memory.bssPtr,
-            labels,
+            data: this.memory.data,
         };
     }
 }
 
 export interface CompiledObject {
     fileName: string;
+    data: DataView;
     dataSize: number;
     bssSize: number;
     globalAssembly: Assembly;

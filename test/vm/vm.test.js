@@ -79,4 +79,75 @@ describe('vm test cases', function () {
             {sp: -8, stop_f64: 88.88 % 71.71});
 
     });
+    it('INT > < >= <= == !=', function () {
+        TestBase.testASMCode(['PI32 -1', 'GT0'] , {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 0' , 'GT0'] , {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 1' , 'GT0'] , {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 -1', 'GTE0'], {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 0' , 'GTE0'], {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 1' , 'GTE0'], {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 -1', 'LT0'] , {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 0' , 'LT0'] , {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 1' , 'LT0'] , {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 -1', 'LTE0'], {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 0' , 'LTE0'], {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 1' , 'LTE0'], {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 -1', 'EQ0'] , {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 0' , 'EQ0'] , {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 1' , 'EQ0'] , {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 -1', 'NEQ0'], {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 0' , 'NEQ0'], {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 1' , 'NEQ0'], {sp: -4, stop_i32: 1});
+    });
+    it('type convert', function () {
+        TestBase.testASMCode(['PI32 12' , 'I2U'] , {sp: -4, stop_u32: 12});
+        TestBase.testASMCode(['PUI32 12', 'U2I'] , {sp: -4, stop_i32: 12});
+        TestBase.testASMCode(['PF64 12' , 'D2I'] , {sp: -4, stop_i32: 12});
+        TestBase.testASMCode(['PI32 12' , 'I2D'] , {sp: -8, stop_f64: 12});
+    });
+    it('PBP & SSP', function () {
+        TestBase.testASMCode(['PBP 12'] , {sp: -4, stop_u32: 1012});
+        TestBase.testASMCode(['SSP 20'] , {sp: 20});
+    });
+    it('J JZ JNZ', function () {
+        TestBase.testASMCode(['J 10', 'PI32 123', 'PI32 456'],
+            {sp: -4, stop_u32: 456});
+        TestBase.testASMCode(['PI32 0', 'JZ 10', 'PI32 123', 'PI32 456'],
+            {sp: -4, stop_u32: 456});
+        TestBase.testASMCode(['PI32 1', 'JZ 10', 'PI32 123', 'PI32 456'],
+            {sp: -8, stop_u32: 456});
+        TestBase.testASMCode(['PI32 1', 'JNZ 10', 'PI32 123', 'PI32 456'],
+            {sp: -4, stop_u32: 456});
+        TestBase.testASMCode(['PI32 0', 'JNZ 10', 'PI32 123', 'PI32 456'],
+            {sp: -8, stop_u32: 456});
+    });
+    it('function call', function () {
+        TestBase.testASMCode([
+                'PUI32 77',
+                'CALL 15',
+                'PUI32 99'],
+            {sp: -12, bp: -12, stop_u32: 1000, mem_u32:[
+                    {addr: 996, val: 77},
+                    {addr: 992, val: 10},
+                    {addr: 988, val: 1000}
+                ]});
+        TestBase.testASMCode([
+                'PUI32 77',     // 0
+                'CALL 11',      // 5
+                'END',          // 10
+                'SSP -12',      // 11 sp -12 -> -24
+                'PUI32 9696',   // 16 sp -24 -> -28
+                'RET 4'         // 21
+            ],
+            {pc: 10, sp: -4, bp: 0, stop_u32: 1000 - 28});
+        TestBase.testASMCode([
+                'PUI32 77',     // 0
+                'CALL 11',      // 5
+                'END',          // 10
+                'SSP -12',      // 11 sp -12 -> -24
+                'PUI32 9696',   // 16 sp -24 -> -28
+                'RET 0'         // 21
+            ],
+            {pc: 10, sp: -8, bp: 0, stop_u32: 1000 - 28});
+    });
 });

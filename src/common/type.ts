@@ -316,6 +316,7 @@ export const PrimitiveTypes = {
     uint64: new UnsignedInt64Type(),
     float: new FloatType(),
     double: new DoubleType(),
+    __charptr: new PointerType(new CharType())
 };
 
 export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([

@@ -2,13 +2,12 @@ const TestBase = require('./testbase');
 const fs = require('fs');
 
 const source = `
+int a = 123;
+int b = a + 1, c = 3;
+double k = 1.99;
 int main(){
-    int arr[120], b;
-    arr[0] = 1;
-    *arr = 1;
-    *(arr + 1) = 1;
-    b = arr[0];
-    return 0;
+    int d = 0;
+    int f = d + a;
 }
 `;
 
@@ -27,6 +26,8 @@ describe('test compiler', function(){
             withSourceMap: true,
             friendlyJMP: true,
             sourceMap: bin.sourceMap,
+            dataStart: bin.dataStart,
+            dataMap: bin.dataMap,
             source: {
                 'main.cpp': source.split('\n')
             }

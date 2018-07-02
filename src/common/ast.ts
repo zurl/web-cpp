@@ -371,12 +371,14 @@ export class AssignmentExpression extends Expression {
     public operator: string;
     public left: Expression;
     public right: Expression;
+    public isInitExpr: boolean;
 
     constructor(location: SourceLocation, operator: string, left: Expression, right: Expression) {
         super(location);
         this.operator = operator;
         this.left = left;
         this.right = right;
+        this.isInitExpr = false;
     }
 }
 

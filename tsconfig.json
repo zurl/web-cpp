@@ -6,7 +6,8 @@
     "strict": true,
     "sourceMap": true,
     "outDir": "dist",
-    "allowJs": true
+    "allowJs": true,
+    "experimentalDecorators": true
   },
   "exclude": [
     "node_modules"

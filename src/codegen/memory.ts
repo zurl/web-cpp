@@ -42,6 +42,13 @@ export class MemoryLayout {
         return result;
     }
 
+    public setDataString(offset: number, value: string) {
+        for (let i = 0; i < value.length; i ++) {
+            this.data.setUint8(offset + i, value.charCodeAt(i));
+        }
+        this.data.setUint8(offset + value.length, 0);
+    }
+
     public enterFunction() {
         this.stackPtr = 0;
         this.stackScope = [];

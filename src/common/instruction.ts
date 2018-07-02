@@ -4,10 +4,21 @@
  *  Created at 16/06/2018
  */
 
+import {Variable} from "../codegen/scope";
+import {InternalError} from "./error";
+import {
+    CharType, DoubleType,
+    FloatType,
+    Int16Type,
+    Int32Type,
+    UnsignedCharType,
+    UnsignedInt16Type,
+    UnsignedInt32Type,
+} from "./type";
 import {toHexString} from "./utils";
 //          12|  param 2    |
 //           8|  param 1    |
-//           4|  saved $pc  |
+//           4|  saved $pc  | => ret addr
 //  $bp ->   0|  saved $bp  |
 //          -4|  local 1    |
 //          -8|  local 2    |
@@ -22,18 +33,20 @@ export enum OpCode {
     ADDU, SUBU, MULU, DIVU, MODU,
     ADDF, SUBF, MULF, DIVF, MODF,
     GT0, LT0, EQ0, NEQ0, LTE0, GTE0,
-    NOP, END, PRINT,
+    NOP, PRINT, // <== no impl
+    END,
     U2I, I2U, F2D, D2F, I2D, D2I,
     // 5 = [op u32 u32 u32 u32]
     PUI32, // push u32
     PDATA, // push $data + u32
     PBSS,  // push $bss + u32
-    CALL,  // [++$sp] = $pc
-           // [++$sp] = $bp
+    SYSCALL,
+    CALL,  // [--$sp] = $pc
+           // [--$sp] = $bp
            // $bp = $sp
            // $pc = u32
     RET,   // t0 = $sp
-           // $sp = $bp - 8
+           // $sp = $bp + 8
            // $bp = [$bp]
            // $pc = [$sp + 4]
            // push t0
@@ -42,15 +55,15 @@ export enum OpCode {
     PBP,   // push $bp + i32
     SSP,   // $sp = $sp + i32
     J,     // $pc = $pc + i32
-    JZ,    // if [$sp--] == 0: $pc = $pc + i32
-    JNZ,   // if [$sp--] != 0: $pc = $pc + i32
+    JZ,    // if [$sp++] == 0: $pc = $pc + i32
+    JNZ,   // if [$sp++] != 0: $pc = $pc + i32
     // 9 = [op f64 f64 f64 f64 f64 f64 f64 f64]
     PF64,  // push f64
 }
 
 export const OpCodeLimit = {
     L1: OpCode.D2I,
-    L5U: OpCode.CALL,
+    L5U: OpCode.RET,
     L5I: OpCode.JNZ,
 };
 
@@ -80,9 +93,20 @@ export interface Assembly {
     sourceMap: Array<[number, number]>;
 }
 
+interface InstructionDumpOptions {
+    withLabel?: boolean;
+    withAddress?: boolean;
+    withSourceMap?: boolean;
+    friendlyJMP?: boolean;
+    sourceMap?: Map<number, [string, number]>;
+    source?: { [key: string]: string[] };
+    dataStart?: number;
+    dataMap?: Map<number, Variable>;
+}
+
 export class InstructionBuilder {
 
-    public static showCode(code: DataView, options: any) {
+    public static showCode(code: DataView, options: InstructionDumpOptions) {
         const ib = new InstructionBuilder(0);
         ib.codeView = code;
         ib.now = code.buffer.byteLength;
@@ -108,7 +132,14 @@ export class InstructionBuilder {
     public fromText(source: string) {
         source.split("\n")
             .filter((line) => line)
-            .map((line) => line.split(" "))
+            .map((line) => line.split(" ").filter((x) => x))
+            .filter((x) => x.length >= 1)
+            .map((x) => {
+                if (!(OpCode as any).hasOwnProperty(x[0])) {
+                    throw new InternalError(`unknown op ${x[0]}`);
+                }
+                return x;
+            })
             .map((line, i) => this.build(
                 // TODO:: fucking typescript why :any required?
                 i,
@@ -136,20 +167,16 @@ export class InstructionBuilder {
             this.codeView.setUint8(this.now++, op);
             this.codeView.setFloat64(this.now, parseFloat(imm as string));
             this.now += 8;
+        } else {
+            throw new InternalError(`unknown op ${op} ${imm}`);
         }
     }
 
-    public toString(options: {
-        withLabel?: boolean,
-        withAddress?: boolean,
-        withSourceMap?: boolean,
-        friendlyJMP?: boolean,
-        sourceMap?: Map<number, [string, number]>
-        source?: { [key: string]: string[] },
-    } = {}) {
+    public toString(options: InstructionDumpOptions = {}) {
         let i = 0, result = "";
         let lastFileName = "", lastFile = [] as string[], lastLine = -1;
-        while (i < this.now) {
+        const limit = options.dataStart ? options.dataStart : this.now;
+        while (i < limit) {
             if (options.withLabel && this.labels.get(i)) {
                 result += `${this.labels.get(i)}:\n`;
             }
@@ -187,6 +214,37 @@ export class InstructionBuilder {
                 result += `\t${OpCode[op]} ${this.codeView.getFloat64(i)}`;
                 i += 8;
             }
+            result += "\n";
+        }
+        if (options.dataStart) {
+            result += this.dumpData(options.dataStart, options.dataMap!);
+        }
+        return result;
+    }
+
+    public dumpData(dataStart: number, dataMap: Map<number, Variable>): string {
+        let result = "DATA:\n";
+        for (const line of dataMap.keys()) {
+            const item = dataMap.get(line)!;
+            result += toHexString(line) + "\t" + item.fileName + "@" + item.name + ":\t";
+            if ( item.type instanceof UnsignedCharType) {
+                result += this.codeView.getUint8(line);
+            } else if ( item.type instanceof CharType) {
+                result += this.codeView.getInt8(line);
+            } else if ( item.type instanceof UnsignedInt16Type) {
+                result += this.codeView.getUint16(line);
+            } else if ( item.type instanceof UnsignedInt32Type) {
+                result += this.codeView.getUint32(line);
+            } else if ( item.type instanceof Int16Type) {
+                result += this.codeView.getInt16(line);
+            } else if ( item.type instanceof Int32Type) {
+                result += this.codeView.getInt32(line);
+            } else if ( item.type instanceof FloatType) {
+                result += this.codeView.getFloat32(line);
+            } else if ( item.type instanceof DoubleType) {
+                result += this.codeView.getFloat64(line);
+            }
+            result += `[${item.type}]`;
             result += "\n";
         }
         return result;

@@ -52,11 +52,11 @@ export class VirtualMachine {
                     this.memory.setUint32(addr, item);
                 }
             } else if (op === OpCode.SM64) {
-                const item0 = this.popUint32();
-                const item1 = this.popUint32();
+                const i0 = this.popUint32();
+                const i1 = this.popUint32();
                 const addr = this.popUint32();
-                this.memory.setUint32(addr, item1);
-                this.memory.setUint32(addr + 4, item0);
+                this.memory.setUint32(addr, i1);
+                this.memory.setUint32(addr + 4, i0);
             } else if (op <= OpCode.MOD) {
                 const i1 = this.memory.getInt32(this.sp);
                 const i0 = this.memory.getInt32(this.sp + 4);
@@ -108,6 +108,31 @@ export class VirtualMachine {
                 }
                 this.memory.setFloat64(this.sp + 8, ret);
                 this.sp += 8;
+            } else if (op <= OpCode.GTE0) {
+                const i0 = this.memory.getInt32(this.sp);
+                if (op === OpCode.GT0) {
+                    this.memory.setInt32(this.sp, +(i0 > 0));
+                } else if (op === OpCode.GTE0) {
+                    this.memory.setInt32(this.sp, +(i0 >= 0));
+                } else if (op === OpCode.LT0) {
+                    this.memory.setInt32(this.sp, +(i0 < 0));
+                } else if (op === OpCode.LTE0) {
+                    this.memory.setInt32(this.sp, +(i0 <= 0));
+                } else if (op === OpCode.EQ0) {
+                    this.memory.setInt32(this.sp, +(i0 === 0));
+                } else if (op === OpCode.NEQ0) {
+                    this.memory.setInt32(this.sp, +(i0 !== 0));
+                }
+            } else if (op === OpCode.I2U) {
+                this.memory.setUint32(this.sp, this.memory.getInt32(this.sp));
+            } else if (op === OpCode.U2I) {
+                this.memory.setInt32(this.sp, this.memory.getUint32(this.sp));
+            } else if (op === OpCode.D2I) {
+                this.memory.setUint32(this.sp + 4, this.memory.getFloat64(this.sp));
+                this.sp += 4;
+            } else if (op === OpCode.I2D) {
+                this.memory.setFloat64(this.sp - 4, this.memory.getInt32(this.sp));
+                this.sp -= 4;
             } else if (op === OpCode.END) {
                 return false;
             }
@@ -117,6 +142,20 @@ export class VirtualMachine {
             if (op === OpCode.PUI32 || op === OpCode.PDATA || op === OpCode.PBSS) {
                 this.sp -= 4;
                 this.memory.setUint32(this.sp, imm);
+            } else if (op === OpCode.CALL) {
+                this.memory.setUint32(this.sp - 4, this.pc + 5);
+                this.memory.setUint32(this.sp - 8, this.bp);
+                this.sp -= 8;
+                this.bp = this.sp;
+                this.pc = imm;
+                return true;
+            } else if (op === OpCode.RET) {
+                const t0 = this.sp;
+                this.sp = this.bp + imm + 4;
+                this.pc = this.memory.getUint32(this.bp + 4);
+                this.bp = this.memory.getUint32(this.bp);
+                this.memory.setUint32(this.sp, t0);
+                return true;
             }
             this.pc += 5;
         } else if (op <= OpCodeLimit.L5I) {
@@ -124,6 +163,26 @@ export class VirtualMachine {
             if (op === OpCode.PI32) {
                 this.sp -= 4;
                 this.memory.setInt32(this.sp, imm);
+            } else if (op === OpCode.PBP) {
+                this.sp -= 4;
+                this.memory.setInt32(this.sp, this.bp + imm);
+            } else if (op === OpCode.J) {
+                this.pc = this.pc + imm;
+                return true;
+            } else if (op === OpCode.JZ) {
+                this.sp += 4;
+                if (this.memory.getInt32(this.sp - 4) === 0) {
+                    this.pc = this.pc + imm;
+                    return true;
+                }
+            } else if (op === OpCode.JNZ) {
+                this.sp += 4;
+                if (this.memory.getInt32(this.sp - 4) !== 0) {
+                    this.pc = this.pc + imm;
+                    return true;
+                }
+            } else if (op === OpCode.SSP) {
+                this.sp = this.sp + imm;
             }
             this.pc += 5;
         } else if (op === OpCode.PF64) {

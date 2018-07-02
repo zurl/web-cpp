@@ -19,6 +19,7 @@ export interface BinaryObject {
     bssSize: number;
     labelMap: Map<number, string>;
     sourceMap: Map<number, [string, number]>;
+    dataMap: Map<number, Variable>;
 }
 
 function resolveSymbol(path: string, scopeMap: Map<string, Scope>): Variable | FunctionEntity {
@@ -164,6 +165,7 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
     const codeLocMap = new Map<string, number>();
     const labelMap = new Map<number, string>();
     const sourceMap = new Map<number, [string, number]>();
+    const dataMap = new Map<number, Variable>();
 
     let globalCodeNow = 0;
     let codeNow = globalCodeSize;
@@ -189,6 +191,11 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
 
     // 2. link global assembly
     for (const input of inputs) {
+        if (linkOptions.debugMode) {
+            for (const item of input.globalAssembly.sourceMap) {
+                sourceMap.set(item[0] + globalCodeNow, [input.fileName, item[1]]);
+            }
+        }
         codeArray.set(new Uint8Array(input.globalAssembly.code.buffer
             .slice(0, input.globalAssembly.size)), globalCodeNow);
         for (const tuple of input.globalAssembly.unresolvedSymbols) {
@@ -246,11 +253,24 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
             }
         }
         shiftMemoryOffset(code, codeNow, input.assembly.size, dataNow, bssNow);
+        // merge data
+        codeArray.set(new Uint8Array(input.data.buffer
+            .slice(0, input.dataSize)), dataNow);
         codeNow += input.assembly.size;
         dataNow += input.dataSize;
         bssNow += input.bssSize;
     }
-    // 3. TODO:: data default to be empty
+
+    if (linkOptions.debugMode) {
+        const rootMap = newScope.get("@root")!.map;
+        for (const key of rootMap.keys()) {
+            const item = rootMap.get(key)!;
+            if ( item instanceof Variable) {
+                dataMap.set(item.location as number + (dataLocMap.get(item.fileName) as number),
+                    item);
+            }
+        }
+    }
 
     // 4. inject bootstrap instruction;
 
@@ -268,5 +288,6 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
         sourceMap,
         dataStart: codeSize,
         bssSize,
+        dataMap,
     };
 }

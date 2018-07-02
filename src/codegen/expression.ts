@@ -7,15 +7,11 @@ import * as Long from "long";
 import {
     AssignmentExpression,
     BinaryExpression,
-    Constant,
-    Expression,
     ExpressionResult,
     ExpressionResultType,
     FloatingConstant,
-    FunctionDefinition,
     Identifier,
     IntegerConstant,
-    Node,
     ParenthesisExpression,
     SubscriptExpression, UnaryExpression,
 } from "../common/ast";
@@ -23,24 +19,22 @@ import {InternalError, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
 import {
     ArithmeticType,
-    ArrayType,
+    ArrayType, CharType,
     ClassType,
-    CompoundType,
     DoubleType,
     extractRealType,
     FloatingType,
-    FloatType,
+    FloatType, Int16Type, Int32Type,
     Int64Type,
     IntegerType,
     LeftReferenceType,
     PointerType,
-    PrimitiveType,
     PrimitiveTypes,
     QualifiedType,
-    ReferenceType,
-    RightReferenceType,
     Type,
     UnsignedCharType,
+    UnsignedInt16Type,
+    UnsignedInt32Type,
     UnsignedInt64Type,
     UnsignedIntegerType,
 } from "../common/type";
@@ -54,8 +48,21 @@ ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): Express
 
 AssignmentExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     ctx.currentNode = this;
-
+    if (this.operator !== "=") {
+        throw new InternalError(`unsupport qaq ${this.operator}`);
+    }
     const right = this.right.codegen(ctx);
+    if (this.isInitExpr
+        && this.left instanceof Identifier
+        && right.form === ExpressionResultType.CONSTANT
+        && (right.type instanceof IntegerType ||
+            right.type instanceof FloatingType ||
+            right.type.equals(PrimitiveTypes.__charptr))) {
+        const item = this.left.codegen(ctx);
+        if (item.form === ExpressionResultType.LVALUE_MEMORY_DATA) {
+            return doVarInit(ctx, item, right);
+        }
+    }
     const leftType = extractRealType(this.left.deduceType(ctx));
     const rightType = extractRealType(right.type);
     if (rightType instanceof ClassType) {
@@ -407,6 +414,56 @@ SubscriptExpression.prototype.codegen = function(ctx: CompileContext): Expressio
     ).codegen(ctx);
 };
 
+export function doVarInit(ctx: CompileContext, left: ExpressionResult,
+                          right: ExpressionResult): ExpressionResult {
+    // charptr, int, double
+    const leftValue = left.value as number;
+    if ( left.type.equals(PrimitiveTypes.__charptr) || right.type.equals(PrimitiveTypes.__charptr)) {
+        if (!left.type.equals(right.type)) {
+            throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, ctx.currentNode!);
+        }
+        ctx.memory.data.setUint32(leftValue, right.value as number);
+    }
+    let rightValue = right.value as number;
+    if ( right.type instanceof IntegerType ) {
+        rightValue = (right.value as Long).toNumber();
+    }
+    if ( left.type instanceof UnsignedCharType) {
+        ctx.memory.data.setUint8(leftValue, rightValue);
+    } else if ( left.type instanceof CharType) {
+        ctx.memory.data.setInt8(leftValue, rightValue);
+    } else if ( left.type instanceof UnsignedInt16Type) {
+        ctx.memory.data.setUint16(leftValue, rightValue);
+    } else if ( left.type instanceof UnsignedInt32Type) {
+        ctx.memory.data.setUint32(leftValue, rightValue);
+    } else if ( left.type instanceof UnsignedInt64Type) {
+        if ( right.type instanceof IntegerType ) {
+            ctx.memory.data.setUint32(leftValue, (right.value as Long).high);
+            ctx.memory.data.setUint32(leftValue + 4, (right.value as Long).low);
+        } else {
+            ctx.memory.data.setUint32(leftValue, rightValue >> 32);
+            ctx.memory.data.setUint32(leftValue + 4, rightValue);
+        }
+    } else if ( left.type instanceof Int16Type) {
+        ctx.memory.data.setInt16(leftValue, rightValue);
+    } else if ( left.type instanceof Int32Type) {
+        ctx.memory.data.setInt32(leftValue, rightValue);
+    } else if ( left.type instanceof Int64Type) {
+        if ( right.type instanceof IntegerType ) {
+            ctx.memory.data.setInt32(leftValue, (right.value as Long).high);
+            ctx.memory.data.setInt32(leftValue + 4, (right.value as Long).low);
+        } else {
+            ctx.memory.data.setInt32(leftValue, rightValue >> 32);
+            ctx.memory.data.setInt32(leftValue + 4, rightValue);
+        }
+    } else if ( left.type instanceof FloatType) {
+        ctx.memory.data.setFloat32(leftValue, rightValue);
+    } else if ( left.type instanceof DoubleType) {
+        ctx.memory.data.setFloat64(leftValue, rightValue);
+    }
+    return left;
+}
+
 /*
  *  规定：
  *  对于Type value的值是存值的地方的地址
@@ -425,6 +482,5 @@ SubscriptExpression.prototype.codegen = function(ctx: CompileContext): Expressio
  */
 
 export function expression() {
-    const a = 1;
     return "";
 }

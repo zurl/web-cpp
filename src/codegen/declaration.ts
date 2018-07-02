@@ -5,19 +5,29 @@
  */
 import * as Long from "long";
 import {
-    ArrayDeclarator,
+    ArrayDeclarator, AssignmentExpression,
     Declaration,
     Declarator,
     ExpressionResultType,
-    FunctionDeclarator, IdentifierDeclarator,
+    FunctionDeclarator, Identifier, IdentifierDeclarator, InitializerList,
     Node,
     ParameterList, Pointer, PointerDeclarator, SpecifierType, TranslationUnit,
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
-import {ArrayType, FunctionType, IntegerType, PointerType, QualifiedType, Type} from "../common/type";
+import {
+    ArrayType,
+    ClassType,
+    extractRealType,
+    FunctionType,
+    IntegerType,
+    PointerType,
+    QualifiedType,
+    Type,
+} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {CompileContext} from "./context";
 import {Variable, VariableStorageType} from "./scope";
+import {convertTypeOnStack, loadIntoStack, popFromStack} from "./stack";
 
 export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForError: Node): Type {
     let resultType: Type | null = null;
@@ -126,12 +136,20 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             storageType = VariableStorageType.STACK;
             location = ctx.memory.allocStack(type.length);
         }
-        if (declarator.initializer != null) {
-            // TODO:: do code gen
-        }
         ctx.currentScope.set(name, new Variable(
             name, ctx.fileName, type, storageType, location,
         ));
+
+        if (declarator.initializer != null) {
+            if ( declarator.initializer instanceof InitializerList ) {
+                throw new InternalError("InitializerList not support");
+            }
+            const expr = new AssignmentExpression(this.location, "=",
+                new Identifier(this.location, name),
+                declarator.initializer);
+            expr.isInitExpr = true;
+            expr.codegen(ctx);
+        }
     }
 };
 
