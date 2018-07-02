@@ -9,10 +9,10 @@ const Linker = require('../../dist/linker');
 const Assert = require('chai');
 const {Node, SourceLocation} = require("../../dist/common/ast");
 
-function compile(name, source, headersMap) {
+function compile(name, source, headersMap, options = {}) {
     const {code, map} = Preprocess.process(name, source);
     const translationUnit = CParser.parse(code);
-    const ctx = new CompileContext(name, {}, headersMap);
+    const ctx = new CompileContext(name, options, headersMap);
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();
 }
@@ -31,7 +31,7 @@ const HeaderScopeMap = precompileHeaders();
 function generateAsm(testCode) {
     const obj = compile("test.cpp", testCode, HeaderScopeMap);
     const ib = new InstructionBuilder();
-    const bin = Linker.link([obj], {});
+    const bin = Linker.link([obj], {}, {});
     ib.codeView = bin.code;
     ib.now = bin.code.buffer.byteLength;
     ib.labels = bin.labelMap;
@@ -89,6 +89,21 @@ function printAST(node, indent = 0, nameIndent = 0) {
     return result;
 }
 
+function showASM(source, bin){
+    InstructionBuilder.showCode(bin.code, {
+        withLabel: true,
+        withAddress: true,
+        withSourceMap: true,
+        friendlyJMP: true,
+        sourceMap: bin.sourceMap,
+        dataStart: bin.dataStart,
+        dataMap: bin.dataMap,
+        source: {
+            'main.cpp': source.split('\n')
+        }
+    });
+}
+
 module.exports = {
     generateAsm,
     testCode,
@@ -100,8 +115,11 @@ module.exports = {
         InstructionBuilder,
         Linker
     },
+    compile,
     printAST,
     JsAPIMap,
     HeaderScopeMap,
-    Headers
+    Headers,
+    mergeScopeMap,
+    showASM
 };

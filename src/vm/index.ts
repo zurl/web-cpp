@@ -5,6 +5,7 @@
  */
 import {RuntimeError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
+import {JsAPIDefine} from "../common/jsapi";
 
 export class VirtualMachine {
     public memory: DataView;
@@ -12,13 +13,15 @@ export class VirtualMachine {
     public pc: number;
     public bp: number;
     public sp: number;
+    public jsAPIList: JsAPIDefine[];
 
-    constructor(memory: DataView) {
+    constructor(memory: DataView, jsAPIList: JsAPIDefine[] = []) {
         this.memory = memory;
         this.memoryUint8Array = new Uint8Array(memory.buffer);
         this.pc = 0;
         this.bp = memory.buffer.byteLength;
         this.sp = this.bp;
+        this.jsAPIList = jsAPIList;
     }
 
     public popUint32(): number {
@@ -26,9 +29,17 @@ export class VirtualMachine {
         this.sp += 4;
         return val;
     }
+    public popInt32(): number {
+        const val = this.memory.getInt32(this.sp);
+        this.sp += 4;
+        return val;
+    }
 
     public runOneStep(): boolean {
         const op = this.memory.getUint8(this.pc);
+        console.log(`pc:${this.pc}, op:${OpCode[op]}, sp:${this.sp - this.memory.byteLength},` +
+            `bp:${this.bp - this.memory.byteLength},`
+        + `stop_u32:${this.sp < this.memory.byteLength ? this.memory.getUint32(this.sp) : "???"}`);
         if (op <= OpCodeLimit.L1) {
             if (op <= OpCode.LM64) {
                 const addr = this.memory.getUint32(this.sp);
@@ -44,8 +55,8 @@ export class VirtualMachine {
                     this.sp -= 4;
                 }
             } else if (op <= OpCode.SM32) {
-                const item = this.popUint32();
                 const addr = this.popUint32();
+                const item = this.popUint32();
                 if (op === OpCode.SM8) {
                     this.memory.setUint8(addr, item);
                 } else if (op === OpCode.SM16) {
@@ -54,9 +65,9 @@ export class VirtualMachine {
                     this.memory.setUint32(addr, item);
                 }
             } else if (op === OpCode.SM64) {
+                const addr = this.popUint32();
                 const i0 = this.popUint32();
                 const i1 = this.popUint32();
-                const addr = this.popUint32();
                 this.memory.setUint32(addr, i1);
                 this.memory.setUint32(addr + 4, i0);
             } else if (op <= OpCode.MOD) {
@@ -151,6 +162,11 @@ export class VirtualMachine {
                 this.bp = this.sp;
                 this.pc = imm;
                 return true;
+            } else if (op === OpCode.LIBCALL) {
+                if (imm > this.jsAPIList.length) {
+                    throw new RuntimeError("non-exist LIBCALL");
+                }
+                this.jsAPIList[imm](this);
             } else if (op === OpCode.RET) {
                 const t0 = this.sp;
                 this.sp = this.bp + imm + 4;

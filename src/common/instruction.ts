@@ -25,9 +25,9 @@ import {fromBytesToString, toHexString} from "./utils";
 //  $sp -> -12|   retval    |
 export enum OpCode {
     // 1 = [op]
-    // S_TOP....  address  .....S_END
+    // S_HIGH....  address  .....S_LOW
     LM8, LM16, LM32, LM64,
-    // S_TOP....  address item .....S_END
+    // S_HIGH.... item address .....S_LOW
     SM8, SM16, SM32, SM64,
     ADD, SUB, MUL, DIV, MOD,
     ADDU, SUBU, MULU, DIVU, MODU,
@@ -46,9 +46,9 @@ export enum OpCode {
            // $bp = $sp
            // $pc = u32
     RET,   // t0 = $sp
-           // $sp = $bp + 8
+           // $sp = $bp + u32 + 8
+           // $pc = [$bp + 4]
            // $bp = [$bp]
-           // $pc = [$sp + 4]
            // push t0
     // 5 = [op i32 i32 i32 i32]
     PI32,  // push i32

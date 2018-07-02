@@ -21,6 +21,7 @@ a c++ compiler in typescript
 - [ ] struct / class
 - [ ] cast
 - [ ] const
+- [ ] non-return detect
 
 ## C++ Language
 

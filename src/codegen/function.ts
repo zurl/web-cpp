@@ -17,7 +17,7 @@ import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
 import {CompileContext} from "./context";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionEntity, Variable, VariableStorageType} from "./scope";
-import {loadIntoStack} from "./stack";
+import {loadFromMemory, loadIntoStack} from "./stack";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
@@ -115,6 +115,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         ctx.build(OpCode.LIBCALL, 0);
     } else {
         ctx.build(OpCode.CALL, 0);
+        loadFromMemory(ctx, entity.type.returnType);
     }
     return {
         form: ExpressionResultType.RVALUE,

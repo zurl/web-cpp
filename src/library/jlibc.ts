@@ -3,7 +3,6 @@
  *  @author zcy <zurl@live.com>
  *  Created at 02/07/2018
  */
-import {defineLowAPI} from "../common/jsapi";
 import {VirtualMachine} from "../vm";
 
 const __jlibc__memcpy = (vm: VirtualMachine) => {
