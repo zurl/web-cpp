@@ -13,9 +13,9 @@ import {
     FloatType,
     Int64Type,
     IntegerType,
-    LeftReferenceType, PointerType,
+    LeftReferenceType, PointerType, QualifiedType,
     RightReferenceType,
-    Type, UnsignedInt64Type,
+    Type, UnsignedInt64Type, VoidType,
 } from "../common/type";
 import {CompileContext} from "./context";
 
@@ -37,8 +37,13 @@ export function convertTypeOnStack(ctx: CompileContext, dst: Type, src: Type, no
             return;
         }
     } else if (dst instanceof PointerType) {
-        if (src.equals(dst)) {
-            return;
+        if ( src instanceof PointerType) {
+            if ( dst.elementType instanceof VoidType) {
+                return;
+            }
+            if (src.equals(dst)) {
+                return;
+            }
         }
     }
     throw new InternalError(`unsupport type assignment ${src.toString()} to ${dst.toString()}`);
@@ -63,6 +68,8 @@ export function loadConstant(ctx: CompileContext, value: ExpressionResult) {
         ctx.build(OpCode.PI32, value.value.toString());
     } else if (rawType instanceof DoubleType || rawType instanceof FloatType) {
         ctx.build(OpCode.PF64, value.value as number);
+    } else if ( rawType instanceof PointerType) {
+        ctx.build(OpCode.PDATA, value.value as number);
     } else {
         throw new InternalError(`load unsupport type into stack ${value.type.toString()}`);
     }
@@ -110,9 +117,7 @@ export function loadReference(ctx: CompileContext, expr: ExpressionResult) {
 }
 
 export function loadFromMemory(ctx: CompileContext, type: Type) {
-    if (type instanceof ArrayType) {
-        type = extractRealType(type);
-    }
+    type = extractRealType(type);
     if (type instanceof IntegerType || type instanceof FloatingType || type instanceof PointerType) {
         if (type.length === 1) {
             ctx.build(OpCode.LM8);

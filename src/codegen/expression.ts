@@ -6,7 +6,7 @@
 import * as Long from "long";
 import {
     AssignmentExpression,
-    BinaryExpression,
+    BinaryExpression, CharacterConstant,
     ExpressionResult,
     ExpressionResultType,
     FloatingConstant,
@@ -49,9 +49,17 @@ ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): Express
 AssignmentExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     ctx.currentNode = this;
     if (this.operator !== "=") {
-        throw new InternalError(`unsupport qaq ${this.operator}`);
+        const ope = this.operator.split("=")[0];
+        this.operator = "=";
+        this.right = new BinaryExpression(this.location,
+            ope,
+            this.left,
+            this.right);
     }
+    // C++ 17 规定RHS优先计算
     const right = this.right.codegen(ctx);
+
+    // 对于初始化表达式 支持常量初始化到data段
     if (this.isInitExpr
         && this.left instanceof Identifier
         && right.form === ExpressionResultType.CONSTANT
@@ -63,7 +71,21 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
             return doVarInit(ctx, item, right);
         }
     }
-    const leftType = extractRealType(this.left.deduceType(ctx));
+
+    // C 语言 隐式类型转换包括两个部分
+    // 1.隐式转换语法
+    //  1.1 赋值转换
+    //  1.2 通常算术转换
+    // 2.隐式转换语义
+    //  1.1 值变换
+    //  1.2 兼容语义
+
+    // 赋值隐式类型转换
+    const leftRawType = this.left.deduceType(ctx);
+    if ( leftRawType instanceof QualifiedType && leftRawType.isConst ) {
+        throw new SyntaxError(`cannot assign to a const variable`, this);
+    }
+    const leftType = extractRealType(leftRawType);
     const rightType = extractRealType(right.type);
     if (rightType instanceof ClassType) {
         throw new SyntaxError(`unsupport operator overload`, this);
@@ -127,6 +149,14 @@ StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResul
         type: PrimitiveTypes.__ccharptr,
         form: ExpressionResultType.CONSTANT,
         value: ctx.memory.allocString(this.value),
+    };
+};
+CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    ctx.currentNode = this;
+    return {
+        type: PrimitiveTypes.char,
+        form: ExpressionResultType.CONSTANT,
+        value: Long.fromInt(this.value.charCodeAt(0)),
     };
 };
 

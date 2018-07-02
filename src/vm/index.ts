@@ -37,9 +37,9 @@ export class VirtualMachine {
 
     public runOneStep(): boolean {
         const op = this.memory.getUint8(this.pc);
-        //console.log(`pc:${this.pc}, op:${OpCode[op]}, sp:${this.sp - this.memory.byteLength},` +
-        //   `bp:${this.bp - this.memory.byteLength},`
-        //+ `stop_u32:${this.sp < this.memory.byteLength ? this.memory.getUint32(this.sp) : "???"}`);
+        console.log(`pc:${this.pc}, op:${OpCode[op]}, sp:${this.sp - this.memory.byteLength},` +
+           `bp:${this.bp - this.memory.byteLength},`
+        + `stop_u32:${this.sp < this.memory.byteLength ? this.memory.getUint32(this.sp) : "???"}`);
         if (op <= OpCodeLimit.L1) {
             if (op <= OpCode.LM64) {
                 const addr = this.memory.getUint32(this.sp);

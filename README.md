@@ -1,14 +1,15 @@
 # web-cpp
-a c++ compiler in typescript
+a experimental c++ compiler in typescript
 
 
 # todolist
 
 ## C language
 
-- [ ] function call codegen / return codegen
+- [X] function call codegen / return codegen
 - [ ] & && | || >> <<
 - [ ] \+ \- ! ~ ++ --
+- [X] += -= *= /= ...
 - [X] vm
 - [X] array
 - [ ] typedef
@@ -17,11 +18,12 @@ a c++ compiler in typescript
 - [X] string
 - [X] var initilizer
 - [X] data segment data
-- [ ] doConstant < > <= >= ==
+- [ ] doConstant about < > <= >= == & && | || >> <<
 - [ ] struct / class
-- [ ] cast
+- [ ] cast ope
 - [ ] const
 - [ ] non-return detect
+- [X] function call parameter type conversion
 
 ## C++ Language
 

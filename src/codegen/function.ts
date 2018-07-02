@@ -13,11 +13,11 @@ import {
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
-import {FunctionType, PointerType, QualifiedType, Type} from "../common/type";
+import {extractRealType, FunctionType, PointerType, QualifiedType, Type} from "../common/type";
 import {CompileContext} from "./context";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionEntity, Variable, VariableStorageType} from "./scope";
-import {loadFromMemory, loadIntoStack} from "./stack";
+import {convertTypeOnStack, loadFromMemory, loadIntoStack} from "./stack";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
@@ -82,7 +82,11 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         ));
         loc += type.length;
     }
+    ctx.currentNode = this;
+    const l0 = ctx.currentBuilder!.now;
+    ctx.build(OpCode.SSP, 0);
     this.body.body.map((item) => item.codegen(ctx));
+    ctx.currentBuilder.codeView.setInt32(l0 + 1, ctx.memory.stackPtr);
     ctx.exitFunction();
 };
 
@@ -103,11 +107,13 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
     for (let i = this.arguments.length - 1; i >= 0; i--) {
         const val = this.arguments[i].codegen(ctx);
-        if (!val.type.equals(callee.type.parameterTypes[i])) {
-            throw new SyntaxError(`the function type is not same oh`, this);
-        }
-        ctx.currentNode = this;
+        const leftType = extractRealType(callee.type.parameterTypes[i]);
+        const rightType = extractRealType(val.type);
+
+        // 这里应用 赋值隐式类型转换
         loadIntoStack(ctx, val);
+        convertTypeOnStack(ctx, leftType, rightType, this);
+        ctx.currentNode = this;
     }
     // TODO:: mangled name
     ctx.unresolve(entity.fullName);

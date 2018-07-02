@@ -347,10 +347,14 @@ export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
  * C语言 运算类型提取
  * 1. 把引用转普通
  * 2. 数组转指针
+ * 3. 去const
  * @param {Type} rawType
  * @returns {Type}
  */
 export function extractRealType(rawType: Type) {
+    if ( rawType instanceof QualifiedType) {
+        rawType = rawType.elementType;
+    }
     if (rawType instanceof ArrayType) {
         return new PointerType(rawType.elementType);
     } else if (rawType instanceof ReferenceType) {

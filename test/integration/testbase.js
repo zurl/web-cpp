@@ -1,3 +1,4 @@
+const {fromBytesToString} = require( "../../dist/common/utils");
 const CodeGenTestBase = require("../codegen/testbase");
 const {VirtualMachine} = require("../../dist/vm/index");
 
@@ -5,6 +6,7 @@ const TestRunScopeMap = CodeGenTestBase.mergeScopeMap([
     CodeGenTestBase.HeaderScopeMap,
     CodeGenTestBase.compile("testrun.h", `
     __libcall void print(int a);
+    __libcall void puts(void *str);
 `).scopeMap]
 );
 
@@ -13,14 +15,17 @@ function testRun(source, debug){
     if(debug) options = {debugMode: true};
     let result = "";
     const print = (vm) => {
-        console.log("print");
         result += vm.popInt32() + "\n";
+    };
+    const puts = (vm) =>{
+        result += fromBytesToString(vm.memory, vm.popUint32()) + "\n";
     };
     const obj = CodeGenTestBase.compile('main.cpp', source, TestRunScopeMap, options);
     const bin = CodeGenTestBase.components.Linker.link([obj],
         {
             ...CodeGenTestBase.JsAPIMap,
-            print
+            print,
+            puts
         }, options);
     if(debug)CodeGenTestBase.showASM(source, bin);
     const memoryBuffer = new ArrayBuffer(10000);
