@@ -7,7 +7,7 @@ import {CompiledObject} from "../codegen/context";
 import {FunctionEntity, Scope, Variable, VariableStorageType} from "../codegen/scope";
 import {LinkerError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
-import {Type} from "../common/type";
+import {PrimitiveTypes, Type} from "../common/type";
 
 interface LinkOptions {
     debugMode?: boolean;
@@ -261,18 +261,23 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
         bssNow += input.bssSize;
     }
 
-    if (linkOptions.debugMode) {
-        const rootMap = newScope.get("@root")!.map;
-        for (const key of rootMap.keys()) {
-            const item = rootMap.get(key)!;
-            if ( item instanceof Variable) {
-                dataMap.set(item.location as number + (dataLocMap.get(item.fileName) as number),
-                    item);
+    // 4. resolve string constant
+
+    const rootMap = newScope.get("@root")!.map;
+    for (const key of rootMap.keys()) {
+        const item = rootMap.get(key)!;
+        if ( item instanceof Variable) {
+            const loc = item.location as number + (dataLocMap.get(item.fileName) as number);
+            if (linkOptions.debugMode) {
+                dataMap.set(loc, item);
+            }
+            if ( item.type.equals(PrimitiveTypes.__charptr) || item.type.equals(PrimitiveTypes.__ccharptr)) {
+                code.setUint32(loc, code.getUint32(loc) +  (dataLocMap.get(item.fileName)!));
             }
         }
     }
 
-    // 4. inject bootstrap instruction;
+    // 5. inject bootstrap instruction;
 
     const entry = resolveSymbol("@root@main", newScope);
     const entryLoc = (codeLocMap.get(entry.fileName) as number) + (entry.location as number);
@@ -286,7 +291,7 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
         code,
         labelMap,
         sourceMap,
-        dataStart: codeSize,
+        dataStart: globalCodeSize + codeSize,
         bssSize,
         dataMap,
     };

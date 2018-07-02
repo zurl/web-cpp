@@ -12,7 +12,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    ParenthesisExpression,
+    ParenthesisExpression, StringLiteral,
     SubscriptExpression, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
@@ -57,7 +57,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         && right.form === ExpressionResultType.CONSTANT
         && (right.type instanceof IntegerType ||
             right.type instanceof FloatingType ||
-            right.type.equals(PrimitiveTypes.__charptr))) {
+            right.type.equals(PrimitiveTypes.__ccharptr))) {
         const item = this.left.codegen(ctx);
         if (item.form === ExpressionResultType.LVALUE_MEMORY_DATA) {
             return doVarInit(ctx, item, right);
@@ -118,6 +118,15 @@ FloatingConstant.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         type,
         form: ExpressionResultType.CONSTANT,
         value: this.value,
+    };
+};
+
+StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    ctx.currentNode = this;
+    return {
+        type: PrimitiveTypes.__ccharptr,
+        form: ExpressionResultType.CONSTANT,
+        value: ctx.memory.allocString(this.value),
     };
 };
 
@@ -418,47 +427,47 @@ export function doVarInit(ctx: CompileContext, left: ExpressionResult,
                           right: ExpressionResult): ExpressionResult {
     // charptr, int, double
     const leftValue = left.value as number;
-    if ( left.type.equals(PrimitiveTypes.__charptr) || right.type.equals(PrimitiveTypes.__charptr)) {
-        if (!left.type.equals(right.type)) {
+    if (right.type.equals(PrimitiveTypes.__ccharptr)) {
+        if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr)) ) {
             throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, ctx.currentNode!);
         }
         ctx.memory.data.setUint32(leftValue, right.value as number);
     }
     let rightValue = right.value as number;
-    if ( right.type instanceof IntegerType ) {
+    if (right.type instanceof IntegerType) {
         rightValue = (right.value as Long).toNumber();
     }
-    if ( left.type instanceof UnsignedCharType) {
+    if (left.type instanceof UnsignedCharType) {
         ctx.memory.data.setUint8(leftValue, rightValue);
-    } else if ( left.type instanceof CharType) {
+    } else if (left.type instanceof CharType) {
         ctx.memory.data.setInt8(leftValue, rightValue);
-    } else if ( left.type instanceof UnsignedInt16Type) {
+    } else if (left.type instanceof UnsignedInt16Type) {
         ctx.memory.data.setUint16(leftValue, rightValue);
-    } else if ( left.type instanceof UnsignedInt32Type) {
+    } else if (left.type instanceof UnsignedInt32Type) {
         ctx.memory.data.setUint32(leftValue, rightValue);
-    } else if ( left.type instanceof UnsignedInt64Type) {
-        if ( right.type instanceof IntegerType ) {
+    } else if (left.type instanceof UnsignedInt64Type) {
+        if (right.type instanceof IntegerType) {
             ctx.memory.data.setUint32(leftValue, (right.value as Long).high);
             ctx.memory.data.setUint32(leftValue + 4, (right.value as Long).low);
         } else {
             ctx.memory.data.setUint32(leftValue, rightValue >> 32);
             ctx.memory.data.setUint32(leftValue + 4, rightValue);
         }
-    } else if ( left.type instanceof Int16Type) {
+    } else if (left.type instanceof Int16Type) {
         ctx.memory.data.setInt16(leftValue, rightValue);
-    } else if ( left.type instanceof Int32Type) {
+    } else if (left.type instanceof Int32Type) {
         ctx.memory.data.setInt32(leftValue, rightValue);
-    } else if ( left.type instanceof Int64Type) {
-        if ( right.type instanceof IntegerType ) {
+    } else if (left.type instanceof Int64Type) {
+        if (right.type instanceof IntegerType) {
             ctx.memory.data.setInt32(leftValue, (right.value as Long).high);
             ctx.memory.data.setInt32(leftValue + 4, (right.value as Long).low);
         } else {
             ctx.memory.data.setInt32(leftValue, rightValue >> 32);
             ctx.memory.data.setInt32(leftValue + 4, rightValue);
         }
-    } else if ( left.type instanceof FloatType) {
+    } else if (left.type instanceof FloatType) {
         ctx.memory.data.setFloat32(leftValue, rightValue);
-    } else if ( left.type instanceof DoubleType) {
+    } else if (left.type instanceof DoubleType) {
         ctx.memory.data.setFloat64(leftValue, rightValue);
     }
     return left;

@@ -10,12 +10,12 @@ import {
     CharType, DoubleType,
     FloatType,
     Int16Type,
-    Int32Type,
+    Int32Type, PrimitiveTypes, QualifiedType,
     UnsignedCharType,
     UnsignedInt16Type,
     UnsignedInt32Type,
 } from "./type";
-import {toHexString} from "./utils";
+import {fromBytesToString, toHexString} from "./utils";
 //          12|  param 2    |
 //           8|  param 1    |
 //           4|  saved $pc  | => ret addr
@@ -226,23 +226,29 @@ export class InstructionBuilder {
         let result = "DATA:\n";
         for (const line of dataMap.keys()) {
             const item = dataMap.get(line)!;
-            result += toHexString(line) + "\t" + item.fileName + "@" + item.name + ":\t";
-            if ( item.type instanceof UnsignedCharType) {
+            result += toHexString(line) + "\t" + item.fileName + "@" + item.name + "\t:\t";
+            let itemType = item.type;
+            while ( itemType instanceof QualifiedType) {
+                itemType = itemType.elementType;
+            }
+            if ( itemType instanceof UnsignedCharType) {
                 result += this.codeView.getUint8(line);
-            } else if ( item.type instanceof CharType) {
+            } else if ( itemType instanceof CharType) {
                 result += this.codeView.getInt8(line);
-            } else if ( item.type instanceof UnsignedInt16Type) {
+            } else if ( itemType instanceof UnsignedInt16Type) {
                 result += this.codeView.getUint16(line);
-            } else if ( item.type instanceof UnsignedInt32Type) {
+            } else if ( itemType instanceof UnsignedInt32Type) {
                 result += this.codeView.getUint32(line);
-            } else if ( item.type instanceof Int16Type) {
+            } else if ( itemType instanceof Int16Type) {
                 result += this.codeView.getInt16(line);
-            } else if ( item.type instanceof Int32Type) {
+            } else if ( itemType instanceof Int32Type) {
                 result += this.codeView.getInt32(line);
-            } else if ( item.type instanceof FloatType) {
+            } else if ( itemType instanceof FloatType) {
                 result += this.codeView.getFloat32(line);
-            } else if ( item.type instanceof DoubleType) {
+            } else if ( itemType instanceof DoubleType) {
                 result += this.codeView.getFloat64(line);
+            } else if ( itemType.equals(PrimitiveTypes.__charptr) || itemType.equals(PrimitiveTypes.__ccharptr)) {
+                result += `"${fromBytesToString(this.codeView, this.codeView.getUint32(line))}"`;
             }
             result += `[${item.type}]`;
             result += "\n";

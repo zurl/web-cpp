@@ -65,3 +65,13 @@ export function toHexString(value: number) {
     }
     return "0x" + result;
 }
+
+export function fromBytesToString(data: DataView, start: number) {
+    let result = "", i = start, code = data.getUint8(i);
+    while ( code !== 0) {
+        result += String.fromCharCode(code);
+        i ++;
+        code = data.getUint8(i);
+    }
+    return result;
+}

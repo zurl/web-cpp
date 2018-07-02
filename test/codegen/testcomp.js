@@ -3,11 +3,15 @@ const fs = require('fs');
 
 const source = `
 int a = 123;
+const int dd = 234;
 int b = a + 1, c = 3;
 double k = 1.99;
+const char * uu = "abc";
 int main(){
     int d = 0;
-    int f = d + a;
+    int f = d + dd;
+    f = d + dd;
+    d = 12;
 }
 `;
 

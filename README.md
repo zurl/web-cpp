@@ -9,13 +9,13 @@ a c++ compiler in typescript
 - [ ] function call codegen / return codegen
 - [ ] & && | || >> <<
 - [ ] \+ \- ! ~ ++ --
-- [ ] vm
-- [ ] array
+- [X] vm
+- [X] array
 - [ ] typedef
 - [ ] enum
 - [ ] js native function
-- [ ] string
-- [ ] var initilizer
+- [X] string
+- [X] var initilizer
 - [ ] data segment data
 - [ ] doConstant < > <= >= ==
 - [ ] struct / class

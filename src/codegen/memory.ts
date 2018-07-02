@@ -11,6 +11,7 @@ export class MemoryLayout {
     public stackPtr: number;
     public data: DataView;
     public dataBuffer: ArrayBuffer;
+    public stringMap: Map<string, number>;
 
     constructor(dataSize: number) {
         this.dataPtr = 0;
@@ -19,6 +20,7 @@ export class MemoryLayout {
         this.stackScope = [];
         this.dataBuffer = new ArrayBuffer(dataSize);
         this.data = new DataView(this.dataBuffer);
+        this.stringMap = new Map<string, number>();
     }
 
     public allocBSS(size: number): number {
@@ -40,6 +42,15 @@ export class MemoryLayout {
         const result = this.stackPtr;
         this.stackPtr -= size;
         return result;
+    }
+
+    public allocString(str: string): number {
+        const item = this.stringMap.get(str)!;
+        if ( item !== undefined) { return item; }
+        const addr = this.allocData(str.length + 1);
+        this.setDataString(addr, str);
+        this.stringMap.set(str, addr);
+        return addr;
     }
 
     public setDataString(offset: number, value: string) {
