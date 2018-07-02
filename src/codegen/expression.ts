@@ -143,7 +143,7 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
         return {
             type: item.type,
             form: ExpressionResultType.RVALUE,
-            value: item.fullName,
+            value: item,
             isConst: true,
         };
     }

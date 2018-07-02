@@ -5,6 +5,7 @@
  */
 
 import {FunctionDefinition} from "../common/ast";
+import {LinkerError} from "../common/error";
 import {Assembly} from "../common/instruction";
 import {FunctionType, Type} from "../common/type";
 
@@ -43,6 +44,7 @@ export class FunctionEntity {
     public location: string | number;
     public type: FunctionType;
     public fullName: string;
+    public isLibCall: boolean;
 
     constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
         this.name = name;
@@ -51,6 +53,7 @@ export class FunctionEntity {
         this.type = type;
         this.location = 0;
         this.fullName = fullName;
+        this.isLibCall = false;
     }
 }
 
@@ -91,21 +94,58 @@ export class Scope {
     }
 }
 
-/**
- * ScopeMapMerge Rules
- * 1.Root could not be conflict?
- *
- * @param {Map<string, Scope>[][]} scopeMap
- * @returns {Map<string, Scope>[]}
- */
-// export function mergeScopeMap(scopeMap: Map<string, Scope>[][]): Map<string, Scope>[]{
+export function mergeScopeTo(dst: Scope, src: Scope) {
+    for (const tuple of src.map.entries()) {
+        const dstval = dst.map.get(tuple[0]);
+        if (dstval === undefined) {
+            dst.map.set(tuple[0], tuple[1]);
+        } else {
+            const srcval = tuple[1];
+            if (srcval instanceof FunctionEntity
+                && dstval instanceof FunctionEntity
+                && srcval.type.equals(dstval.type)) {
+                if (srcval.code === null && dstval.code === null) { continue; }
+                if (srcval.code !== null && dstval.code === null) {
+                    dst.map.set(tuple[0], tuple[1]);
+                }
+                if (srcval.code === null && dstval.code !== null) { continue; }
+                if (srcval.code !== null && dstval.code !== null) {
+                    throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
+                }
+            }
+            if (srcval instanceof Variable
+                && dstval instanceof Variable
+                && srcval.type.equals(dstval.type)) {
+                if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
+                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) { continue; }
+                if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
+                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) {
+                    dst.map.set(tuple[0], tuple[1]);
+                }
+                if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
+                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) { continue; }
+                if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
+                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) {
+                    throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
+                }
+            }
 
-// }
+            throw new LinkerError(`Different definition of ${srcval.toString()} and  ${dstval.toString()}`);
+        }
+    }
+}
 
-// export class Function {
-//     codes: Instruction[];
-//     returnType: Type;
-//     parameterTypes: Type[];
-//     parameterNames: string[];
-//     name: string;
-// }
+export function mergeScopeMap(scopeMaps: Array<Map<string, Scope>>): Map<string, Scope> {
+    const result = new Map<string, Scope>();
+    for (const scopeMap of scopeMaps) {
+        for (const tuple of scopeMap.entries()) {
+            const item = result.get(tuple[0]);
+            if (item === undefined) {
+                result.set(tuple[0], tuple[1]);
+            } else {
+                mergeScopeTo(item, tuple[1]);
+            }
+        }
+    }
+    return result;
+}

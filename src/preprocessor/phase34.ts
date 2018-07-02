@@ -1,4 +1,4 @@
-import {SourceMapGenerator, SourceNode} from "source-map";
+import {SourceNode} from "source-map";
 
 type TokenType = Identifier | PpNumber | CharacterConstant | StringLiteral | Punctuator | PpChar;
 type PreprocessDirective = ObjectLikeDefineDirective | FunctionLikeDefineDirective;
@@ -16,7 +16,6 @@ import {
     ConstantExpressionParser, HeaderNameParser, PreprocessingFileParser, PreprocessingTokenParser,
 } from "../parser";
 
-import {PEG} from "pegjs";
 import {
     BinaryExpression,
     CharacterConstant,
@@ -54,6 +53,7 @@ import {
     UndefDirective,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
+import {Headers} from "../library";
 import {PreprocessingContext} from "./context";
 import {PreprocessedSource} from "./phase12";
 

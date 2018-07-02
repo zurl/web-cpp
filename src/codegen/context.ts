@@ -28,19 +28,30 @@ export class CompileContext {
     public options: CompileOptions;
     public fileName: string;
 
-    constructor(fileName: string, compileOptions: CompileOptions = {}) {
+    constructor(fileName: string, compileOptions: CompileOptions = {}, baseScopeMap?: Map<string, Scope>) {
+        if ( baseScopeMap ) {
+            this.scopeMap = new Map<string, Scope>(baseScopeMap);
+            if (this.scopeMap.has("@root")) {
+                this.currentScope = this.scopeMap.get("@root")!;
+            } else {
+                this.currentScope = new Scope("@root", null);
+                this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
+            }
+        } else {
+            this.scopeMap = new Map<string, Scope>();
+            this.currentScope = new Scope("@root", null);
+            this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
+        }
+        this.currentScope.isRoot = true;
         this.functionMap = new Map<string, FunctionEntity>();
-        this.scopeMap = new Map<string, Scope>();
         this.memory = new MemoryLayout(1000);
         this.currentFunction = null;
-        this.currentScope = new Scope("@root", null);
-        this.currentScope.isRoot = true;
-        this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
         this.globalBuilder = new InstructionBuilder(1024);
         this.currentBuilder = this.globalBuilder;
         this.options = compileOptions;
         this.fileName = fileName;
         this.currentNode = null;
+
     }
 
     public enterScope(name: string | null) {
@@ -114,7 +125,7 @@ export class CompileContext {
         const size = Array.from(this.functionMap.values())
             .filter((func) => func.code !== null)
             .map((func) => (func.code as Assembly).size)
-            .reduce((x, y) => x + y);
+            .reduce((x, y) => x + y, 0);
         const resultBuffer = new ArrayBuffer(size);
         const code = new DataView(resultBuffer);
         const resultArray = new Uint8Array(resultBuffer);

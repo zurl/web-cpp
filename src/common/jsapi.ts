@@ -7,10 +7,7 @@ import {VirtualMachine} from "../vm";
 import {InternalError} from "./error";
 import {FunctionType, PointerType, PrimitiveTypes, Type} from "./type";
 
-interface JsAPIDefine {
-    impl: (vm: VirtualMachine) => void;
-    type: FunctionType;
-}
+export type JsAPIDefine = (vm: VirtualMachine) => void;
 
 class JsAPIContext {
 
@@ -19,10 +16,12 @@ class JsAPIContext {
 const TypeLookUpTable: {
     [key: string]: Type,
 } = {
-    void: PrimitiveTypes.void,
-    int: PrimitiveTypes.int32,
-    double: PrimitiveTypes.double,
-    string: new PointerType(PrimitiveTypes.char),
+    "void": PrimitiveTypes.void,
+    "int": PrimitiveTypes.int32,
+    "uint": PrimitiveTypes.uint32,
+    "double": PrimitiveTypes.double,
+    "string": new PointerType(PrimitiveTypes.char),
+    "void*": new PointerType(PrimitiveTypes.void),
 };
 
 function parseFunctionType(define: string): FunctionType | null {
@@ -46,15 +45,8 @@ function wrapHighAPI(fn: Function, type: FunctionType): (vm: VirtualMachine) => 
     };
 }
 
-export function defineLowAPI(impl: (vm: VirtualMachine) => void, typeString: string): JsAPIDefine {
-    const type = parseFunctionType(typeString);
-    if (type === null) {
-        throw new InternalError(`Incorrect Low Api Function TYpe ${typeString}`);
-    }
-    return {
-        impl,
-        type,
-    };
+export function defineLowAPI(impl: (vm: VirtualMachine) => void): JsAPIDefine {
+    return impl;
 }
 
 export function defineHighAPI(impl: Function, typeString: string): JsAPIDefine {
@@ -62,12 +54,5 @@ export function defineHighAPI(impl: Function, typeString: string): JsAPIDefine {
     if (type === null) {
         throw new InternalError(`Incorrect High Api Function TYpe ${typeString}`);
     }
-    return {
-        impl: wrapHighAPI(impl, type),
-        type,
-    };
+    return wrapHighAPI(impl, type);
 }
-
-export const highlevelapi = defineHighAPI((ctx: JsAPIContext, sb: number): number => {
-    return 0;
-}, "int(int)");

@@ -96,7 +96,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
     }
     // TODO:: call function pointer
-    const fullName = callee.value as string;
+    const entity = callee.value as FunctionEntity;
     if (this.arguments.length !== callee.type.parameterTypes.length) {
         throw new SyntaxError(`expected ${callee.type.parameterTypes.length} parameters,`
             + `actual is ${this.arguments.length}`, this);
@@ -110,8 +110,12 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         loadIntoStack(ctx, val);
     }
     // TODO:: mangled name
-    ctx.unresolve(fullName);
-    ctx.build(OpCode.CALL, 0);
+    ctx.unresolve(entity.fullName);
+    if ( entity.isLibCall ) {
+        ctx.build(OpCode.LIBCALL, 0);
+    } else {
+        ctx.build(OpCode.CALL, 0);
+    }
     return {
         form: ExpressionResultType.RVALUE,
         type: callee.type.returnType,

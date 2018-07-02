@@ -58,7 +58,6 @@ export function transformSourceLocationWithSourceMap(location: SourceLocation,
         offset += sourceLine.length + 1;
     }
 }
-
 function process(fileName: string, source: string, context?: PreprocessingContext) {
     const { code: phase12Code, map: phase12MapGenerator } = phase12.process(fileName, source);
     const phase12Map = phase12MapGenerator.toString();

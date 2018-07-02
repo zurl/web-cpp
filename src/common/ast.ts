@@ -24,7 +24,7 @@ export enum ExpressionResultType {
 export interface ExpressionResult {
     type: Type;
     form: ExpressionResultType;
-    value: Long | number | string;
+    value: Long | number | string | FunctionEntity;
     isConst?: boolean;
 }
 

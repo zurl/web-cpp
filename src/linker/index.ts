@@ -4,9 +4,10 @@
  *  Created at 18/06/2018
  */
 import {CompiledObject} from "../codegen/context";
-import {FunctionEntity, Scope, Variable, VariableStorageType} from "../codegen/scope";
+import {FunctionEntity, mergeScopeMap, Scope, Variable, VariableStorageType} from "../codegen/scope";
 import {LinkerError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
+import {JsAPIDefine} from "../common/jsapi";
 import {PrimitiveTypes, Type} from "../common/type";
 
 interface LinkOptions {
@@ -20,9 +21,11 @@ export interface BinaryObject {
     labelMap: Map<number, string>;
     sourceMap: Map<number, [string, number]>;
     dataMap: Map<number, Variable>;
+    jsAPIList: JsAPIDefine[];
 }
 
-function resolveSymbol(path: string, scopeMap: Map<string, Scope>): Variable | FunctionEntity {
+function resolveSymbol(path: string,
+                       scopeMap: Map<string, Scope>): Variable | FunctionEntity {
     const tokens = path.split("@");
     const scopeName = tokens.slice(0, tokens.length - 1).join("@");
     const name = tokens[tokens.length - 1];
@@ -41,62 +44,6 @@ function resolveSymbol(path: string, scopeMap: Map<string, Scope>): Variable | F
         throw new LinkerError(`no definition for symbol ${name} at ${path}`);
     }
     return item;
-}
-
-function mergeScopeTo(dst: Scope, src: Scope) {
-    for (const tuple of src.map.entries()) {
-        const dstval = dst.map.get(tuple[0]);
-        if (dstval === undefined) {
-            dst.map.set(tuple[0], tuple[1]);
-        } else {
-            const srcval = tuple[1];
-            if (srcval instanceof FunctionEntity
-                && dstval instanceof FunctionEntity
-                && srcval.type.equals(dstval.type)) {
-                if (srcval.code === null && dstval.code === null) { continue; }
-                if (srcval.code !== null && dstval.code === null) {
-                    dst.map.set(tuple[0], tuple[1]);
-                }
-                if (srcval.code === null && dstval.code !== null) { continue; }
-                if (srcval.code !== null && dstval.code !== null) {
-                    throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
-                }
-            }
-            if (srcval instanceof Variable
-                && dstval instanceof Variable
-                && srcval.type.equals(dstval.type)) {
-                if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) { continue; }
-                if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) {
-                    dst.map.set(tuple[0], tuple[1]);
-                }
-                if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) { continue; }
-                if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) {
-                    throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
-                }
-            }
-
-            throw new LinkerError(`Different definition of ${srcval.toString()} and  ${dstval.toString()}`);
-        }
-    }
-}
-
-function mergeScopeMap(scopeMaps: Array<Map<string, Scope>>): Map<string, Scope> {
-    const result = new Map<string, Scope>();
-    for (const scopeMap of scopeMaps) {
-        for (const tuple of scopeMap.entries()) {
-            const item = result.get(tuple[0]);
-            if (item === undefined) {
-                result.set(tuple[0], tuple[1]);
-            } else {
-                mergeScopeTo(item, tuple[1]);
-            }
-        }
-    }
-    return result;
 }
 
 function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: number,
@@ -141,10 +88,22 @@ function shiftMemoryOffset(code: DataView, codeOffset: number, codeLength: numbe
  * 6. select the code entry point: main
  *
  * @param {CompiledObject[]} inputs
+ * @param jsAPIMap
  * @param {LinkOptions} linkOptions
  * @returns {BinaryObject}
  */
-export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): BinaryObject {
+export function link(inputs: CompiledObject[],
+                     jsAPIMap: {[key: string]: JsAPIDefine},
+                     linkOptions: LinkOptions = {}): BinaryObject {
+
+    // prepare js api
+    const jsApiLocMap = new Map<string, number>();
+    const jsAPIList = [];
+    for (const key of Object.keys(jsAPIMap)) {
+        jsApiLocMap.set("@root@" + key, jsAPIList.length);
+        jsAPIList.push(jsAPIMap[key]);
+    }
+
     // merge Scope
     const scopeMaps = inputs.map((input) => input.scopeMap);
     const newScope = mergeScopeMap(scopeMaps);
@@ -201,8 +160,16 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
         for (const tuple of input.globalAssembly.unresolvedSymbols) {
             const symbol = resolveSymbol(tuple[1], newScope);
             if (symbol instanceof FunctionEntity) {
-                code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
-                    + (codeLocMap.get(symbol.fileName) as number) - codeNow);
+                if (symbol.isLibCall) {
+                    const loc = jsApiLocMap.get(symbol.fullName);
+                    if ( loc === undefined) {
+                        throw new LinkerError(`no __libcall impl => ${symbol.fullName}`);
+                    }
+                    code.setUint32(codeNow + tuple[0] + 1, loc);
+                } else {
+                    code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
+                        + (codeLocMap.get(symbol.fileName) as number) - codeNow);
+                }
             } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
@@ -239,9 +206,17 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
         for (const tuple of input.assembly.unresolvedSymbols) {
             const symbol = resolveSymbol(tuple[1], newScope);
             if (symbol instanceof FunctionEntity) {
-                code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
-                    + (codeLocMap.get(symbol.fileName) as number) - codeNow);
-            } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
+                if (symbol.isLibCall) {
+                    const loc = jsApiLocMap.get(symbol.fullName);
+                    if ( loc === undefined) {
+                        throw new LinkerError(`no __libcall impl at ${symbol.fullName}`);
+                    }
+                    code.setUint32(codeNow + tuple[0] + 1, loc);
+                } else {
+                    code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
+                        + (codeLocMap.get(symbol.fileName) as number) - codeNow);
+                }
+             } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
             } else if (symbol.storageType === VariableStorageType.MEMORY_BSS) {
@@ -249,7 +224,7 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);
             } else {
-                throw new LinkerError(`unknown symbol storage type`);
+                throw new LinkerError(`; unknown; symbol; storage; type`);
             }
         }
         shiftMemoryOffset(code, codeNow, input.assembly.size, dataNow, bssNow);
@@ -261,7 +236,7 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
         bssNow += input.bssSize;
     }
 
-    // 4. resolve string constant
+    // 4. resolve string constant & generate debug info
 
     const rootMap = newScope.get("@root")!.map;
     for (const key of rootMap.keys()) {
@@ -288,6 +263,7 @@ export function link(inputs: CompiledObject[], linkOptions: LinkOptions = {}): B
     code.setUint8(globalCodeSize - 1, OpCode.END);
 
     return {
+        jsAPIList,
         code,
         labelMap,
         sourceMap,

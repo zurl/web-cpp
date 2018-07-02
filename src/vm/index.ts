@@ -8,12 +8,14 @@ import {OpCode, OpCodeLimit} from "../common/instruction";
 
 export class VirtualMachine {
     public memory: DataView;
+    public memoryUint8Array: Uint8Array;
     public pc: number;
     public bp: number;
     public sp: number;
 
     constructor(memory: DataView) {
         this.memory = memory;
+        this.memoryUint8Array = new Uint8Array(memory.buffer);
         this.pc = 0;
         this.bp = memory.buffer.byteLength;
         this.sp = this.bp;

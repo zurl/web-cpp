@@ -1,3 +1,5 @@
+const {mergeScopeMap} = require("../../dist/codegen/scope");
+const {Headers, JsAPIMap} = require("../../dist/library");
 const Preprocess = require('../../dist/preprocessor').default;
 const {CParser} = require('../../dist/parser');
 const {codegen} = require('../../dist/codegen/index');
@@ -7,18 +9,29 @@ const Linker = require('../../dist/linker');
 const Assert = require('chai');
 const {Node, SourceLocation} = require("../../dist/common/ast");
 
-function compile(name, source) {
+function compile(name, source, headersMap) {
     const {code, map} = Preprocess.process(name, source);
     const translationUnit = CParser.parse(code);
-    const ctx = new CompileContext(name, {});
+    const ctx = new CompileContext(name, {}, headersMap);
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();
 }
 
+function precompileHeaders(){
+    const scopeMaps = [];
+    for(let header of Object.keys(Headers)){
+        const obj = compile(header, Headers[header]);
+        scopeMaps.push(obj.scopeMap);
+    }
+    return mergeScopeMap(scopeMaps);
+}
+
+const HeaderScopeMap = precompileHeaders();
+
 function generateAsm(testCode) {
-    const obj = compile("test.cpp", testCode);
+    const obj = compile("test.cpp", testCode, HeaderScopeMap);
     const ib = new InstructionBuilder();
-    const bin = Linker.link([obj]);
+    const bin = Linker.link([obj], {});
     ib.codeView = bin.code;
     ib.now = bin.code.buffer.byteLength;
     ib.labels = bin.labelMap;
@@ -87,5 +100,8 @@ module.exports = {
         InstructionBuilder,
         Linker
     },
-    printAST
+    printAST,
+    JsAPIMap,
+    HeaderScopeMap,
+    Headers
 };

@@ -26,7 +26,7 @@ import {
 } from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {CompileContext} from "./context";
-import {Variable, VariableStorageType} from "./scope";
+import {FunctionEntity, Variable, VariableStorageType} from "./scope";
 import {convertTypeOnStack, loadIntoStack, popFromStack} from "./stack";
 
 export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForError: Node): Type {
@@ -136,6 +136,18 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             storageType = VariableStorageType.STACK;
             location = ctx.memory.allocStack(type.length);
         }
+
+        if ( type instanceof FunctionType) {
+            type.name = name;
+            const entity = new FunctionEntity(type.name, ctx.fileName,
+                ctx.currentScope.getScopeName() + "@" + type.name, type);
+            if ( this.specifiers.includes("__libcall") ) {
+                entity.isLibCall = true;
+            }
+            ctx.currentScope.set(name, entity);
+            return;
+        }
+
         ctx.currentScope.set(name, new Variable(
             name, ctx.fileName, type, storageType, location,
         ));
