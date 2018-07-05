@@ -258,4 +258,141 @@ describe('instruction test', function () {
         `;
         TestBase.testCode(testCode, expectCode);
     });
+    it('test struct',function(){
+        const testCode = `
+        struct S1;
+        struct S0{};
+        struct S1{
+            int a;          // + 0 - + 3
+            char b;         // + 4 - + 4
+            struct S1 * c;  // + 5 - +12
+        };
+        int main(){
+           struct S1 s1;    // -12
+           struct S1 s2;    // -24
+           struct S1 * s2p;    // -24
+           s1.a = 1;        // -12
+           s1.b = 2;        // -8
+           s1.c = &s2;      // -7
+           s2.a = 3;        
+           s2.b = 4;
+           s2.c = &s1;
+           s2p = &s2;
+        }
+        `;
+        const expectCode = `
+        SSP -28
+        PI32 1
+        PBP -12
+        SM32
+        PI32 2
+        PBP -8
+        SM8
+        PBP -24
+        PBP -7
+        SM32
+        PI32 3
+        PBP -24
+        SM32
+        PI32 4
+        PBP -20
+        SM8
+        PBP -12
+        PBP -19
+        SM32
+        PBP -24
+        PBP -28
+        SM32
+        `;
+        TestBase.testFullCode(testCode, expectCode);
+    });
+    it('if else elseif',function(){
+        const testCode = `
+        int a = 1;
+        int b = 2;
+        int c = 3;
+        if( a == 0 ){
+            b = 3;
+        }
+        if( a == 1 ){
+            b = 4;
+        } else {
+            b = 5;
+        }
+        if(b == 1){
+            c = 1;
+        } else if( b == 3){
+            c = 2;
+        } else {
+            c = 3;
+        }
+        `;
+        const expectCode = `
+        SSP -12
+        PI32 1
+        PBP -4
+        SM32
+        PI32 2
+        PBP -8
+        SM32
+        PI32 3
+        PBP -12
+        SM32
+        PBP -4
+        LM32
+        PI32 0
+        SUB
+        EQ0
+        JZ 16
+        PI32 3
+        PBP -8
+        SM32
+        PBP -4
+        LM32
+        PI32 1
+        SUB
+        EQ0
+        JZ 21
+        PI32 4
+        PBP -8
+        SM32
+        J 16
+        PI32 5
+        PBP -8
+        SM32
+        PBP -8
+        LM32
+        PI32 1
+        SUB
+        EQ0
+        JZ 21
+        PI32 1
+        PBP -12
+        SM32
+        J 50
+        PBP -8
+        LM32
+        PI32 3
+        SUB
+        EQ0
+        JZ 21
+        PI32 2
+        PBP -12
+        SM32
+        J 16
+        PI32 3
+        PBP -12
+        SM32
+        `;
+        TestBase.testCode(testCode, expectCode);
+    })
 });
+/*
+ it('',function(){
+        const testCode = `
+        `;
+        const expectCode = `
+        `;
+        TestBase.testCode(testCode, expectCode);
+    })
+ */

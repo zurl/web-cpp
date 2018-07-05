@@ -46,6 +46,13 @@ function testCode(testCode, expectCode) {
     Assert.assert.equal(actualPlainCode, expectPlainCode);
 }
 
+function testFullCode(testCode, expectCode) {
+    const actualCode = generateAsm(testCode + "\n");
+    const actualPlainCode = actualCode.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
+    const expectPlainCode = expectCode.trim().split('\n').map(x => x.trim()).join('\n');
+    Assert.assert.equal(actualPlainCode, expectPlainCode);
+}
+
 function print(str, indent){
     let space = "";
     for(let i = 0; i < indent; i++) space += " ";
@@ -108,6 +115,7 @@ function showASM(source, bin){
 module.exports = {
     generateAsm,
     testCode,
+    testFullCode,
     components:{
         Preprocess,
         CParser,

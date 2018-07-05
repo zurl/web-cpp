@@ -29,7 +29,7 @@ a experimental c++ compiler in typescript
 - [ ] bit field of struct
 - [ ] var args (fuck it)
 - [ ] switch case
-- [ ] do-while
+- [ ] do-while break continue
 - [ ] goto
 ## C++ Language
 

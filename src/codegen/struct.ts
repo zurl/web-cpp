@@ -25,26 +25,36 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     const scopeName = ctx.isCpp() ? name : "$" + name;
     if ( this.declarations === null) {
         // incomplete definition;
-        if ( ctx.currentScope.hasInCurrentScope(scopeName) ) {
-            const item = ctx.currentScope.get(scopeName);
+        const item = ctx.currentScope.get(scopeName);
+        if ( item ) {
             if ( !(item instanceof ClassType) ) {
                 throw new SyntaxError(`${item} is not a struct`, this);
             }
             return item;
         } else {
-            const item = new ClassType(name, [], this.union);
-            item.isComplete = false;
-            ctx.currentScope.set(scopeName, item);
-            return item;
+            const newItem = new ClassType(name, [], this.union);
+            newItem.isComplete = false;
+            ctx.currentScope.set(scopeName, newItem);
+            return newItem;
         }
     }
+    let type: ClassType;
     if ( ctx.currentScope.hasInCurrentScope(scopeName) ) {
-        throw new SyntaxError(`redefine struct type name ${scopeName}`, this);
+        const item = ctx.currentScope.get(scopeName);
+        if ( !(item instanceof ClassType) ) {
+            throw new SyntaxError(`${item} is not a struct`, this);
+        }
+        if ( item.isComplete ) {
+            throw new SyntaxError(`redefine struct type name ${scopeName}`, this);
+        } else {
+            type = item;
+        }
+    } else {
+        type = new ClassType(name, [], this.union);
+        ctx.currentScope.set(scopeName, type);
     }
-    const fields = [] as ClassField[];
-    const type = new ClassType(name, fields, this.union);
+    const fields = type.fields;
     type.isComplete = false;
-    ctx.currentScope.set(scopeName, type);
     let curOffset = 0;
     for (const decl of this.declarations) {
         const baseType = parseTypeFromSpecifiers(ctx, decl.specifierQualifiers, this);

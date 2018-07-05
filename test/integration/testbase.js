@@ -1,6 +1,7 @@
 const {fromBytesToString} = require( "../../dist/common/utils");
 const CodeGenTestBase = require("../codegen/testbase");
 const {VirtualMachine} = require("../../dist/vm/index");
+const Assert = require('chai');
 const TestRunScopeMap = CodeGenTestBase.mergeScopeMap([
     CodeGenTestBase.HeaderScopeMap,
     CodeGenTestBase.compile("testrun.h", `
@@ -8,6 +9,7 @@ const TestRunScopeMap = CodeGenTestBase.mergeScopeMap([
     __libcall void puts(void *str);
 `).scopeMap]
 );
+
 
 function testRun(source, debug){
     let options = {};
@@ -43,6 +45,15 @@ function testRun(source, debug){
     throw "code run too much";
 }
 
+
+function testRunCompareResult(source, expectOutput){
+    const actualOutput = testRun("int main(){ " + source + " return 0; }\n");
+    const actualPlainOutput = actualOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
+    const expectPlainOutput = expectOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
+    Assert.assert.equal(actualPlainOutput, expectPlainOutput);
+}
+
 module.exports = {
-    testRun
+    testRun,
+    testRunCompareResult
 };

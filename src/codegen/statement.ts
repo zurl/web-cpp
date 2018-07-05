@@ -21,10 +21,12 @@ CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
     this.body.map((node) => node.codegen(ctx));
     ctx.exitScope();
 };
+
 ExpressionStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
     this.expression.codegen(ctx);
 };
+
 ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
     // TODO:: return type check;
@@ -37,21 +39,6 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.build(OpCode.RET, ctx.currentFunction!.parametersSize);
 };
 
-/*
-pattern1:
-    push expr
-    JZ L1
-    ..if..
-L:
-pattern2:
-    push expr
-L1: JZ L2
-    ..if..
-    J L3
-L2: ..else..
-    ...
-L3:
- */
 IfStatement.prototype.codegen = function(ctx: CompileContext) {
     const condition = this.test.codegen(ctx);
     ctx.currentNode = this;

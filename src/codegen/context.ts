@@ -16,6 +16,11 @@ interface CompileOptions {
     eliminateConstantVariable?: boolean;
 }
 
+interface LoopContext {
+    breakPoint: number;
+    continuePoint: number;
+}
+
 export class CompileContext {
 
     public fileName: string;
@@ -30,6 +35,7 @@ export class CompileContext {
     public currentNode: Node | null;
     public globalBuilder: InstructionBuilder;
     public currentBuilder: InstructionBuilder;
+    public loopContext: LoopContext | null;
 
     constructor(fileName: string, compileOptions: CompileOptions = {}, baseScopeMap?: Map<string, Scope>) {
         if ( baseScopeMap ) {
@@ -54,7 +60,7 @@ export class CompileContext {
         this.options = compileOptions;
         this.fileName = fileName;
         this.currentNode = null;
-
+        this.loopContext = null;
     }
 
     public isCpp(): boolean {
