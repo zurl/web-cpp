@@ -16,6 +16,14 @@ int main(){
     mystring[2] = 48;
     mystring[3] = 0;
     puts(mystring);
+    int i = 0;
+    while( i < 10 ){
+        i = i + 1;
+        if( i == 5 ) continue;
+        if( i > 8 ) break;
+        print(i);
+        
+    }
     return 0;
 }
 `;

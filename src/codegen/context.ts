@@ -17,8 +17,8 @@ interface CompileOptions {
 }
 
 interface LoopContext {
-    breakPoint: number;
-    continuePoint: number;
+    breakPos: number[];
+    continuePos: number[];
 }
 
 export class CompileContext {

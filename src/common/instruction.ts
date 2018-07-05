@@ -42,7 +42,7 @@ export enum OpCode {
     PUI32, // push u32
     PDATA, // push $data + u32
     PBSS,  // push $bss + u32
-    LIBCALL,
+    LIBCALL, // SYNC CALL
     CALL,  // [--$sp] = $pc
            // [--$sp] = $bp
            // $bp = $sp

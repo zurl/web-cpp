@@ -29,8 +29,10 @@ a experimental c++ compiler in typescript
 - [ ] bit field of struct
 - [ ] var args (fuck it)
 - [ ] switch case
-- [ ] do-while break continue
+- [ ] do-while
+- [X] break continue
 - [ ] goto
+- [ ] js highlevel api
 ## C++ Language
 
 ### reference

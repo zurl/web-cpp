@@ -27,6 +27,11 @@ int main(){
     static int d;
     p0.c = 1;
     p0.q = 3;
+    int i = 0;
+    while( i < 10 ){
+        if( i < 5) continue;
+        break;
+    }
     __jlibc__print_integer(sizeof(struct TestStruct));
 }
 `;
