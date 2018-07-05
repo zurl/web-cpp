@@ -51,7 +51,39 @@ describe('vm test cases', function () {
             {sp: -4, stop_i32: 8888 % 7171});
 
     });
-    it('UINT +-*/%', function () {
+    it('INT && || & | ', function () {
+        TestBase.testASMCode(['PI32 1234', 'PI32 1234', 'LAND'],
+            {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 0', 'PI32 1234', 'LAND'],
+            {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 8888', 'PI32 7777', 'LOR'],
+            {sp: -4, stop_i32: 1});
+        TestBase.testASMCode(['PI32 0', 'PI32 0', 'LOR'],
+            {sp: -4, stop_i32: 0});
+        const pre = ['PI32 8888', 'PI32 7777'];
+        TestBase.testASMCode([...pre, 'AND'],
+            {sp: -4, stop_i32: 8888 & 7777});
+        TestBase.testASMCode([...pre, 'OR'],
+            {sp: -4, stop_i32: 8888 | 7777});
+    });
+    it('INT >> <<', function () {
+        const pre = ['PI32 8888', 'PI32 5'];
+        TestBase.testASMCode([...pre, 'SHR'],
+            {sp: -4, stop_i32: 8888 >> 5});
+        TestBase.testASMCode([...pre, 'SHL'],
+            {sp: -4, stop_i32: 8888 << 5});
+
+    });
+    it('INT - ! ~', function () {
+        TestBase.testASMCode(['PI32 8888', 'NOT'],
+            {sp: -4, stop_i32: 0});
+        TestBase.testASMCode(['PI32 8888', 'INV'],
+            {sp: -4, stop_i32: -8889});
+        TestBase.testASMCode(['PI32 8888', 'NEG'],
+            {sp: -4, stop_i32: -8888});
+
+    });
+    it('UINT +-*/% >>>', function () {
         const pre = ['PUI32 8888', 'PUI32 7171'];
         TestBase.testASMCode([...pre, 'ADDU'],
             {sp: -4, stop_i32: 8888 + 7171});
@@ -63,6 +95,8 @@ describe('vm test cases', function () {
             {sp: -4, stop_i32: parseInt(8888 / 7171)});
         TestBase.testASMCode([...pre, 'MODU'],
             {sp: -4, stop_i32: 8888 % 7171});
+        TestBase.testASMCode(['PUI32 8888', 'PUI32 5', 'SHRU'],
+            {sp: -4, stop_i32: 8888 >>> 5});
 
     });
     it('FLOAT +-*/%', function () {

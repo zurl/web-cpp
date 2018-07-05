@@ -70,7 +70,7 @@ export class VirtualMachine {
                 const i1 = this.popUint32();
                 this.memory.setUint32(addr, i1);
                 this.memory.setUint32(addr + 4, i0);
-            } else if (op <= OpCode.MOD) {
+            } else if (op <= OpCode.OR) {
                 const i1 = this.memory.getInt32(this.sp);
                 const i0 = this.memory.getInt32(this.sp + 4);
                 let ret = 0;
@@ -82,11 +82,36 @@ export class VirtualMachine {
                     ret = i0 * i1;
                 } else if (op === OpCode.DIV) {
                     ret = parseInt((i0 / i1) as any);
-                } else {
+                } else if (op === OpCode.MOD) {
                     ret = i0 % i1;
+                } else if (op === OpCode.SHL) {
+                    ret = i0 << i1;
+                } else if (op === OpCode.SHR) {
+                    ret = i0 >> i1;
+                } else if (op === OpCode.LAND) {
+                    ret = +!!(i0 && i1);
+                } else if (op === OpCode.LOR) {
+                    ret = +!!(i0 || i1);
+                } else if (op === OpCode.AND) {
+                    ret = i0 & i1;
+                } else if (op === OpCode.OR) {
+                    ret = i0 | i1;
+                } else if (op === OpCode.XOR) {
+                    ret = i0 ^ i1;
                 }
                 this.memory.setInt32(this.sp + 4, ret);
                 this.sp += 4;
+            } else if (op <= OpCode.INV) {
+                const i0 = this.memory.getInt32(this.sp);
+                let ret = 0;
+                if (op === OpCode.NOT) {
+                    ret = +!i0;
+                } else if (op === OpCode.NEG) {
+                    ret = -i0;
+                } else if (op === OpCode.INV) {
+                    ret = ~i0;
+                }
+                this.memory.setInt32(this.sp, ret);
             } else if (op <= OpCode.MODU) {
                 const i1 = this.memory.getUint32(this.sp);
                 const i0 = this.memory.getUint32(this.sp + 4);
@@ -97,6 +122,8 @@ export class VirtualMachine {
                     ret = i0 - i1;
                 } else if (op === OpCode.MULU) {
                     ret = i0 * i1;
+                } else if (op === OpCode.SHRU) {
+                    ret = i0 >>> i1;
                 } else if (op === OpCode.DIVU) {
                     ret = parseInt((i0 / i1) as any);
                 } else {

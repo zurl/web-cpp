@@ -32,7 +32,7 @@ export enum OpCode {
     ADD, SUB, MUL, DIV, MOD,
     SHL, SHR, LAND, LOR, XOR, AND, OR,
     NOT, NEG, INV,
-    ADDU, SUBU, MULU, DIVU, MODU,
+    ADDU, SUBU, MULU, DIVU, SHRU, MODU,
     ADDF, SUBF, MULF, DIVF, MODF,
     GT0, LT0, EQ0, NEQ0, LTE0, GTE0,
     NOP, PRINT, // <== no impl
