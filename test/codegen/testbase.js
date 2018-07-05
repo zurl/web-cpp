@@ -8,6 +8,7 @@ const {InstructionBuilder} = require('../../dist/common/instruction');
 const Linker = require('../../dist/linker');
 const Assert = require('chai');
 const {Node, SourceLocation} = require("../../dist/common/ast");
+const {dumpScopeMap} = require("../../dist/codegen/scope");
 
 function compile(name, source, headersMap, options = {}) {
     const {code, map} = Preprocess.process(name, source);
@@ -121,5 +122,6 @@ module.exports = {
     HeaderScopeMap,
     Headers,
     mergeScopeMap,
-    showASM
+    showASM,
+    dumpScopeMap
 };

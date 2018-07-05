@@ -2,12 +2,12 @@ import {
     AssignmentExpression, BinaryExpression, CallExpression,
     FloatingConstant,
     Identifier,
-    IntegerConstant,
+    IntegerConstant, MemberExpression,
     ParenthesisExpression, SubscriptExpression, UnaryExpression,
 } from "../common/ast";
-import {InternalError, TypeError} from "../common/error";
+import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
-    ArithmeticType, ArrayType, extractRealType,
+    ArithmeticType, ArrayType, ClassType, extractRealType,
     FloatType,
     FunctionType, Int64Type,
     IntegerType,
@@ -128,6 +128,28 @@ SubscriptExpression.prototype.deduceType = function(ctx: CompileContext): Type {
             this.subscript,
         ),
     ).deduceType(ctx);
+};
+
+MemberExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    const left = this.pointed ?
+        new UnaryExpression(this.location, "*", this.object).deduceType(ctx)
+        : this.object.deduceType(ctx);
+    let rawType = left;
+    if ( rawType instanceof LeftReferenceType) {
+        rawType = rawType.elementType;
+    }
+    if ( !(rawType instanceof ClassType)) {
+        throw new SyntaxError(`only struct/class could be get member`, this);
+    }
+    const field = rawType.fieldMap.get(this.member.name);
+    if ( !field ) {
+        throw new SyntaxError(`property ${this.member.name} does not appear on ${rawType.name}`, this);
+    }
+    if ( left instanceof LeftReferenceType) {
+        return new LeftReferenceType(field.type);
+    } else {
+        return field.type;
+    }
 };
 
 export function expression_type() {

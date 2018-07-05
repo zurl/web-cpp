@@ -832,6 +832,9 @@ StructOrUnionSpecifier
     = structOrUnion:StructOrUnion _ identifier:Identifier? _ '{' _ declarations:StructDeclarationList _ &!'}' {
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, declarations);
     }
+    / structOrUnion:StructOrUnion _ identifier:Identifier '{' _ &!'}'{
+        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, []);
+    }
     / structOrUnion:StructOrUnion _ identifier:Identifier {
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, null);
     }

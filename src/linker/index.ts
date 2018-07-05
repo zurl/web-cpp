@@ -4,11 +4,11 @@
  *  Created at 18/06/2018
  */
 import {CompiledObject} from "../codegen/context";
-import {FunctionEntity, mergeScopeMap, Scope, Variable, VariableStorageType} from "../codegen/scope";
+import {mergeScopeMap, Scope} from "../codegen/scope";
 import {LinkerError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
 import {JsAPIDefine} from "../common/jsapi";
-import {PrimitiveTypes, Type} from "../common/type";
+import {FunctionEntity, PrimitiveTypes, Type, Variable, VariableStorageType} from "../common/type";
 
 interface LinkOptions {
     debugMode?: boolean;
@@ -21,6 +21,7 @@ export interface BinaryObject {
     labelMap: Map<number, string>;
     sourceMap: Map<number, [string, number]>;
     dataMap: Map<number, Variable>;
+    scopeMap: Map<string, Scope>;
     jsAPIList: JsAPIDefine[];
 }
 
@@ -270,5 +271,6 @@ export function link(inputs: CompiledObject[],
         dataStart: globalCodeSize + codeSize,
         bssSize,
         dataMap,
+        scopeMap: newScope,
     };
 }

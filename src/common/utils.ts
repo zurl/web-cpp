@@ -75,3 +75,9 @@ export function fromBytesToString(data: DataView, start: number) {
     }
     return result;
 }
+
+export function getIndent(indent: number): string {
+    let result = "";
+    for (let i = 0; i < indent; i++) { result += "\t"; }
+    return result;
+}

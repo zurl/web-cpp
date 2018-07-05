@@ -1,7 +1,6 @@
 const {fromBytesToString} = require( "../../dist/common/utils");
 const CodeGenTestBase = require("../codegen/testbase");
 const {VirtualMachine} = require("../../dist/vm/index");
-
 const TestRunScopeMap = CodeGenTestBase.mergeScopeMap([
     CodeGenTestBase.HeaderScopeMap,
     CodeGenTestBase.compile("testrun.h", `
@@ -27,7 +26,10 @@ function testRun(source, debug){
             print,
             puts
         }, options);
-    if(debug)CodeGenTestBase.showASM(source, bin);
+    if(debug) {
+        CodeGenTestBase.showASM(source, bin);
+
+    }
     const memoryBuffer = new ArrayBuffer(10000);
     const memory = new DataView(memoryBuffer);
     const memoryArray = new Uint8Array(memoryBuffer);

@@ -7,9 +7,11 @@ const MACHINE_POINTER_LENGTH = 4;
 export abstract class Type {
 
     public isExtern: boolean;
+    public isStatic: boolean;
 
     constructor() {
         this.isExtern = false;
+        this.isStatic = false;
     }
 
     abstract get length(): number;
@@ -228,9 +230,36 @@ enum AccessControl {
     Protected,
 }
 
+export interface ClassField {
+    name: string;
+    type: Type;
+    startOffset: number;
+}
+
 export class ClassType extends Type {
+
+    public isComplete: boolean;
+    public name: string;
+    public fields: ClassField[];
+    public fieldMap: Map<string, ClassField>;
+
+    constructor(name: string, fields: ClassField[]) {
+        super();
+        this.name = name;
+        this.fields = fields;
+        this.isComplete = true;
+        this.fieldMap = new Map<string, ClassField>();
+    }
+
+    public buildFieldMap() {
+        this.fieldMap = new Map<string, ClassField>(
+            this.fields.map( (x) => [x.name, x] as [string, ClassField]));
+    }
+
     get length(): number {
-        return 0;
+        return this.fields
+            .map((field) => field.type.length)
+            .reduce((x, y) => x + y, 0);
     }
 
     public toString() {
@@ -361,5 +390,57 @@ export function extractRealType(rawType: Type) {
         return rawType.elementType;
     } else {
         return rawType;
+    }
+}
+
+export enum VariableStorageType {
+    STACK,
+    MEMORY_DATA,
+    MEMORY_BSS,
+    MEMORY_EXTERN,
+}
+
+export class Variable {
+    public name: string;
+    public fileName: string;
+    public type: Type;
+    public storageType: VariableStorageType;
+    public location: number | string;
+
+    constructor(name: string, fileName: string, type: Type,
+                storageType: VariableStorageType, location: number | string) {
+        this.name = name;
+        this.fileName = fileName;
+        this.type = type;
+        this.storageType = storageType;
+        this.location = location;
+    }
+
+    public toString() {
+        return `${this.name}:${this.type.toString()}`;
+    }
+}
+
+export class FunctionEntity {
+    public name: string;
+    public fileName: string;
+    public code: Assembly | null;
+    public location: string | number;
+    public type: FunctionType;
+    public fullName: string;
+    public isLibCall: boolean;
+    public parametersSize: number;
+
+    constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
+        this.name = name;
+        this.fileName = fileName;
+        this.code = null;
+        this.type = type;
+        this.location = 0;
+        this.fullName = fullName;
+        this.isLibCall = false;
+        this.parametersSize = type.parameterTypes
+            .map((x) => x.length)
+            .reduce((x, y) => x + y, 0);
     }
 }

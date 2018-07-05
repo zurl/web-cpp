@@ -6,8 +6,9 @@
 import {Node} from "../common/ast";
 import {InternalError} from "../common/error";
 import {Assembly, InstructionBuilder, OpCode} from "../common/instruction";
+import {FunctionEntity} from "../common/type";
 import {MemoryLayout} from "./memory";
-import {FunctionEntity, Scope} from "./scope";
+import {Scope} from "./scope";
 
 interface CompileOptions {
     debugMode?: boolean;
@@ -16,17 +17,19 @@ interface CompileOptions {
 }
 
 export class CompileContext {
+
+    public fileName: string;
+    public options: CompileOptions;
+
     public scopeMap: Map<string, Scope>;
+    public memory: MemoryLayout;
+
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
     public currentScope: Scope;
-    public memory: MemoryLayout;
-
     public currentNode: Node | null;
     public globalBuilder: InstructionBuilder;
     public currentBuilder: InstructionBuilder;
-    public options: CompileOptions;
-    public fileName: string;
 
     constructor(fileName: string, compileOptions: CompileOptions = {}, baseScopeMap?: Map<string, Scope>) {
         if ( baseScopeMap ) {
@@ -54,6 +57,10 @@ export class CompileContext {
 
     }
 
+    public isCpp(): boolean {
+        return !!this.options.experimentalCpp;
+    }
+
     public enterScope(name: string | null) {
         if (name === null) {
             name = this.currentScope.children.length.toString();
@@ -76,10 +83,10 @@ export class CompileContext {
         }
     }
 
-    public enterFunction(name: string, functionEntity: FunctionEntity) {
-        this.functionMap.set(name, functionEntity);
-        this.currentScope.set(name, functionEntity);
-        this.enterScope(name);
+    public enterFunction(functionEntity: FunctionEntity) {
+        this.functionMap.set(functionEntity.fullName, functionEntity);
+        this.currentScope.set(functionEntity.name, functionEntity);
+        this.enterScope(functionEntity.name);
         this.memory.enterFunction();
         this.currentBuilder = new InstructionBuilder(1024);
         this.currentFunction = functionEntity;
@@ -111,13 +118,6 @@ export class CompileContext {
 
     public raiseWarning(content: string) {
         console.log("[Warning]: " + content);
-    }
-
-    get buildNow(): number {
-        if (this.currentBuilder == null) {
-            throw new InternalError(`this.currentBuilder==null`);
-        }
-        return this.currentBuilder.now;
     }
 
     // only call once

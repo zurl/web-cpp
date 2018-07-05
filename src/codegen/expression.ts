@@ -36,10 +36,10 @@ import {
     UnsignedInt16Type,
     UnsignedInt32Type,
     UnsignedInt64Type,
-    UnsignedIntegerType,
+    UnsignedIntegerType, VariableStorageType,
 } from "../common/type";
+import {FunctionEntity} from "../common/type";
 import {CompileContext} from "./context";
-import {FunctionEntity, VariableStorageType} from "./scope";
 import {convertTypeOnStack, loadAddress, loadIntoStack, loadReference, popFromStack} from "./stack";
 
 ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
@@ -499,6 +499,8 @@ export function doVarInit(ctx: CompileContext, left: ExpressionResult,
         ctx.memory.data.setFloat32(leftValue, rightValue);
     } else if (left.type instanceof DoubleType) {
         ctx.memory.data.setFloat64(leftValue, rightValue);
+    } else {
+        throw new InternalError(`unsupport type assignment`);
     }
     return left;
 }

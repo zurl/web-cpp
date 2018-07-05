@@ -13,10 +13,18 @@ import {
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
-import {extractRealType, FunctionType, PointerType, QualifiedType, Type} from "../common/type";
+import {
+    extractRealType,
+    FunctionType,
+    PointerType,
+    QualifiedType,
+    Type,
+    Variable,
+    VariableStorageType,
+} from "../common/type";
+import {FunctionEntity} from "../common/type";
 import {CompileContext} from "./context";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
-import {FunctionEntity, Variable, VariableStorageType} from "./scope";
 import {convertTypeOnStack, loadFromMemory, loadIntoStack} from "./stack";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
@@ -38,7 +46,7 @@ ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string
     // TODO:: deal with abstract Declarator
     const parameters = this.parameters.map((parameter) =>
         parseDeclarator(ctx, parameter.declarator as Declarator,
-            parseTypeFromSpecifiers(parameter.specifiers, this)));
+            parseTypeFromSpecifiers(ctx, parameter.specifiers, this)));
     const parameterTypes = parameters.map((x) => x[0]);
     const parameterNames = parameters.map((x) => x[1]);
     return [parameterTypes, parameterNames];
@@ -55,7 +63,7 @@ ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string
  */
 FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
-    const resultType = parseTypeFromSpecifiers(this.specifiers, this);
+    const resultType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
     if (resultType == null) {
         throw new SyntaxError(`illegal return type`, this);
     }
@@ -65,17 +73,20 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     }
     const functionEntity = new FunctionEntity(functionType.name, ctx.fileName,
         ctx.currentScope.getScopeName() + "@" + functionType.name, functionType);
-    if (ctx.scopeMap.get(functionEntity.name) !== undefined) {
-        throw new SyntaxError(`The function name ${functionType.name} has been defined`, this);
+    if (ctx.scopeMap.get(functionEntity.fullName) !== undefined) {
+        throw new SyntaxError(`The function name ${functionEntity.fullName} has been defined`, this);
     }
-    ctx.enterFunction(functionEntity.name, functionEntity);
+    ctx.enterFunction(functionEntity);
     // alloc parameters
     let loc = 8;
     for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
-        if (!name) {
+        if (!name ) {
             throw new SyntaxError(`unnamed parameter`, this);
+        }
+        if (!ctx.currentScope.map.has(name)) {
+            throw new SyntaxError(`redefined parameter`, this);
         }
         ctx.currentScope.set(name, new Variable(
             name, ctx.fileName, type, VariableStorageType.STACK, loc,

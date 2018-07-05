@@ -4,62 +4,9 @@
  *  Created at 18/06/2018
  */
 
-import {FunctionDefinition} from "../common/ast";
-import {LinkerError} from "../common/error";
-import {Assembly} from "../common/instruction";
-import {FunctionType, Type} from "../common/type";
-
-export enum VariableStorageType {
-    STACK,
-    MEMORY_DATA,
-    MEMORY_BSS,
-    MEMORY_EXTERN,
-}
-
-export class Variable {
-    public name: string;
-    public fileName: string;
-    public type: Type;
-    public storageType: VariableStorageType;
-    public location: number | string;
-
-    constructor(name: string, fileName: string, type: Type,
-                storageType: VariableStorageType, location: number | string) {
-        this.name = name;
-        this.fileName = fileName;
-        this.type = type;
-        this.storageType = storageType;
-        this.location = location;
-    }
-
-    public toString() {
-        return `${this.name}:${this.type.toString()}`;
-    }
-}
-
-export class FunctionEntity {
-    public name: string;
-    public fileName: string;
-    public code: Assembly | null;
-    public location: string | number;
-    public type: FunctionType;
-    public fullName: string;
-    public isLibCall: boolean;
-    public parametersSize: number;
-
-    constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
-        this.name = name;
-        this.fileName = fileName;
-        this.code = null;
-        this.type = type;
-        this.location = 0;
-        this.fullName = fullName;
-        this.isLibCall = false;
-        this.parametersSize = type.parameterTypes
-            .map( (x) => x.length)
-            .reduce( (x, y) => x + y, 0);
-    }
-}
+import {InternalError, LinkerError} from "../common/error";
+import {FunctionEntity, Type, Variable, VariableStorageType} from "../common/type";
+import {getIndent} from "../common/utils";
 
 export class Scope {
     public name: string;
@@ -90,7 +37,14 @@ export class Scope {
     }
 
     public set(key: string, value: Variable | FunctionEntity | Type) {
+        if ( this.map.has(key) ) {
+            throw new InternalError(`redefined key at set() ${key}`);
+        }
         this.map.set(key, value);
+    }
+
+    public hasInCurrentScope(key: string): boolean {
+        return this.map.has(key);
     }
 
     public getScopeName(): string {
@@ -148,6 +102,26 @@ export function mergeScopeMap(scopeMaps: Array<Map<string, Scope>>): Map<string,
                 result.set(tuple[0], tuple[1]);
             } else {
                 mergeScopeTo(item, tuple[1]);
+            }
+        }
+    }
+    return result;
+}
+
+export function dumpScopeMap(scopeMap: Map<string, Scope>): string {
+    let result = "";
+    for (const scope of scopeMap.values()) {
+        result += `[${scope.getScopeName()}]:\n`;
+        for (const key of scope.map.keys()) {
+            const item = scope.map.get(key);
+            if ( item instanceof Type) {
+                result += `\t(Type)${key}: ${item.toString()}\n`;
+            } else if ( item instanceof FunctionEntity) {
+                result += `\t(Func)${key}: ${item.type.toString()}\n`;
+            } else if ( item instanceof Variable) {
+                result += `\t(Var)${key}: ${item.type.toString()},` +
+                    `${VariableStorageType[item.storageType]}, len=${item.type.length}`
+                    + `, loc=${item.location}\n`;
             }
         }
     }

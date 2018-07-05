@@ -6,8 +6,6 @@
 
 import {PEG, PegjsError} from "pegjs";
 import {Node, SourceLocation} from "./ast";
-import {Type} from "./type";
-import LocationRange = PEG.LocationRange;
 
 export class FatalError extends Error {
 }

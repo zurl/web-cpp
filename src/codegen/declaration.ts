@@ -5,13 +5,25 @@
  */
 import * as Long from "long";
 import {
-    ArrayDeclarator, AssignmentExpression,
+    ArrayDeclarator,
+    AssignmentExpression,
     Declaration,
     Declarator,
+    EnumSpecifier,
     ExpressionResultType,
-    FunctionDeclarator, Identifier, IdentifierDeclarator, InitializerList,
+    FunctionDeclarator,
+    Identifier,
+    IdentifierDeclarator,
+    InitializerList,
     Node,
-    ParameterList, Pointer, PointerDeclarator, SpecifierType, TranslationUnit,
+    ParameterList,
+    Pointer,
+    PointerDeclarator,
+    SpecifierType,
+    StructDeclarator,
+    StructOrUnionSpecifier,
+    TranslationUnit,
+    TypedefName,
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {
@@ -22,21 +34,32 @@ import {
     IntegerType,
     PointerType,
     QualifiedType,
-    Type,
+    Type, Variable, VariableStorageType,
 } from "../common/type";
+import {FunctionEntity} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
 import {CompileContext} from "./context";
-import {FunctionEntity, Variable, VariableStorageType} from "./scope";
-import {convertTypeOnStack, loadIntoStack, popFromStack} from "./stack";
 
-export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForError: Node): Type {
+export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: SpecifierType[], nodeForError: Node): Type {
     let resultType: Type | null = null;
     const typeNodes = specifiers.filter((x) => typeof(x) !== "string");
     const stringNodes = specifiers.filter((x) => typeof(x) === "string") as string[];
     if (typeNodes.length !== 0) {
+        if ( typeNodes.length !== 1) {
+            throw new SyntaxError(`illegal syntax`, nodeForError);
+        }
+        const node = typeNodes[0];
+        if ( node instanceof StructOrUnionSpecifier) {
+            resultType = node.codegen(ctx) as Type;
+        } else if ( node instanceof TypedefName) {
+            resultType = node.codegen(ctx) as Type;
+        } else if ( node instanceof EnumSpecifier) {
+            throw new InternalError(`unsupport type`);
+        } else {
+            throw new InternalError(`unsupport type`);
+        }
         // complex types
         // TODO::
-        throw new InternalError(`unsupport type`);
     } else {
         // primitive types
         const typeNames = stringNodes.filter(isTypeSpecifier).sort();
@@ -54,12 +77,15 @@ export function parseTypeFromSpecifiers(specifiers: SpecifierType[], nodeForErro
     if (stringNodes.indexOf("extern") !== -1) {
         resultType.isExtern = true;
     }
+    if (stringNodes.indexOf("static") !== -1) {
+        resultType.isStatic = true;
+    }
     return resultType;
 }
 
 export function parseDeclarator(ctx: CompileContext, node: Declarator,
                                 resultType: Type): [Type, string] {
-    if (node == null) {
+    if (node === null) {
         return [resultType, ""];
     } else if (node instanceof IdentifierDeclarator) {
         return [resultType, node.identifier.name];
@@ -109,19 +135,22 @@ TranslationUnit.prototype.codegen = function(ctx: CompileContext) {
 
 Declaration.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
-    const baseType = parseTypeFromSpecifiers(this.specifiers, this);
+    const baseType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
     for (const declarator of this.initDeclarators) {
         const [type, name] = parseDeclarator(ctx, declarator.declarator, baseType);
         if (ctx.currentScope.getInCurrentScope(name) != null) {
             throw new SyntaxError("Redeclaration of name " + name, this);
         }
+        if ( type instanceof ClassType && !type.isComplete) {
+            throw new SyntaxError(`cannot instancelize incomplete type`, this);
+        }
         let storageType = VariableStorageType.STACK;
         let location: number | string = 0;
-        if (ctx.currentScope.isRoot) {
+        if (ctx.currentScope.isRoot || type.isStatic) {
             if (type.isExtern) {
                 storageType = VariableStorageType.MEMORY_EXTERN;
                 location = ctx.currentScope.getScopeName() + "@" + name;
-            } else if (declarator.initializer != null) {
+            } else if (declarator.initializer !== null) {
                 storageType = VariableStorageType.MEMORY_DATA;
                 location = ctx.memory.allocData(type.length);
             } else {
@@ -135,6 +164,10 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             // TODO:: support static function variable;
             storageType = VariableStorageType.STACK;
             location = ctx.memory.allocStack(type.length);
+        }
+
+        if (ctx.currentScope.hasInCurrentScope(name)) {
+            throw new SyntaxError(`redefined name ${name}`, this);
         }
 
         if ( type instanceof FunctionType) {
@@ -163,6 +196,14 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             expr.codegen(ctx);
         }
     }
+};
+
+TypedefName.prototype.codegen = function(ctx: CompileContext) {
+    const item = ctx.currentScope.get(this.identifier.name);
+    if ( item && item instanceof Type) {
+        return item;
+    }
+    throw new SyntaxError(`${this.identifier.name} is not a type`, this);
 };
 
 export function declaration() {

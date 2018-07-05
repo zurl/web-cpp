@@ -12,18 +12,21 @@ a experimental c++ compiler in typescript
 - [X] += -= *= /= ...
 - [X] vm
 - [X] array
+- [ ] sizeof
 - [ ] typedef
 - [ ] enum
+- [ ] union
 - [X] js native function
 - [X] string
 - [X] var initilizer
 - [X] data segment data
 - [ ] doConstant about < > <= >= == & && | || >> <<
-- [ ] struct / class
+- [X] struct / class
 - [ ] cast ope
 - [ ] const
 - [ ] non-return detect
 - [X] function call parameter type conversion
+- [ ] bit field of struct
 
 ## C++ Language
 
@@ -35,3 +38,11 @@ a experimental c++ compiler in typescript
 > virtual function
 ### exception
 ### template
+
+
+## Notes
+
+Name Mangling
+
+global var: @var1
+local var:  @foo@var1

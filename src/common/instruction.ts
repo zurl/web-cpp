@@ -4,8 +4,8 @@
  *  Created at 16/06/2018
  */
 
-import {Variable} from "../codegen/scope";
 import {InternalError} from "./error";
+import {Variable} from "./type";
 import {
     CharType, DoubleType,
     FloatType,
@@ -13,7 +13,7 @@ import {
     Int32Type, PrimitiveTypes, QualifiedType,
     UnsignedCharType,
     UnsignedInt16Type,
-    UnsignedInt32Type,
+    UnsignedInt32Type, VariableStorageType,
 } from "./type";
 import {fromBytesToString, toHexString} from "./utils";
 //          12|  param 2    |
@@ -30,6 +30,8 @@ export enum OpCode {
     // S_HIGH.... item address .....S_LOW
     SM8, SM16, SM32, SM64,
     ADD, SUB, MUL, DIV, MOD,
+    SHL, SHR, LAND, LOR, XOR, AND, OR,
+    NOT, NEG, INV,
     ADDU, SUBU, MULU, DIVU, MODU,
     ADDF, SUBF, MULF, DIVF, MODF,
     GT0, LT0, EQ0, NEQ0, LTE0, GTE0,
@@ -226,6 +228,9 @@ export class InstructionBuilder {
         let result = "DATA:\n";
         for (const line of dataMap.keys()) {
             const item = dataMap.get(line)!;
+            if ( item.storageType !== VariableStorageType.MEMORY_DATA) {
+                continue;
+            }
             result += toHexString(line) + "\t" + item.fileName + "@" + item.name + "\t:\t";
             let itemType = item.type;
             while ( itemType instanceof QualifiedType) {

@@ -1,7 +1,7 @@
 import * as Long from "long";
 import {CompileContext} from "../codegen/context";
-import {FunctionEntity} from "../codegen/scope";
 import {InternalError} from "./error";
+import {FunctionEntity} from "./type";
 import {Type} from "./type";
 
 export type SpecifierType =
@@ -26,6 +26,7 @@ export interface ExpressionResult {
     form: ExpressionResultType;
     value: Long | number | string | FunctionEntity;
     isConst?: boolean;
+    offset?: number;
 }
 
 export class Position {
@@ -120,15 +121,13 @@ export class Expression extends Node {
 
 export class Identifier extends Expression {
     public name: string;
-    public mangledName: string | null;
 
     constructor(location: SourceLocation, name: string) {
         super(location);
         this.name = name;
-        this.mangledName = null; // 如果访问static变量，这里是mangledName，格式是name.Symbol(scopeName)
     }
 
-    get value() { // alias
+    get value() {
         return this.name;
     }
 }
@@ -290,16 +289,12 @@ export class MemberExpression extends Expression {
     public object: Expression;
     public pointed: boolean;
     public member: Identifier;
-    public offset: number;
-    public size: 0;
 
     constructor(location: SourceLocation, object: Expression, pointed: boolean, member: Identifier) {
         super(location);
         this.object = object;
         this.pointed = pointed;
         this.member = member;
-        this.offset = 0;
-        this.size = 0;
     }
 }
 
@@ -385,15 +380,11 @@ export class AssignmentExpression extends Expression {
 export class Declaration extends Node {
     public specifiers: SpecifierType[];
     public initDeclarators: InitDeclarator[];
-    public isStatic: boolean;
-    public isTypedef: boolean;
 
     constructor(location: SourceLocation, specifiers: SpecifierType[], initDeclarators: InitDeclarator[]) {
         super(location);
         this.specifiers = specifiers;
         this.initDeclarators = initDeclarators;
-        this.isStatic = false; // set in syntax-check
-        this.isTypedef = false; // set in syntax-check
     }
 }
 

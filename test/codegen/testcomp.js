@@ -2,12 +2,31 @@ const TestBase = require('./testbase');
 const fs = require('fs');
 
 const source = `
-int a = 123;
-const int dd = 234;
-int b = a + 1, c = 3;
-double k = 1.99;
-const char * uu = "abc";
+
+struct a1;
+
+typedef struct aa{
+    int a;
+} uu;
+
+
+struct b1{
+int c;
+int e;
+char q;
+} p0, p1, p2;
+
+
+
+struct TestStruct{
+    int a;
+    //TestStruct * a;
+    struct TestStruct * accc;
+};
 int main(){
+    static int d;
+    p0.c = 1;
+    p0.q = 3;
     __jlibc__print_integer(12);
 }
 `;
@@ -33,5 +52,7 @@ describe('test compiler', function(){
                 'main.cpp': source.split('\n')
             }
         });
+        console.log("==ScopeMap==");
+        console.log(TestBase.dumpScopeMap(bin.scopeMap));
     })
 });
