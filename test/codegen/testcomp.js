@@ -27,7 +27,7 @@ int main(){
     static int d;
     p0.c = 1;
     p0.q = 3;
-    __jlibc__print_integer(12);
+    __jlibc__print_integer(sizeof(struct TestStruct));
 }
 `;
 

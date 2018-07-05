@@ -12,21 +12,22 @@ a experimental c++ compiler in typescript
 - [X] += -= *= /= ...
 - [X] vm
 - [X] array
-- [ ] sizeof
-- [ ] typedef
+- [X] sizeof
+- [X] typedef
 - [ ] enum
-- [ ] union
+- [X] union
 - [X] js native function
 - [X] string
 - [X] var initilizer
 - [X] data segment data
 - [ ] doConstant about < > <= >= == & && | || >> <<
 - [X] struct / class
-- [ ] cast ope
+- [ ] cast ope (hard)
 - [ ] const
 - [ ] non-return detect
 - [X] function call parameter type conversion
 - [ ] bit field of struct
+- [ ] var args (fuck it)
 
 ## C++ Language
 

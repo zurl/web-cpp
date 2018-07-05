@@ -238,17 +238,19 @@ export interface ClassField {
 
 export class ClassType extends Type {
 
+    public isUnion: boolean;
     public isComplete: boolean;
     public name: string;
     public fields: ClassField[];
     public fieldMap: Map<string, ClassField>;
 
-    constructor(name: string, fields: ClassField[]) {
+    constructor(name: string, fields: ClassField[], isUnion: boolean) {
         super();
         this.name = name;
         this.fields = fields;
         this.isComplete = true;
         this.fieldMap = new Map<string, ClassField>();
+        this.isUnion = isUnion;
     }
 
     public buildFieldMap() {
@@ -257,9 +259,14 @@ export class ClassType extends Type {
     }
 
     get length(): number {
-        return this.fields
-            .map((field) => field.type.length)
-            .reduce((x, y) => x + y, 0);
+        if ( this.isUnion ) {
+            return Math.max(...this.fields
+                .map((field) => field.type.length));
+        } else {
+            return this.fields
+                .map((field) => field.type.length)
+                .reduce((x, y) => x + y, 0);
+        }
     }
 
     public toString() {

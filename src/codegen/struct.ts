@@ -32,7 +32,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             }
             return item;
         } else {
-            const item = new ClassType(name, []);
+            const item = new ClassType(name, [], this.union);
             item.isComplete = false;
             ctx.currentScope.set(scopeName, item);
             return item;
@@ -42,7 +42,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         throw new SyntaxError(`redefine struct type name ${scopeName}`, this);
     }
     const fields = [] as ClassField[];
-    const type = new ClassType(name, fields);
+    const type = new ClassType(name, fields, this.union);
     type.isComplete = false;
     ctx.currentScope.set(scopeName, type);
     let curOffset = 0;
@@ -53,12 +53,20 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                 throw new InternalError(`unsupport bit field`);
             } else {
                 const [fieldType, fieldName] = parseDeclarator(ctx, declarator.declarator, baseType);
-                fields.push({
-                    name: fieldName,
-                    type: fieldType,
-                    startOffset: curOffset,
-                });
-                curOffset += fieldType.length;
+                if ( this.union ) {
+                    fields.push({
+                        name: fieldName,
+                        type: fieldType,
+                        startOffset: 0,
+                    });
+                } else {
+                    fields.push({
+                        name: fieldName,
+                        type: fieldType,
+                        startOffset: curOffset,
+                    });
+                    curOffset += fieldType.length;
+                }
             }
          }
     }
@@ -87,8 +95,10 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         loadReference(ctx, left);
         // 现在stacktop是结构体指针
         // 偏移一下
-        ctx.build(OpCode.PUI32, field.startOffset);
-        ctx.build(OpCode.ADDU);
+        if (!rawType.isUnion) {
+            ctx.build(OpCode.PUI32, field.startOffset);
+            ctx.build(OpCode.ADDU);
+        }
         return {
             type: new LeftReferenceType(field.type),
             form: ExpressionResultType.RVALUE,

@@ -394,6 +394,13 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
 };
 
 UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    if ( this.operator === "sizeof") {
+        return {
+            type: PrimitiveTypes.uint32,
+            form: ExpressionResultType.CONSTANT,
+            value: this.operand.deduceType(ctx).length,
+        };
+    }
     const expr = this.operand.codegen(ctx);
     ctx.currentNode = this;
     if (this.operator === "*") {

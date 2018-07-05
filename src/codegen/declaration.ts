@@ -136,10 +136,15 @@ TranslationUnit.prototype.codegen = function(ctx: CompileContext) {
 Declaration.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
     const baseType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
+    const isTypedef = this.specifiers.includes("typedef");
     for (const declarator of this.initDeclarators) {
         const [type, name] = parseDeclarator(ctx, declarator.declarator, baseType);
         if (ctx.currentScope.getInCurrentScope(name) != null) {
             throw new SyntaxError("Redeclaration of name " + name, this);
+        }
+        if ( isTypedef ) {
+            ctx.currentScope.set(name, type);
+            continue;
         }
         if ( type instanceof ClassType && !type.isComplete) {
             throw new SyntaxError(`cannot instancelize incomplete type`, this);
