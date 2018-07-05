@@ -1,5 +1,5 @@
 // TODO:: write some case
-const source = `#include <math.h>
+const source = `#include <string.h>
 #ifdef A
 "Should Not Exists 1"
 #endif
@@ -31,6 +31,7 @@ const result = `
 ABCD
 
 `;
+const {Headers} = require("../../dist/library/index");
 const Preprocess = require('../../dist/preprocessor').default;
 const Assert = require('chai');
 
@@ -38,9 +39,9 @@ describe('preprocessor', function(){
     it('preprocessor should works', async function(){
 
         const fileName = "testFile";
-        const MathH = "";
+        const StringH = Headers["string.h"];
 
         const {code} = Preprocess.process(fileName, source);
-        Assert.assert.equal(code, MathH + result)
+        Assert.assert.equal(code, StringH + result)
     })
 });

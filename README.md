@@ -20,7 +20,7 @@ a experimental c++ compiler in typescript
 - [X] string
 - [X] var initilizer
 - [X] data segment data
-- [ ] doConstant about < > <= >= == & && | || >> <<
+- [ ] doConstant about < > <= >= == & && | || >> << ...
 - [X] struct / class
 - [ ] cast ope (hard)
 - [ ] const
@@ -28,7 +28,9 @@ a experimental c++ compiler in typescript
 - [X] function call parameter type conversion
 - [ ] bit field of struct
 - [ ] var args (fuck it)
-
+- [ ] switch case
+- [ ] do-while
+- [ ] goto
 ## C++ Language
 
 ### reference

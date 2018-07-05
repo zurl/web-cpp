@@ -8,7 +8,7 @@ import {InternalError} from "../common/error";
 import {Assembly, InstructionBuilder, OpCode} from "../common/instruction";
 import {FunctionEntity} from "../common/type";
 import {MemoryLayout} from "./memory";
-import {Scope} from "./scope";
+import {cloneScopeMap, Scope} from "./scope";
 
 interface CompileOptions {
     debugMode?: boolean;
@@ -33,7 +33,7 @@ export class CompileContext {
 
     constructor(fileName: string, compileOptions: CompileOptions = {}, baseScopeMap?: Map<string, Scope>) {
         if ( baseScopeMap ) {
-            this.scopeMap = new Map<string, Scope>(baseScopeMap);
+            this.scopeMap = cloneScopeMap(baseScopeMap);
             if (this.scopeMap.has("@root")) {
                 this.currentScope = this.scopeMap.get("@root")!;
             } else {

@@ -127,3 +127,27 @@ export function dumpScopeMap(scopeMap: Map<string, Scope>): string {
     }
     return result;
 }
+
+export function cloneScopeMap(scopeMap: Map<string, Scope>): Map<string, Scope> {
+    const result = new Map<string, Scope>();
+    for (const entity of scopeMap.entries()) {
+        const scope = new Scope(entity[1].name, entity[1].parent);
+        result.set(entity[0], scope);
+        for (const item of entity[1].map) {
+            scope.set(item[0], item[1]);
+        }
+        if ( entity[1].isRoot ) { scope.isRoot = true; }
+    }
+    for (const entity of result.entries()) {
+        if ( entity[1].parent !== null) {
+            entity[1].parent = result.get(entity[1].parent!.getScopeName())!;
+            if ( !entity[1].parent) {
+                throw new InternalError(`unexpected error in cloneScopeMap`);
+            }
+        }
+        for (const child of entity[1].children) {
+            entity[1].children.push(result.get(child.getScopeName())!);
+        }
+    }
+    return result;
+}

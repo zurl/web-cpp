@@ -85,8 +85,8 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         if (!name ) {
             throw new SyntaxError(`unnamed parameter`, this);
         }
-        if (!ctx.currentScope.map.has(name)) {
-            throw new SyntaxError(`redefined parameter`, this);
+        if (ctx.currentScope.map.has(name)) {
+            throw new SyntaxError(`redefined parameter ${name}`, this);
         }
         ctx.currentScope.set(name, new Variable(
             name, ctx.fileName, type, VariableStorageType.STACK, loc,
