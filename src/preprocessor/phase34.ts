@@ -4,10 +4,7 @@ type TokenType = Identifier | PpNumber | CharacterConstant | StringLiteral | Pun
 type PreprocessDirective = ObjectLikeDefineDirective | FunctionLikeDefineDirective;
 import {Headers} from "../library";
 const Library = {
-    files: new Map(
-        Object
-            .keys(Headers)
-            .map((key) => [key, Headers[key]] as [string, string])),
+    files: Headers,
 };
 
 import * as Long from "long";

@@ -1,6 +1,13 @@
 # web-cpp
 a experimental c++ compiler in typescript
 
+## usage
+
+```shell
+npm install
+npm run build
+npm run test
+```
 
 # todolist
 

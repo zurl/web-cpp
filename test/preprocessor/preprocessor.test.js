@@ -39,7 +39,7 @@ describe('preprocessor', function(){
     it('preprocessor should works', async function(){
 
         const fileName = "testFile";
-        const StringH = Headers["string.h"];
+        const StringH = Headers.get("string.h");
 
         const {code} = Preprocess.process(fileName, source);
         Assert.assert.equal(code, StringH + result)

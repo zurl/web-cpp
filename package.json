@@ -4,7 +4,7 @@
   "description": "a c++ compiler in typescript",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "node build/build_library.js && tsc",
     "test": "mocha test/**/*.test.js",
     "lint": "tslint -c tslint.json 'src/**/*.ts'",
     "coverage": "nyc --reporter=lcov --reporter=text mocha test/**/*.test.js"
@@ -20,13 +20,14 @@
   },
   "homepage": "https://github.com/zurl/web-cpp#readme",
   "devDependencies": {
-    "@types/node": "^10.5.1",
     "@types/long": "^4.0.0",
+    "@types/node": "^10.5.1",
     "@types/pegjs": "^0.10.1",
     "@types/source-map": "0.5.0",
     "chai": "^4.1.2",
     "mocha": "^5.2.0",
     "nyc": "^12.0.2",
+    "recursive-readdir": "^2.2.2",
     "typescript": "^2.9.2"
   },
   "dependencies": {
