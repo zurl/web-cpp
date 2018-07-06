@@ -256,6 +256,36 @@ function doConstantCompute(left: ExpressionResult, right: ExpressionResult, ope:
             result = lhs.div(rhs);
         } else if (ope === "%") {
             result = lhs.mod(rhs);
+        } else if (ope === ">=") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+lhs.greaterThanOrEqual(rhs));
+        } else if (ope === "<=") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+lhs.lessThanOrEqual(rhs));
+        } else if (ope === ">") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+lhs.greaterThan(rhs));
+        } else if (ope === "<") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+lhs.lessThan(rhs));
+        } else if (ope === "==") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+lhs.equals(rhs));
+        } else if (ope === "!=") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+lhs.notEquals(rhs));
+        } else if (ope === "&") {
+            result = lhs.and(rhs);
+        } else if (ope === "|") {
+            result = lhs.or(rhs);
+        } else if (ope === "^") {
+            result = lhs.xor(rhs);
+        } else if (ope === "&&") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+((!lhs.isZero()) && (!rhs.isZero())) );
+        } else if (ope === "||") {
+            type = PrimitiveTypes.bool;
+            result = Long.fromInt(+((!lhs.isZero()) || (!rhs.isZero())) );
         }
         return {
             type,
@@ -451,6 +481,43 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
         // ! => int, double, pointer
         const rawType = extractRealType(expr.type);
         loadIntoStack(ctx, expr);
+        if ( expr.form === ExpressionResultType.CONSTANT ) {
+            let type: Type, value: Long | number;
+            if ( rawType instanceof IntegerType) {
+                type = rawType;
+                const val = expr.value as Long;
+                if ( this.operator === "-" ) {
+                   value = val.negate();
+                } else  if ( this.operator === "+" ) {
+                    value = val;
+                } else  if ( this.operator === "!" ) {
+                    type = PrimitiveTypes.bool;
+                    value = Long.fromInt(+val.isZero());
+                } else  if ( this.operator === "~" ) {
+                    value = val.not();
+                } else {
+                    throw new InternalError(`UnaryExpression.prototype.codegen`);
+                }
+            } else {
+                type = rawType;
+                const val = expr.value as number;
+                if ( this.operator === "-" ) {
+                    value = - val;
+                } else  if ( this.operator === "+" ) {
+                    value = val;
+                } else  if ( this.operator === "!" ) {
+                    type = PrimitiveTypes.bool;
+                    value = +!val;
+                } else {
+                    throw new InternalError(`UnaryExpression.prototype.codegen`);
+                }
+            }
+            return {
+                type,
+                form: ExpressionResultType.CONSTANT,
+                value,
+            };
+        }
         if ( rawType instanceof IntegerType) {
             let retType = PrimitiveTypes.int32;
             if ( this.operator === "-" ) {

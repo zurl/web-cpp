@@ -9,6 +9,13 @@ npm run build
 npm run test
 ```
 
+## Notes
+
+Name Mangling
+
+global var: @var1
+local var:  @foo@var1
+
 # todolist
 
 ## C language
@@ -28,7 +35,7 @@ npm run test
 - [X] string
 - [X] var initilizer
 - [X] data segment data
-- [ ] doConstant about < > <= >= == & && | || >> << ...
+- [X] doConstant about < > <= >= == & && | || >> << ...
 - [X] struct / class
 - [ ] cast ope (hard)
 - [ ] const
@@ -52,10 +59,3 @@ npm run test
 ### exception
 ### template
 
-
-## Notes
-
-Name Mangling
-
-global var: @var1
-local var:  @foo@var1
