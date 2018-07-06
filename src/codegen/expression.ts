@@ -397,6 +397,12 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             form: ExpressionResultType.CONSTANT,
             value: this.operand.deduceType(ctx).length,
         };
+    } else if ( this.operator === "++" || this.operator === "--") {
+        return new BinaryExpression(this.location,
+            this.operator.charAt(0),
+            this.operand,
+            IntegerConstant.getOne())
+            .codegen(ctx);
     }
     const expr = this.operand.codegen(ctx);
     ctx.currentNode = this;
@@ -439,6 +445,65 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             type: new PointerType(expr.type),
             value: 0,
         };
+    } else if (["+", "-", "!", "~"].includes(this.operator)) {
+        // + - => int, double
+        // ~ => int
+        // ! => int, double, pointer
+        const rawType = extractRealType(expr.type);
+        loadIntoStack(ctx, expr);
+        if ( rawType instanceof IntegerType) {
+            let retType = PrimitiveTypes.int32;
+            if ( this.operator === "-" ) {
+                ctx.build(OpCode.NEG);
+            } else if ( this.operator === "+" ) {
+                // empty
+            } else if ( this.operator === "~" ) {
+                ctx.build(OpCode.INV);
+            } else if ( this.operator === "!" ) {
+                ctx.build(OpCode.NOT);
+                retType = PrimitiveTypes.bool;
+            } else {
+                throw new SyntaxError(`could not apply ${this.operator} on floating number`, this);
+            }
+            return {
+                type: retType,
+                form: ExpressionResultType.RVALUE,
+                value: 0,
+            };
+        } else if ( rawType instanceof FloatingType) {
+            let retType = PrimitiveTypes.double;
+            if ( rawType instanceof FloatType) {
+                ctx.build(OpCode.F2D);
+            }
+            if ( this.operator === "-" ) {
+                ctx.build(OpCode.NEGF);
+            } else if ( this.operator === "+" ) {
+                // empty
+            } else if ( this.operator === "!" ) {
+                ctx.build(OpCode.NEGF);
+                ctx.build(OpCode.NOT);
+                retType = PrimitiveTypes.bool;
+            } else {
+                throw new SyntaxError(`could not apply ${this.operator} on floating number`, this);
+            }
+            return {
+                type: retType,
+                form: ExpressionResultType.RVALUE,
+                value: 0,
+            };
+        } else if ( rawType instanceof PointerType) {
+            if ( this.operator === "!" ) {
+                ctx.build(OpCode.NOT);
+                return {
+                    type: PrimitiveTypes.bool,
+                    form: ExpressionResultType.RVALUE,
+                    value: 0,
+                };
+            } else {
+                throw new SyntaxError(`could not apply ${this.operator} on pointer`, this);
+            }
+        }
+        throw new InternalError(`no_impl at unary ope=${this.operator}`);
     } else {
         throw new InternalError(`no_impl at unary ope=${this.operator}`);
     }

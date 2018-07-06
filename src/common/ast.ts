@@ -139,6 +139,11 @@ export class Constant extends Expression {
 }
 
 export class IntegerConstant extends Constant {
+
+    public static getOne() {
+        return OneConstant;
+    }
+
     public base: number;
     public value: Long;
     public raw: string;
@@ -152,6 +157,17 @@ export class IntegerConstant extends Constant {
         this.suffix = suffix;
     }
 }
+
+const OneConstant = new IntegerConstant(
+    new SourceLocation("",
+        new Position(1, 1, 1),
+        new Position(1, 1, 1),
+        ),
+    10,
+    Long.fromInt(1),
+    "1",
+    null,
+);
 
 export class FloatingConstant extends Constant {
     public value: number;

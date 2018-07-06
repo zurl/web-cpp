@@ -101,6 +101,9 @@ export class VirtualMachine {
                 }
                 this.memory.setInt32(this.sp + 4, ret);
                 this.sp += 4;
+            } else if (op === OpCode.NEGF) {
+                const i1 = this.memory.getFloat64(this.sp);
+                this.memory.setFloat64(this.sp, -i1);
             } else if (op <= OpCode.INV) {
                 const i0 = this.memory.getInt32(this.sp);
                 let ret = 0;

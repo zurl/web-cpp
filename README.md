@@ -15,7 +15,8 @@ npm run test
 
 - [X] function call codegen / return codegen
 - [X] & && | || >> <<
-- [ ] \+ \- ! ~ ++ --
+- [X] ++ --
+- [X] \+ \- ! ~
 - [X] += -= *= /= ...
 - [X] vm
 - [X] array

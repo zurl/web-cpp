@@ -3,7 +3,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant, MemberExpression,
-    ParenthesisExpression, SubscriptExpression, UnaryExpression,
+    ParenthesisExpression, SourceLocation, SubscriptExpression, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
@@ -17,7 +17,6 @@ import {
     Type, UnsignedInt64Type, UnsignedIntegerType,
 } from "../common/type";
 import {CompileContext} from "./context";
-
 /**
  *  @file
  *  @author zcy <zurl@live.com>
@@ -107,6 +106,12 @@ BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
 UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     if ( this.operator === "sizeof") {
         return PrimitiveTypes.uint32;
+    } else if ( this.operator === "++" || this.operator === "--") {
+        return new BinaryExpression(this.location,
+            this.operator.charAt(0),
+            this.operand,
+            IntegerConstant.getOne())
+            .deduceType(ctx);
     }
     const itemType = this.operand.deduceType(ctx);
     if (this.operator === "*") {

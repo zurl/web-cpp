@@ -31,7 +31,7 @@ export enum OpCode {
     SM8, SM16, SM32, SM64,
     ADD, SUB, MUL, DIV, MOD,
     SHL, SHR, LAND, LOR, XOR, AND, OR,
-    NOT, NEG, INV,
+    NOT, NEG, NEGF, INV,
     ADDF, SUBF, MULF, DIVF, MODF,
     GT0, LT0, EQ0, NEQ0, LTE0, GTE0,
     NOP, PRINT, // <== no impl

@@ -129,6 +129,14 @@ describe('vm test cases', function () {
         TestBase.testASMCode(['PBP 12'] , {sp: -4, stop_u32: 1012});
         TestBase.testASMCode(['SSP 20'] , {sp: 20});
     });
+    it('-~!', function () {
+        TestBase.testASMCode(['PI32 22', 'NOT'] , {sp: -4, stop_u32: 0});
+        TestBase.testASMCode(['PUI32 22', 'NOT'] , {sp: -4, stop_u32: 0});
+        TestBase.testASMCode(['PUI32 0', 'NOT'] , {sp: -4, stop_u32: 1});
+        TestBase.testASMCode(['PI32 22', 'NEG'] , {sp: -4, stop_i32: -22});
+        TestBase.testASMCode(['PF64 22.7', 'NEGF'] , {sp: -8, stop_f64: -22.7});
+        TestBase.testASMCode(['PI32 123', 'INV'] , {sp: -4, stop_i32: ~123});
+    });
     it('J JZ JNZ', function () {
         TestBase.testASMCode(['J 10', 'PI32 123', 'PI32 456'],
             {sp: -4, stop_u32: 456});
