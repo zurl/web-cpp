@@ -32,12 +32,11 @@ export enum OpCode {
     ADD, SUB, MUL, DIV, MOD,
     SHL, SHR, LAND, LOR, XOR, AND, OR,
     NOT, NEG, INV,
-    ADDU, SUBU, MULU, DIVU, SHRU, MODU,
     ADDF, SUBF, MULF, DIVF, MODF,
     GT0, LT0, EQ0, NEQ0, LTE0, GTE0,
     NOP, PRINT, // <== no impl
     END,
-    U2I, I2U, F2D, D2F, I2D, D2I,
+    F2D, D2F, U2D, D2U, I2D, D2I,
     // 5 = [op u32 u32 u32 u32]
     PUI32, // push u32
     PDATA, // push $data + u32
@@ -54,6 +53,7 @@ export enum OpCode {
            // push t0
     // 5 = [op i32 i32 i32 i32]
     PI32,  // push i32
+    PF32,  // push f32
     PBP,   // push $bp + i32
     SSP,   // $sp = $sp + i32
     J,     // $pc = $pc + i32
@@ -154,6 +154,11 @@ export class InstructionBuilder {
         this.sourceMap.push([this.now, line]);
         if (op <= OpCodeLimit.L1) {
             this.codeView.setUint8(this.now++, op);
+        } else if ( op === OpCode.PF32) {
+            assertFloat(imm);
+            this.codeView.setUint8(this.now++, op);
+            this.codeView.setFloat32(this.now, parseFloat(imm as string));
+            this.now += 4;
         } else if (op <= OpCodeLimit.L5U) {
             assertInt(imm, 0, 0xFFFFFFFF);
             this.codeView.setUint8(this.now++, op);

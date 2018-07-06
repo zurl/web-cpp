@@ -7,7 +7,7 @@ import {
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
-    ArithmeticType, ArrayType, ClassType, extractRealType,
+    ArithmeticType, ArrayType, ClassType, extractRealType, FloatingType,
     FloatType,
     FunctionType, Int64Type,
     IntegerType,
@@ -49,16 +49,16 @@ BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     const right = extractRealType(this.right.deduceType(ctx));
     if ("+-*%/".includes(this.operator)) {
         if (left instanceof ArithmeticType && right instanceof ArithmeticType) {
-            if (left instanceof FloatType || right instanceof FloatType) {
+            if (left instanceof FloatingType || right instanceof FloatingType) {
                 return PrimitiveTypes.double;
-            }
-            if (left instanceof Int64Type || right instanceof Int64Type) {
-                return PrimitiveTypes.int64;
             }
             if (left instanceof UnsignedInt64Type || right instanceof UnsignedInt64Type) {
                 return PrimitiveTypes.uint64;
             }
-            if (left instanceof UnsignedIntegerType && right instanceof UnsignedIntegerType) {
+            if (left instanceof Int64Type || right instanceof Int64Type) {
+                return PrimitiveTypes.int64;
+            }
+            if (left instanceof UnsignedIntegerType || right instanceof UnsignedIntegerType) {
                 return PrimitiveTypes.uint32;
             }
             return PrimitiveTypes.int32;
@@ -85,12 +85,29 @@ BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
         } else {
             throw new TypeError(`could not apply ${this.operator} on ${left.toString()} and ${right.toString()}`, this);
         }
+    } else if ([">=", "<=", ">", "<", "==", "!="].includes(this.operator)) {
+        if (left instanceof ArithmeticType && right instanceof ArithmeticType) {
+            return PrimitiveTypes.bool;
+        }
+        if (left instanceof PointerType && right instanceof PointerType) {
+            return PrimitiveTypes.bool;
+        }
+        throw new TypeError(`unsupport relation compute`, this);
+    } else if (["&&", "||"].includes(this.operator)) {
+        return PrimitiveTypes.bool;
+    } else if (["&", "|", "^", ">>", "<<"].includes(this.operator)) {
+        if ( !( left instanceof IntegerType && right instanceof IntegerType)) {
+            throw new TypeError(`binary operator could only be applied on integer`, this);
+        }
+        return PrimitiveTypes.int32;
     }
     throw new InternalError(`no impl at BinaryExpression()`);
-    // TODO:: veryhard;
 };
 
 UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    if ( this.operator === "sizeof") {
+        return PrimitiveTypes.uint32;
+    }
     const itemType = this.operand.deduceType(ctx);
     if (this.operator === "*") {
         if (itemType instanceof PointerType || itemType instanceof ArrayType) {

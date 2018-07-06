@@ -57,14 +57,14 @@ describe('instruction test', function () {
         LM64
         PBP -28
         LM64
-        ADDF
+        MULF
         PBP -28
         LM64
-        ADDF
+        DIVF
         PBP -28
         LM64
-        ADDF
-        ADDF
+        MODF
+        SUBF
         PBP -36
         SM64
         `;
@@ -72,11 +72,11 @@ describe('instruction test', function () {
     });
     it('test < > <= >= == !=', function () {
         const testCode = `
-        int a;
-        int b;
-        double c;
-        double d;
-        int e;
+        int a;      // -4
+        int b;      // -8
+        double c;   // -16
+        double d;   // -24
+        int e;      // -28
         e = a > b;
         e = a < b;
         e = a == b;

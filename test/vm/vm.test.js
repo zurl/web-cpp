@@ -83,22 +83,6 @@ describe('vm test cases', function () {
             {sp: -4, stop_i32: -8888});
 
     });
-    it('UINT +-*/% >>>', function () {
-        const pre = ['PUI32 8888', 'PUI32 7171'];
-        TestBase.testASMCode([...pre, 'ADDU'],
-            {sp: -4, stop_i32: 8888 + 7171});
-        TestBase.testASMCode([...pre, 'SUBU'],
-            {sp: -4, stop_i32: 8888 - 7171});
-        TestBase.testASMCode([...pre, 'MULU'],
-            {sp: -4, stop_i32: 8888 * 7171});
-        TestBase.testASMCode([...pre, 'DIVU'],
-            {sp: -4, stop_i32: parseInt(8888 / 7171)});
-        TestBase.testASMCode([...pre, 'MODU'],
-            {sp: -4, stop_i32: 8888 % 7171});
-        TestBase.testASMCode(['PUI32 8888', 'PUI32 5', 'SHRU'],
-            {sp: -4, stop_i32: 8888 >>> 5});
-
-    });
     it('FLOAT +-*/%', function () {
         const pre = ['PF64 88.88', 'PF64 71.71'];
         TestBase.testASMCode([...pre, 'ADDF'],
@@ -134,10 +118,12 @@ describe('vm test cases', function () {
         TestBase.testASMCode(['PI32 1' , 'NEQ0'], {sp: -4, stop_i32: 1});
     });
     it('type convert', function () {
-        TestBase.testASMCode(['PI32 12' , 'I2U'] , {sp: -4, stop_u32: 12});
-        TestBase.testASMCode(['PUI32 12', 'U2I'] , {sp: -4, stop_i32: 12});
+        TestBase.testASMCode(['PF64 12' , 'D2U'] , {sp: -4, stop_u32: 12});
+        TestBase.testASMCode(['PUI32 12', 'U2D'] , {sp: -8, stop_f64: 12});
         TestBase.testASMCode(['PF64 12' , 'D2I'] , {sp: -4, stop_i32: 12});
         TestBase.testASMCode(['PI32 12' , 'I2D'] , {sp: -8, stop_f64: 12});
+        TestBase.testASMCode(['PF64 12.1' , 'D2F'] , {sp: -4, stop_f32: 12.1});
+        TestBase.testASMCode(['PF32 12.1' , 'F2D'] , {sp: -8, stop_f64: 12.1});
     });
     it('PBP & SSP', function () {
         TestBase.testASMCode(['PBP 12'] , {sp: -4, stop_u32: 1012});

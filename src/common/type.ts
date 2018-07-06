@@ -1,4 +1,4 @@
-import {InternalError} from "./error";
+import {InternalError, TypeError} from "./error";
 import {Assembly} from "./instruction";
 import {isArrayEqual} from "./utils";
 
@@ -397,6 +397,28 @@ export function extractRealType(rawType: Type) {
         return rawType.elementType;
     } else {
         return rawType;
+    }
+}
+
+export enum StackStorageType {
+    int32,
+    uint32,
+    float32,
+    float64,
+}
+export function getStackStorageType(rawType: Type): StackStorageType {
+    if (rawType instanceof SignedIntegerType) {
+        return StackStorageType.int32;
+    } else if ( rawType instanceof UnsignedIntegerType) {
+        return StackStorageType.uint32;
+    } else if ( rawType instanceof FloatType) {
+        return StackStorageType.float32;
+    } else if ( rawType instanceof DoubleType) {
+        return StackStorageType.float64;
+    } else if ( rawType instanceof PointerType) {
+        return StackStorageType.uint32;
+    } else {
+        throw new InternalError(`unsupport type stoarge type`);
     }
 }
 

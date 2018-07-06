@@ -24,13 +24,13 @@ import {
     DoubleType,
     extractRealType,
     FloatingType,
-    FloatType, Int16Type, Int32Type,
+    FloatType, getStackStorageType, Int16Type, Int32Type,
     Int64Type,
     IntegerType,
     LeftReferenceType,
     PointerType,
     PrimitiveTypes,
-    QualifiedType,
+    QualifiedType, StackStorageType,
     Type,
     UnsignedCharType,
     UnsignedInt16Type,
@@ -265,107 +265,78 @@ function doConstantCompute(left: ExpressionResult, right: ExpressionResult, ope:
     }
 }
 
-const ArithmeticOpTable = new Map<string, OpCode[]>([
-    ["+", [OpCode.ADD, OpCode.ADDU, OpCode.ADDF]],
-    ["-", [OpCode.SUB, OpCode.SUBU, OpCode.ADDF]],
-    ["*", [OpCode.MUL, OpCode.NOP, OpCode.ADDF]],
-    ["/", [OpCode.DIV, OpCode.NOP, OpCode.ADDF]],
-    ["%", [OpCode.MOD, OpCode.NOP, OpCode.ADDF]],
+const BinaryOpTable = new Map<string, OpCode[][]>([
+    ["+",  [[OpCode.ADD], [OpCode.ADDF]]],
+    ["-",  [[OpCode.SUB], [OpCode.SUBF]]],
+    ["*",  [[OpCode.MUL], [OpCode.MULF]]],
+    ["/",  [[OpCode.DIV], [OpCode.DIVF]]],
+    ["%",  [[OpCode.MOD], [OpCode.MODF]]],
+    [">=", [[OpCode.SUB, OpCode.GTE0], [OpCode.SUBF, OpCode.D2I, OpCode.GTE0]]],
+    ["<=", [[OpCode.SUB, OpCode.LTE0], [OpCode.SUBF, OpCode.D2I, OpCode.LTE0]]],
+    [">",  [[OpCode.SUB, OpCode.GT0],  [OpCode.SUBF, OpCode.D2I, OpCode.GT0]]],
+    ["<",  [[OpCode.SUB, OpCode.LT0],  [OpCode.SUBF, OpCode.D2I, OpCode.LT0]]],
+    ["==", [[OpCode.SUB, OpCode.EQ0],  [OpCode.SUBF, OpCode.D2I, OpCode.EQ0]]],
+    ["!=", [[OpCode.SUB, OpCode.NEQ0], [OpCode.SUBF, OpCode.D2I, OpCode.NEQ0]]],
+    ["&",  [[OpCode.AND], [OpCode.NOP]]],
+    ["|",  [[OpCode.OR], [OpCode.NOP]]],
+    ["^",  [[OpCode.XOR], [OpCode.NOP]]],
+    ["&&",  [[OpCode.LAND], [OpCode.LAND]]],
+    ["||",  [[OpCode.LOR], [OpCode.LOR]]],
 ]);
 
-const RelationOpTable = new Map<string, OpCode>([
-    [">", OpCode.GT0],
-    ["<", OpCode.LT0],
-    [">=", OpCode.GTE0],
-    ["<=", OpCode.LTE0],
-    ["==", OpCode.EQ0],
-    ["!=", OpCode.NEQ0],
-]);
+const relationOpe = ["==", "!=", ">=", "<=", ">", "<"];
 
-function genArithmeticExpression(expr: BinaryExpression, ctx: CompileContext,
-                                 left: ExpressionResult, right: ExpressionResult): ExpressionResult {
-    const leftType = extractRealType(left.type);
-    const rightType = extractRealType(right.type);
-    if (leftType instanceof ArithmeticType && rightType instanceof ArithmeticType) {
-        if (left.form === ExpressionResultType.CONSTANT && right.form === ExpressionResultType.CONSTANT) {
-            return doConstantCompute(left, right, expr.operator);
-        } else {
-            let type = PrimitiveTypes.int32;
-            loadIntoStack(ctx, left);
-            if (leftType instanceof FloatType) {
+function generateExpressionTypeConversion(ctx: CompileContext,
+                                          src: StackStorageType,
+                                          dst: StackStorageType,
+                                          ope: string) {
+    // 执行运算时类型转换
+    // 算术运算     完全转换
+    // 比较运算     不转换浮点
+    // 位运算       不转换
+    // 逻辑运算     完全转换
+    if (dst === StackStorageType.int32) {
+        if (src === StackStorageType.int32 || src === StackStorageType.uint32) {
+            return;
+        } else if (src === StackStorageType.float32) {
+            if ( !relationOpe.includes(ope)) {
                 ctx.build(OpCode.F2D);
+                ctx.build(OpCode.D2I);
             }
-            if (leftType instanceof IntegerType && rightType instanceof FloatingType) {
-                ctx.build(OpCode.I2D);
+            return;
+        } else if (src === StackStorageType.float64) {
+            if ( !relationOpe.includes(ope)) {
+                ctx.build(OpCode.D2I);
             }
-            loadIntoStack(ctx, right);
-            if (leftType instanceof FloatType) {
+            return;
+        }
+    } else if (dst === StackStorageType.uint32) {
+        if ( src === StackStorageType.int32 || src === StackStorageType.uint32) {
+            return;
+        } else if ( src === StackStorageType.float32 ) {
+            if ( !relationOpe.includes(ope)) {
                 ctx.build(OpCode.F2D);
+                ctx.build(OpCode.D2U);
             }
-            if (rightType instanceof IntegerType && leftType instanceof FloatingType) {
-                ctx.build(OpCode.I2D);
+            return;
+        } else if ( src === StackStorageType.float64 ) {
+            if ( !relationOpe.includes(ope)) {
+                ctx.build(OpCode.D2U);
             }
-            if ("+-*/%".includes(expr.operator)) {
-                if (leftType instanceof FloatingType || rightType instanceof FloatingType) {
-                    ctx.build((ArithmeticOpTable.get(expr.operator)!)[2]);
-                    type = PrimitiveTypes.double;
-                } else if (leftType instanceof UnsignedIntegerType || rightType instanceof UnsignedIntegerType) {
-                    ctx.build((ArithmeticOpTable.get(expr.operator)!)[1]);
-                    type = PrimitiveTypes.uint32;
-                } else {
-                    ctx.build((ArithmeticOpTable.get(expr.operator)!)[0]);
-                    type = PrimitiveTypes.int32;
-                }
-            } else if ([">", "<", ">=", "<=", "==", "!="].includes(expr.operator)) {
-                if (leftType instanceof FloatingType || rightType instanceof FloatingType) {
-                    ctx.build(OpCode.SUBF);
-                    ctx.build(OpCode.D2I);
-                } else if (leftType instanceof UnsignedIntegerType || rightType instanceof UnsignedIntegerType) {
-                    ctx.build(OpCode.SUBU);
-                    ctx.build(OpCode.U2I);
-                } else {
-                    ctx.build(OpCode.SUB);
-                }
-                ctx.build(RelationOpTable.get(expr.operator)!);
-                type = PrimitiveTypes.bool;
-            } else {
-                throw new InternalError("no_impl at arith ope");
-            }
-            return {
-                form: ExpressionResultType.RVALUE,
-                type,
-                value: 0,
-            };
+            return;
         }
-    } else {
-        throw new SyntaxError(`the operation ${expr.operator} could not be applied on `
-            + `${left.type.toString()} and ${right.type.toString()}`, expr);
-    }
-}
-
-function genPointerCompute(ctx: CompileContext, ope: string,
-                           left: ExpressionResult, right: ExpressionResult)
-    : ExpressionResult {
-    const leftType = extractRealType(left.type);
-    const rightType = extractRealType(right.type);
-    if (leftType instanceof PointerType && rightType instanceof PointerType) {
-        throw new SyntaxError(`unsupport operation between`, ctx.currentNode!);
-    } else {
-        loadIntoStack(ctx, left);
-        loadIntoStack(ctx, right);
-        if (ope === "+") {
-            ctx.build(OpCode.ADDU);
-        } else if (ope === "-") {
-            ctx.build(OpCode.SUBU);
-        } else {
-            throw new InternalError(`doPointerCompute()`);
+    } else if ( dst === StackStorageType.float64) {
+        if ( src === StackStorageType.float32) {
+            ctx.build(OpCode.F2D);
+            return;
+        } else if ( src === StackStorageType.uint32) {
+            ctx.build(OpCode.U2D);
+            return;
+        } else if ( src === StackStorageType.float64) {
+            return;
         }
-        return {
-            form: ExpressionResultType.RVALUE,
-            type: left.type,
-            value: 0,
-        };
     }
+    throw new InternalError("generateExpressionTypeConversion()");
 }
 
 BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
@@ -374,23 +345,49 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     const right = this.right.codegen(ctx);
     const leftType = extractRealType(left.type);
     const rightType = extractRealType(right.type);
-    // left type contains
-    // arith, pointer, [class, union, enum](dead), function(dead), [void, nullptr](dead)
+    // 计算结果不会出现const, array和引用，因为肯定在栈顶
+    const targetType = this.deduceType(ctx);
+
+    const leftStorageType = getStackStorageType(leftType);
+    const rightStorageType = getStackStorageType(rightType);
+
+    // targetStorageType must be uint32 / int32 / float64
+    let targetStorageType = getStackStorageType(targetType);
+
+    // hack for relation ope
+    if ( relationOpe.includes(this.operator) && (
+        leftType instanceof FloatingType || rightType instanceof FloatingType)) {
+        targetStorageType = StackStorageType.float64;
+    }
+
+    // 常量折叠
+    if (left.form === ExpressionResultType.CONSTANT && right.form === ExpressionResultType.CONSTANT) {
+        return doConstantCompute(left, right, this.operator);
+    }
+
     ctx.currentNode = this;
-    if (leftType instanceof ClassType || leftType instanceof ClassType) {
-        throw new InternalError(`unsupport operator overload`);
-    }
-    if (leftType instanceof PointerType || rightType instanceof PointerType) {
-        if ("+-".indexOf(this.operator) !== -1) {
-            return genPointerCompute(ctx, this.operator, left, right);
-        } else {
-            throw new SyntaxError(`unsupport ope between ${left.type.toString()} an ${right.type.toString()}`, this);
-        }
-    } else if (["+", "-", "*", "/", "%", "<", ">", ">=", "<=", "==", "!="].includes(this.operator)) {
-        return genArithmeticExpression(this, ctx, left, right);
+
+    loadIntoStack(ctx, left);
+    generateExpressionTypeConversion(ctx, leftStorageType, targetStorageType, this.operator);
+    loadIntoStack(ctx, right);
+    generateExpressionTypeConversion(ctx, rightStorageType, targetStorageType, this.operator);
+
+    const insList = BinaryOpTable.get(this.operator)!;
+
+    if (  targetStorageType === StackStorageType.float64 ) {
+        insList[1].map((ins) => ctx.build(ins));
+    } else if ( targetStorageType === StackStorageType.int32
+        || targetStorageType === StackStorageType.uint32) {
+        insList[0].map( (ins) => ctx.build(ins));
     } else {
-        throw new InternalError(`unsupport operator`);
+        throw new InternalError(`BinaryExpression.prototype.codegen()`);
     }
+
+    return {
+        form: ExpressionResultType.RVALUE,
+        type: targetType,
+        value: 0,
+    };
 };
 
 UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {

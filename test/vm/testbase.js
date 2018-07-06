@@ -32,8 +32,11 @@ function testASMCode(source, asserts){
     if(asserts.hasOwnProperty('stop_i32')){
         Assert.assert.equal(vm.memory.getInt32(vm.sp), asserts.stop_i32, 'stop_i32');
     }
+    if(asserts.hasOwnProperty('stop_f32')){
+        Assert.assert.equal(Math.abs(vm.memory.getFloat32(vm.sp) - asserts.stop_f32) < 1e-3, true, 'stop_f32');
+    }
     if(asserts.hasOwnProperty('stop_f64')){
-        Assert.assert.equal(vm.memory.getFloat64(vm.sp), asserts.stop_f64, 'stop_f64');
+        Assert.assert.equal(Math.abs(vm.memory.getFloat64(vm.sp) - asserts.stop_f64) < 1e-3, true, 'stop_f64');
     }
     if(asserts.hasOwnProperty('mem_u32')){
         if( !(asserts.mem_u32 instanceof Array)) asserts.mem_u32 = [asserts.mem_u32];

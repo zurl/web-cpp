@@ -14,7 +14,7 @@ npm run test
 ## C language
 
 - [X] function call codegen / return codegen
-- [ ] & && | || >> <<
+- [X] & && | || >> <<
 - [ ] \+ \- ! ~ ++ --
 - [X] += -= *= /= ...
 - [X] vm

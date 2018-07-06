@@ -112,25 +112,6 @@ export class VirtualMachine {
                     ret = ~i0;
                 }
                 this.memory.setInt32(this.sp, ret);
-            } else if (op <= OpCode.MODU) {
-                const i1 = this.memory.getUint32(this.sp);
-                const i0 = this.memory.getUint32(this.sp + 4);
-                let ret = 0;
-                if (op === OpCode.ADDU) {
-                    ret = i0 + i1;
-                } else if (op === OpCode.SUBU) {
-                    ret = i0 - i1;
-                } else if (op === OpCode.MULU) {
-                    ret = i0 * i1;
-                } else if (op === OpCode.SHRU) {
-                    ret = i0 >>> i1;
-                } else if (op === OpCode.DIVU) {
-                    ret = parseInt((i0 / i1) as any);
-                } else {
-                    ret = i0 % i1;
-                }
-                this.memory.setUint32(this.sp + 4, ret);
-                this.sp += 4;
             } else if (op <= OpCode.MODF) {
                 const i1 = this.memory.getFloat64(this.sp);
                 const i0 = this.memory.getFloat64(this.sp + 8);
@@ -163,15 +144,23 @@ export class VirtualMachine {
                 } else if (op === OpCode.NEQ0) {
                     this.memory.setInt32(this.sp, +(i0 !== 0));
                 }
-            } else if (op === OpCode.I2U) {
-                this.memory.setUint32(this.sp, this.memory.getInt32(this.sp));
-            } else if (op === OpCode.U2I) {
-                this.memory.setInt32(this.sp, this.memory.getUint32(this.sp));
             } else if (op === OpCode.D2I) {
-                this.memory.setUint32(this.sp + 4, this.memory.getFloat64(this.sp));
+                this.memory.setInt32(this.sp + 4, this.memory.getFloat64(this.sp));
                 this.sp += 4;
             } else if (op === OpCode.I2D) {
                 this.memory.setFloat64(this.sp - 4, this.memory.getInt32(this.sp));
+                this.sp -= 4;
+            } else if (op === OpCode.D2U) {
+                this.memory.setUint32(this.sp + 4, this.memory.getFloat64(this.sp));
+                this.sp += 4;
+            } else if (op === OpCode.U2D) {
+                this.memory.setFloat64(this.sp - 4, this.memory.getUint32(this.sp));
+                this.sp -= 4;
+            } else if (op === OpCode.D2F) {
+                this.memory.setFloat32(this.sp + 4, this.memory.getFloat64(this.sp));
+                this.sp += 4;
+            } else if (op === OpCode.F2D) {
+                this.memory.setFloat64(this.sp - 4, this.memory.getFloat32(this.sp));
                 this.sp -= 4;
             } else if (op === OpCode.END) {
                 return false;
@@ -202,6 +191,11 @@ export class VirtualMachine {
                 this.memory.setUint32(this.sp, t0);
                 return true;
             }
+            this.pc += 5;
+        } else if (op === OpCode.PF32) {
+            const imm = this.memory.getFloat32(this.pc + 1);
+            this.sp -= 4;
+            this.memory.setFloat32(this.sp, imm);
             this.pc += 5;
         } else if (op <= OpCodeLimit.L5I) {
             const imm = this.memory.getInt32(this.pc + 1);

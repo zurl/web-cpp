@@ -10,6 +10,17 @@ import {FunctionEntity} from "../common/type";
 import {MemoryLayout} from "./memory";
 import {cloneScopeMap, Scope} from "./scope";
 
+export interface CompiledObject {
+    fileName: string;
+    data: DataView;
+    dataSize: number;
+    bssSize: number;
+    globalAssembly: Assembly;
+    assembly: Assembly;
+    scopeMap: Map<string, Scope>;
+    labels: Array<[number, string]>;
+}
+
 interface CompileOptions {
     debugMode?: boolean;
     experimentalCpp?: boolean;
@@ -173,15 +184,4 @@ export class CompileContext {
             data: this.memory.data,
         };
     }
-}
-
-export interface CompiledObject {
-    fileName: string;
-    data: DataView;
-    dataSize: number;
-    bssSize: number;
-    globalAssembly: Assembly;
-    assembly: Assembly;
-    scopeMap: Map<string, Scope>;
-    labels: Array<[number, string]>;
 }
