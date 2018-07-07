@@ -219,6 +219,15 @@ export class VirtualMachine {
                 this.bp = this.memory.getUint32(this.bp);
                 this.memory.setUint32(this.sp, t0);
                 return true;
+            } else if (op === OpCode.RETVARGS) {
+                const t0 = this.sp;
+                this.sp = this.bp + imm + 4;
+                this.pc = this.memory.getUint32(this.bp + 4);
+                this.bp = this.memory.getUint32(this.bp);
+                const varlen = this.memory.getUint32(this.sp + 4);
+                this.sp = this.sp + varlen;
+                this.memory.setUint32(this.sp, t0);
+                return true;
             }
             this.pc += 5;
         } else if (op === OpCode.PF32) {

@@ -1,7 +1,7 @@
 const TestBase = require('./testbase');
 const fs = require('fs');
 
-const source = `
+const old_source = `
 
 struct a1;
 
@@ -33,6 +33,24 @@ int main(){
         break;
     }
     __jlibc__print_integer(sizeof(struct TestStruct));
+}
+`;
+
+const source = `
+typedef void* va_list;
+#define va_start(ptr, arg) (ptr) = &(arg) + sizeof(arg) + 4
+#define va_arg(ptr, type) ((ptr)+=sizeof(type), *((type *)(ptr - sizeof(type))))
+
+void printf(const char * format, ...){
+    va_list ptr;
+    va_start(ptr, format);
+    int c = *(int *) ptr;
+}
+
+int main(){
+    
+    va_list a = "123";
+    //printf("aaa", 123, 477);
 }
 `;
 

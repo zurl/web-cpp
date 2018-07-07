@@ -603,7 +603,7 @@ export class ParameterDeclaration extends Node {
     }
 }
 
-export class TypeName extends Node {
+export class TypeName extends Expression {
     public specifierQualifiers: SpecifierType[];
     public declarator: AbstractDeclarator | null;
 

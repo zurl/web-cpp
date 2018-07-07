@@ -39,7 +39,14 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
     } else {
         // TODO: empty return
     }
-    ctx.build(OpCode.RET, ctx.currentFunction!.parametersSize);
+    if ( ctx.currentFunction === null) {
+        throw new SyntaxError(`return outside function`, this);
+    }
+    if ( ctx.currentFunction.type.variableArguments) {
+        ctx.build(OpCode.RETVARGS, ctx.currentFunction!.parametersSize);
+    } else {
+        ctx.build(OpCode.RET, ctx.currentFunction!.parametersSize);
+    }
 };
 
 IfStatement.prototype.codegen = function(ctx: CompileContext) {

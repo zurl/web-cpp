@@ -170,12 +170,26 @@ describe('vm test cases', function () {
             {pc: 10, sp: -4, bp: 0, stop_u32: 1000 - 28});
         TestBase.testASMCode([
                 'PUI32 77',     // 0
-                'CALL 11',      // 5
-                'END',          // 10
-                'SSP -12',      // 11 sp -12 -> -24
-                'PUI32 9696',   // 16 sp -24 -> -28
-                'RET 0'         // 21
+                'CALL 12',      // 5
+                'LM32',         // 10
+                'END',          // 11
+                'SSP -12',      // 12 sp -12 -> -24
+                'PUI32 9696',   // 17 sp -24 -> -28
+                'RET 0'         // 22
             ],
-            {pc: 10, sp: -8, bp: 0, stop_u32: 1000 - 28});
+            {pc: 11, sp: -8, bp: 0, stop_u32: 9696});
+        TestBase.testASMCode([
+                'PUI32 15',     // 0
+                'PUI32 20',     // 5
+                'PUI32 8',      // 10
+                'PUI32 8',      // 15
+                'CALL 27',      // 20
+                'LM32',         // 25
+                'END',          // 26
+                'SSP -12',      // 27 sp -12 -> -24
+                'PUI32 9696',   // 32 sp -24 -> -28
+                'RETVARGS 4'    // 37
+            ],
+            {pc: 26, sp: -8, bp: 0, stop_u32: 9696});
     });
 });

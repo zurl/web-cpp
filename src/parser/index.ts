@@ -56,6 +56,7 @@ function loadParser(source: string, query: any) {
     // cache
     if ((global as any)["window"] === undefined && fs.existsSync("/tmp/" + query.parserName + ".js")) {
         const newCode = fs.readFileSync("/tmp/" + query.parserName + ".js", "utf8");
+        // if( "TranslationUnitPegParser" !== query.parserName)
         return eval(newCode);
     }
     source = source.replace(/&!'((\\.|[^'])*)'/g, (match,

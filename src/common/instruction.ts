@@ -16,9 +16,9 @@ import {
     UnsignedInt32Type, VariableStorageType,
 } from "./type";
 import {fromBytesToString, toHexString} from "./utils";
-//          12|  param 2    |
+//          12|  param 2    |  <= $sp after ret?
 //           8|  param 1    |
-//           4|  saved $pc  | => ret addr
+//           4|  saved $pc  |  => ret addr
 //  $bp ->   0|  saved $bp  |
 //          -4|  local 1    |
 //          -8|  local 2    |
@@ -46,6 +46,7 @@ export enum OpCode {
            // [--$sp] = $bp
            // $bp = $sp
            // $pc = u32
+    RETVARGS,
     RET,   // t0 = $sp
            // $sp = $bp + u32 + 8
            // $pc = [$bp + 4]

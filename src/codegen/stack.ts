@@ -22,6 +22,9 @@ import {CompileContext} from "./context";
 export function convertTypeOnStack(ctx: CompileContext, dst: Type, src: Type, node: Node) {
     unsupportInt64(dst);
     unsupportInt64(src);
+    if (src instanceof QualifiedType) {
+        src = src.elementType;
+    }
     if (dst instanceof IntegerType) {
         if (src instanceof IntegerType) {
             return;
@@ -41,9 +44,17 @@ export function convertTypeOnStack(ctx: CompileContext, dst: Type, src: Type, no
             if ( dst.elementType instanceof VoidType) {
                 return;
             }
-            if (src.equals(dst)) {
-                return;
+            if ( src.elementType instanceof QualifiedType) {
+                if (src.elementType.equals(dst.elementType) ||
+                    src.elementType.elementType.equals(dst.elementType)) {
+                    return;
+                }
+            } else {
+                if (src.elementType.equals(dst.elementType)) {
+                    return;
+                }
             }
+
         }
     }
     throw new InternalError(`unsupport type assignment ${src.toString()} to ${dst.toString()}`);

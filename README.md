@@ -42,12 +42,15 @@ local var:  @foo@var1
 - [ ] non-return detect
 - [X] function call parameter type conversion
 - [ ] bit field of struct
-- [ ] var args (fuck it)
+- [X] var args
 - [ ] switch case
 - [X] do-while
 - [X] break continue
 - [ ] goto label
 - [ ] js highlevel api
+- [X] allocator
+- [ ] char * a = "123"
+- [ ] void return type;
 ## C++ Language
 
 ### reference

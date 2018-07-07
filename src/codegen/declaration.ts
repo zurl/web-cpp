@@ -5,6 +5,8 @@
  */
 import * as Long from "long";
 import {
+    AbstractArrayDeclarator,
+    AbstractDeclarator, AbstractFunctionDeclarator, AbstractPointerDeclarator,
     ArrayDeclarator,
     AssignmentExpression,
     Declaration,
@@ -83,8 +85,7 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
     return resultType;
 }
 
-export function parseDeclarator(ctx: CompileContext, node: Declarator,
-                                resultType: Type): [Type, string] {
+export function parseDeclarator(ctx: CompileContext, node: Declarator, resultType: Type): [Type, string] {
     if (node === null) {
         return [resultType, ""];
     } else if (node instanceof IdentifierDeclarator) {
@@ -97,12 +98,14 @@ export function parseDeclarator(ctx: CompileContext, node: Declarator,
     }
 }
 
-export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type, declarator: Declarator): Type {
-    if (declarator instanceof FunctionDeclarator) {
+export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
+                                        declarator: Declarator | AbstractDeclarator): Type {
+    if (declarator instanceof FunctionDeclarator || declarator instanceof AbstractFunctionDeclarator) {
         assertType(declarator.parameters, ParameterList);
-        const [parameterTypes, parameterNames] = (declarator.parameters as ParameterList).codegen(ctx);
-        return new FunctionType("", type, parameterTypes, parameterNames);
-    } else if (declarator instanceof PointerDeclarator) {
+        const [parameterTypes, parameterNames, variableArguments]
+            = (declarator.parameters as ParameterList).codegen(ctx);
+        return new FunctionType("", type, parameterTypes, parameterNames, variableArguments);
+    } else if (declarator instanceof PointerDeclarator || declarator instanceof AbstractPointerDeclarator) {
         let pointer = declarator.pointer as Pointer | null;
         let result = type;
         while (pointer != null) {
@@ -110,7 +113,7 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type, declara
             pointer = pointer.pointer;
         }
         return result;
-    } else if (declarator instanceof ArrayDeclarator) {
+    } else if (declarator instanceof ArrayDeclarator || declarator instanceof AbstractArrayDeclarator) {
         const length = declarator.length.codegen(ctx);
         if (length.form !== ExpressionResultType.CONSTANT) {
             throw new SyntaxError("var length array is not support currently", declarator);
@@ -202,6 +205,15 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
         }
     }
 };
+
+export function parseAbstractDeclarator(ctx: CompileContext, node: AbstractDeclarator, resultType: Type): Type {
+    if (node.declarator === null) {
+        return mergeTypeWithDeclarator(ctx, resultType, node);
+    } else {
+        const newResultType = mergeTypeWithDeclarator(ctx, resultType, node);
+        return parseAbstractDeclarator(ctx, node.declarator, newResultType);
+    }
+}
 
 TypedefName.prototype.codegen = function(ctx: CompileContext) {
     const item = ctx.currentScope.get(this.identifier.name);

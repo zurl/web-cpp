@@ -199,13 +199,16 @@ export class FunctionType extends Type {
     public returnType: Type;
     public parameterTypes: Type[];
     public parameterNames: string[];
+    public variableArguments: boolean;
 
-    constructor(name: string, returnType: Type, parameterTypes: Type[], parameterNames: string[]) {
+    constructor(name: string, returnType: Type, parameterTypes: Type[],
+                parameterNames: string[], variableArguments: boolean) {
         super();
         this.name = name;
         this.returnType = returnType;
         this.parameterTypes = parameterTypes;
         this.parameterNames = parameterNames;
+        this.variableArguments = variableArguments;
     }
 
     get length(): number {

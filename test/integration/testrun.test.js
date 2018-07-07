@@ -2,28 +2,26 @@ const TestBase = require('./testbase');
 const fs = require('fs');
 
 const source = `
-int foo(int x){
-    print(x);
-    return 24;
-}
-int main(){
-    char mystring[10];
-    int a = foo(12);
+typedef void* va_list;
+#define va_start(ptr, arg) (ptr) = &(arg) + sizeof(arg) + 4
+#define va_arg(ptr, type) ((ptr) += sizeof(type), *((type *)(ptr - sizeof(type))))
+#define va_end(ptr) (ptr) = 0;
+
+int printf(const char * format, ...){
+    va_list ptr;
+    va_start(ptr, format);
+    int a = va_arg(ptr, int);
+    int b = va_arg(ptr, int);
+    int c = va_arg(ptr, int);
     print(a);
-    puts("hello world!\\n");
-    mystring[0] = 'a';
-    mystring[1] = 'c';
-    mystring[2] = 48;
-    mystring[3] = 0;
-    puts(mystring);
-    int i = 0;
-    while( i < 10 ){
-        i = i + 1;
-        if( i == 5 ) continue;
-        if( i > 8 ) break;
-        print(i);
-        
-    }
+    print(b);
+    print(c);
+    return 0;
+}
+
+int main(){
+    va_list a = "123";
+    printf("aaa", 123, 477, 999);
     return 0;
 }
 `;

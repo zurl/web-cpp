@@ -1,9 +1,9 @@
 import {
-    AssignmentExpression, BinaryExpression, CallExpression,
+    AssignmentExpression, BinaryExpression, CallExpression, CastExpression,
     FloatingConstant,
     Identifier,
     IntegerConstant, MemberExpression,
-    ParenthesisExpression, SourceLocation, SubscriptExpression, UnaryExpression,
+    ParenthesisExpression, SourceLocation, SubscriptExpression, TypeName, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
@@ -17,6 +17,7 @@ import {
     Type, UnsignedInt64Type, UnsignedIntegerType,
 } from "../common/type";
 import {CompileContext} from "./context";
+import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
 /**
  *  @file
  *  @author zcy <zurl@live.com>
@@ -99,6 +100,8 @@ BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
             throw new TypeError(`binary operator could only be applied on integer`, this);
         }
         return PrimitiveTypes.int32;
+    } else if (this.operator === ",") {
+        return this.right.deduceType(ctx);
     }
     throw new InternalError(`no impl at BinaryExpression()`);
 };
@@ -172,6 +175,18 @@ MemberExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     } else {
         return field.type;
     }
+};
+
+TypeName.prototype.deduceType = function(ctx: CompileContext): Type {
+    let type = parseTypeFromSpecifiers(ctx, this.specifierQualifiers, this);
+    if ( this.declarator) {
+        type = parseAbstractDeclarator(ctx, this.declarator, type);
+    }
+    return type;
+};
+
+CastExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    return this.typeName.deduceType(ctx);
 };
 
 export function expression_type() {

@@ -6,7 +6,7 @@
 import * as Long from "long";
 import {
     AssignmentExpression,
-    BinaryExpression, CharacterConstant,
+    BinaryExpression, CastExpression, CharacterConstant,
     ExpressionResult,
     ExpressionResultType,
     FloatingConstant,
@@ -40,6 +40,7 @@ import {
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {CompileContext} from "./context";
+import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {convertTypeOnStack, loadAddress, loadIntoStack, loadReference, popFromStack} from "./stack";
 
 ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
@@ -373,6 +374,11 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     // 救救刘人语小姐姐
     const left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
+
+    if ( this.operator === ",") {
+        return right;
+    }
+
     const leftType = extractRealType(left.type);
     const rightType = extractRealType(right.type);
     // 计算结果不会出现const, array和引用，因为肯定在栈顶
@@ -640,6 +646,56 @@ export function doVarInit(ctx: CompileContext, left: ExpressionResult,
     }
     return left;
 }
+
+CastExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    const type = this.deduceType(ctx);
+    const expr = this.operand.codegen(ctx);
+    const exprType = extractRealType(expr.type);
+    ctx.currentNode = this;
+    if ( (type instanceof PointerType  || type instanceof IntegerType) &&
+        (exprType instanceof PointerType || exprType instanceof IntegerType)
+        ) {
+        return {
+            form: expr.form,
+            type,
+            value: expr.value,
+        };
+    } else if ( exprType.equals(type)) {
+        return expr;
+    } else if ( type instanceof FloatingType && exprType instanceof IntegerType) {
+        loadIntoStack(ctx, expr);
+        if ( exprType instanceof UnsignedIntegerType) {
+            ctx.build(OpCode.U2D);
+        } else {
+            ctx.build(OpCode.I2D);
+        }
+        if ( type instanceof FloatType) {
+            ctx.build(OpCode.D2F);
+        }
+        return {
+            form: ExpressionResultType.RVALUE,
+            type,
+            value: 0,
+        };
+    } else if ( type instanceof IntegerType && exprType instanceof FloatingType) {
+        if ( type instanceof FloatType) {
+            ctx.build(OpCode.F2D);
+        }
+        loadIntoStack(ctx, expr);
+        if ( type instanceof UnsignedIntegerType) {
+            ctx.build(OpCode.D2U);
+        } else {
+            ctx.build(OpCode.D2I);
+        }
+        return {
+            form: ExpressionResultType.RVALUE,
+            type,
+            value: 0,
+        };
+    }
+    throw new SyntaxError(`unsupport cast from ${expr.type} to ${type}`, this);
+    // TODO:: which is hard
+};
 
 /*
  *  规定：

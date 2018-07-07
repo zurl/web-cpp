@@ -31,8 +31,10 @@ function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
     if (node instanceof FunctionDeclarator && node.declarator instanceof IdentifierDeclarator) {
         assertType(node.parameters, ParameterList);
-        const [parameterTypes, parameterNames] = (node.parameters as ParameterList).codegen(ctx);
-        return new FunctionType(node.declarator.identifier.name, resultType, parameterTypes, parameterNames);
+        const [parameterTypes, parameterNames, variableArguments] = (node.parameters as ParameterList).codegen(ctx);
+        return new FunctionType(node.declarator.identifier.name,
+            resultType, parameterTypes,
+            parameterNames, variableArguments);
     } else if (node.declarator != null) {
         const newResultType = mergeTypeWithDeclarator(ctx, resultType, node);
         return parseFunctionDeclarator(ctx, node.declarator, newResultType);
@@ -41,7 +43,7 @@ function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
     }
 }
 
-ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[]] {
+ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[], boolean] {
     ctx.currentNode = this;
     // TODO:: deal with abstract Declarator
     const parameters = this.parameters.map((parameter) =>
@@ -49,7 +51,7 @@ ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string
             parseTypeFromSpecifiers(ctx, parameter.specifiers, this)));
     const parameterTypes = parameters.map((x) => x[0]);
     const parameterNames = parameters.map((x) => x[1]);
-    return [parameterTypes, parameterNames];
+    return [parameterTypes, parameterNames, this.variableArguments];
 };
 
 /**
@@ -82,7 +84,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
-        if (!name ) {
+        if (!name) {
             throw new SyntaxError(`unnamed parameter`, this);
         }
         if (ctx.currentScope.map.has(name)) {
@@ -112,23 +114,39 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
     // TODO:: call function pointer
     const entity = callee.value as FunctionEntity;
-    if (this.arguments.length !== callee.type.parameterTypes.length) {
+    if ((entity.type.variableArguments && this.arguments.length < callee.type.parameterTypes.length) ||
+        (!entity.type.variableArguments && this.arguments.length !== callee.type.parameterTypes.length)) {
         throw new SyntaxError(`expected ${callee.type.parameterTypes.length} parameters,`
             + `actual is ${this.arguments.length}`, this);
     }
-    for (let i = this.arguments.length - 1; i >= 0; i--) {
+    if (entity.type.variableArguments) {
+        let varLength = 0;
+        for (let i = this.arguments.length - 1; i >= callee.type.parameterTypes.length; i--) {
+            const val = this.arguments[i].codegen(ctx);
+            ctx.currentNode = this;
+            const rawType = extractRealType(val.type);
+            loadIntoStack(ctx, val);
+            if (rawType.length > 4) {
+                varLength += rawType.length;
+            } else {
+                varLength += 4;
+            }
+        }
+        ctx.build(OpCode.PUI32, varLength);
+    }
+    for (let i = callee.type.parameterTypes.length - 1; i >= 0; i--) {
         const val = this.arguments[i].codegen(ctx);
         const leftType = extractRealType(callee.type.parameterTypes[i]);
         const rightType = extractRealType(val.type);
 
         // 这里应用 赋值隐式类型转换
+        ctx.currentNode = this;
         loadIntoStack(ctx, val);
         convertTypeOnStack(ctx, leftType, rightType, this);
-        ctx.currentNode = this;
     }
     // TODO:: mangled name
     ctx.unresolve(entity.fullName);
-    if ( entity.isLibCall ) {
+    if (entity.isLibCall) {
         ctx.build(OpCode.LIBCALL, 0);
     } else {
         ctx.build(OpCode.CALL, 0);
