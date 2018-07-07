@@ -6,6 +6,13 @@
 import {RuntimeError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
 import {JsAPIDefine} from "../common/jsapi";
+import {HeapAllocator, LinkedHeapAllocator} from "./allocator";
+
+interface VirtualMachineOptions {
+    memory: DataView;
+    heapStart: number;
+    jsAPIList?: JsAPIDefine[];
+}
 
 export class VirtualMachine {
     public memory: DataView;
@@ -13,15 +20,34 @@ export class VirtualMachine {
     public pc: number;
     public bp: number;
     public sp: number;
+    public heapStart: number;
+    public heapPointer: number;
     public jsAPIList: JsAPIDefine[];
+    public heapAllocator: HeapAllocator;
 
-    constructor(memory: DataView, jsAPIList: JsAPIDefine[] = []) {
-        this.memory = memory;
-        this.memoryUint8Array = new Uint8Array(memory.buffer);
+    constructor(options: VirtualMachineOptions) {
+        this.memory = options.memory;
+        this.memoryUint8Array = new Uint8Array(options.memory.buffer);
         this.pc = 0;
-        this.bp = memory.buffer.byteLength;
+        this.bp = options.memory.buffer.byteLength;
         this.sp = this.bp;
-        this.jsAPIList = jsAPIList;
+        this.heapStart = options.heapStart;
+        this.heapPointer = options.heapStart;
+        if (options.jsAPIList) {
+            this.jsAPIList = options.jsAPIList;
+        } else {
+            this.jsAPIList = [];
+        }
+        this.heapAllocator = new LinkedHeapAllocator();
+        this.heapAllocator.init(this);
+    }
+
+    public allocHeap(size: number): number {
+        return this.heapAllocator.allocHeap(this, size);
+    }
+
+    public freeHeap(offset: number): void {
+        this.heapAllocator.freeHeap(this, offset);
     }
 
     public popUint32(): number {

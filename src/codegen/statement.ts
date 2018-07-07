@@ -6,14 +6,15 @@
 
 import {
     BreakStatement,
-    CompoundStatement, ContinueStatement,
+    CompoundStatement, ContinueStatement, DoWhileStatement,
     ExpressionResultType,
-    ExpressionStatement,
+    ExpressionStatement, ForStatement,
     IfStatement,
     ReturnStatement, WhileStatement,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
+import {PrimitiveTypes} from "../common/type";
 import {CompileContext} from "./context";
 import {loadIntoStack} from "./stack";
 
@@ -79,6 +80,76 @@ WhileStatement.prototype.codegen = function(ctx: CompileContext) {
     const l2 = ctx.currentBuilder!.now;
     ctx.build(OpCode.JZ, 0);
     this.body.codegen(ctx);
+    ctx.currentNode = this;
+    const l3 = ctx.currentBuilder!.now;
+    ctx.currentNode = this;
+    ctx.build(OpCode.J, l1 - l3);
+    const l4 = ctx.currentBuilder!.now;
+    ctx.currentBuilder!.codeView.setUint32(l2 + 1, l4 - l2);
+    ctx.loopContext.breakPos.map( (line) =>
+        ctx.currentBuilder!.codeView.setUint32(line + 1, l4 - line),
+    );
+    ctx.loopContext.continuePos.map( (line) =>
+        ctx.currentBuilder!.codeView.setUint32(line + 1, l1 - line),
+    );
+    ctx.loopContext = saveLoopContext;
+};
+
+DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
+    const saveLoopContext = ctx.loopContext;
+    ctx.loopContext = {
+        continuePos: [],
+        breakPos: [],
+    };
+    const l1 = ctx.currentBuilder!.now;
+    this.body.codegen(ctx);
+    const l2 = ctx.currentBuilder!.now;
+    const condition = this.test.codegen(ctx);
+    ctx.currentNode = this;
+    loadIntoStack(ctx, condition);
+    const l3 = ctx.currentBuilder!.now;
+    ctx.build(OpCode.JNZ, l3 - l1);
+    const l4 = ctx.currentBuilder!.now;
+    ctx.currentBuilder!.codeView.setUint32(l2 + 1, l4 - l2);
+    ctx.loopContext.breakPos.map( (line) =>
+        ctx.currentBuilder!.codeView.setUint32(line + 1, l4 - line),
+    );
+    ctx.loopContext.continuePos.map( (line) =>
+        ctx.currentBuilder!.codeView.setUint32(line + 1, l3 - line),
+    );
+    ctx.loopContext = saveLoopContext;
+};
+
+ForStatement.prototype.codegen = function(ctx: CompileContext) {
+    const saveLoopContext = ctx.loopContext;
+    ctx.loopContext = {
+        continuePos: [],
+        breakPos: [],
+    };
+
+    if (this.init !== null) {
+        this.init.codegen(ctx);
+    }
+
+    const l1 = ctx.currentBuilder!.now;
+    let l2: number;
+    if (this.test !== null) {
+        const condition = this.test.codegen(ctx);
+        ctx.currentNode = this;
+        loadIntoStack(ctx, condition);
+        l2 = ctx.currentBuilder!.now;
+        ctx.build(OpCode.JZ, 0);
+    } else {
+        l2 = ctx.currentBuilder!.now;
+        ctx.build(OpCode.J, 0);
+    }
+
+    this.body.codegen(ctx);
+
+    if (this.update) {
+        this.update.codegen(ctx);
+    }
+
     ctx.currentNode = this;
     const l3 = ctx.currentBuilder!.now;
     ctx.currentNode = this;

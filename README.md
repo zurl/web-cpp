@@ -44,9 +44,9 @@ local var:  @foo@var1
 - [ ] bit field of struct
 - [ ] var args (fuck it)
 - [ ] switch case
-- [ ] do-while
+- [X] do-while
 - [X] break continue
-- [ ] goto
+- [ ] goto label
 - [ ] js highlevel api
 ## C++ Language
 

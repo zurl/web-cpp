@@ -15,7 +15,10 @@ function testASMCode(source, asserts){
     const ib = new InstructionBuilder(1000);
     ib.fromText(source + "\nEND\n");
     const asm = ib.toAssembly();
-    const vm = new VirtualMachine(asm.code);
+    const vm = new VirtualMachine({
+        memory: asm.code,
+        heapStart: asm.size
+    });
     while( vm.runOneStep() );
     if(asserts.hasOwnProperty('pc')){
         Assert.assert.equal(vm.pc, asserts.pc, 'pc');

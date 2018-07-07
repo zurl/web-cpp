@@ -36,7 +36,11 @@ function testRun(source, debug){
     const memory = new DataView(memoryBuffer);
     const memoryArray = new Uint8Array(memoryBuffer);
     memoryArray.set(new Uint8Array(bin.code.buffer), 0);
-    const vm = new VirtualMachine(memory, bin.jsAPIList);
+    const vm = new VirtualMachine({
+        memory,
+        heapStart: bin.code.buffer.byteLength,
+        jsAPIList: bin.jsAPIList,
+    });
     let i = 0;
     while( i < 100000 ){
         const ret = vm.runOneStep();
