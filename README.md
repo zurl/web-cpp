@@ -5,6 +5,7 @@ a experimental c++ compiler in typescript
 
 ```shell
 npm install
+npm install -g typescript nyc mocha
 npm run build
 npm run test
 ```
