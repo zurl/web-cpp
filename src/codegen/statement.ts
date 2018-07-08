@@ -59,12 +59,17 @@ GotoStatement.prototype.codegen = function(ctx: CompileContext) {
 };
 
 CaseStatement.prototype.codegen = function(ctx: CompileContext) {
-    const test = this.test.codegen(ctx);
-    if ( test.form !== ExpressionResultType.CONSTANT || !(test.type instanceof IntegerType)) {
-        throw new SyntaxError(`case value must be integer or enum`, this);
+    if ( this.test === null) {
+        ctx.switchBuffer.push(ctx.currentBuilder.now);
+        this.body.codegen(ctx);
+    } else {
+        const test = this.test.codegen(ctx);
+        if ( test.form !== ExpressionResultType.CONSTANT || !(test.type instanceof IntegerType)) {
+            throw new SyntaxError(`case value must be integer or enum`, this);
+        }
+        ctx.switchBuffer.push(ctx.currentBuilder.now);
+        this.body.codegen(ctx);
     }
-    ctx.switchBuffer.push(ctx.currentBuilder.now);
-    this.body.codegen(ctx);
 };
 
 SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
@@ -77,10 +82,10 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     }
     for (const stmt of this.body.body) {
         if ( stmt instanceof CaseStatement ) {
-            const test = stmt.test.codegen(ctx);
-            if ( test === null) { // default
+            if ( stmt.test === null) { // default
                 caseValues.push("default");
             } else {
+                const test = stmt.test.codegen(ctx);
                 if ( test.type instanceof IntegerType) {
                     caseValues.push((test.value as Long).toNumber());
                 } else {
@@ -227,9 +232,8 @@ DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
     loadIntoStack(ctx, condition);
     const l3 = ctx.currentBuilder!.now;
-    ctx.build(OpCode.JNZ, l3 - l1);
+    ctx.build(OpCode.JNZ, l1 - l3);
     const l4 = ctx.currentBuilder!.now;
-    ctx.currentBuilder!.codeView.setUint32(l2 + 1, l4 - l2);
     ctx.loopContext.breakPos.map( (line) =>
         ctx.currentBuilder!.codeView.setUint32(line + 1, l4 - line),
     );
