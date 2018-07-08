@@ -436,6 +436,7 @@ export enum VariableStorageType {
     MEMORY_DATA,
     MEMORY_BSS,
     MEMORY_EXTERN,
+    CONSTANT,
 }
 
 export class Variable {

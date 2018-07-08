@@ -54,13 +54,13 @@ local var:  @foo@var1
 - [X] break continue
 - [X] goto label
 - [X] switch case
-- [ ] enum
+- [X] enum
 - [ ] const
 - [ ] non-return detect
 - [ ] bit field of struct
 - [ ] js highlevel api
-- [ ] #if #elif
 - [ ] only export necessary scopeMap
+- [ ] #if #elif
 - [ ] ?:
 - [ ] #line __line__ __file__
 ## C++ Language

@@ -236,6 +236,13 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
             value: item.location,
             isConst,
         };
+    } else if (item.storageType === VariableStorageType.CONSTANT) {
+        return {
+            type,
+            form: ExpressionResultType.CONSTANT,
+            value: Long.fromInt(item.location as number),
+            isConst,
+        };
     } else {
         throw new InternalError(`unknown error at item.storageType`);
     }

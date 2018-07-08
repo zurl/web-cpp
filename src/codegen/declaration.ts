@@ -34,7 +34,7 @@ import {
     extractRealType,
     FunctionType,
     IntegerType,
-    PointerType,
+    PointerType, PrimitiveTypes,
     QualifiedType,
     Type, Variable, VariableStorageType,
 } from "../common/type";
@@ -56,7 +56,7 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
         } else if ( node instanceof TypedefName) {
             resultType = node.codegen(ctx) as Type;
         } else if ( node instanceof EnumSpecifier) {
-            throw new InternalError(`unsupport type`);
+            resultType = node.codegen(ctx) as Type;
         } else {
             throw new InternalError(`unsupport type`);
         }
@@ -238,6 +238,33 @@ TypedefName.prototype.codegen = function(ctx: CompileContext) {
         return item;
     }
     throw new SyntaxError(`${this.identifier.name} is not a type`, this);
+};
+
+EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
+    if ( this.enumerators != null ) {
+        let now = 0, val = 0;
+        for (const enumerator of this.enumerators) {
+            now ++;
+            if (enumerator.value === null) {
+                val = now;
+            } else {
+                const expr = enumerator.value.codegen(ctx);
+                if ( expr.form !== ExpressionResultType.CONSTANT ||
+                    !(expr.type instanceof IntegerType) ) {
+                    throw new SyntaxError(`enum value must be integer`, this);
+                }
+                val = (expr.value as Long).toNumber();
+            }
+            ctx.currentScope.set(this.identifier.name, new Variable(
+                this.identifier.name, ctx.fileName, PrimitiveTypes.int32,
+                VariableStorageType.CONSTANT, val,
+            ));
+        }
+    }
+    if ( this.identifier != null ) {
+        ctx.currentScope.set(this.identifier.name, PrimitiveTypes.int32);
+    }
+    return PrimitiveTypes.int32;
 };
 
 export function declaration() {

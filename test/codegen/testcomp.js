@@ -39,6 +39,13 @@ int main(){
 const source = `
 #include <stdio.h>
 
+enum uu{
+A,
+B,
+C,
+D
+};
+
 int main(){
     int c = 0;
     fuck:
