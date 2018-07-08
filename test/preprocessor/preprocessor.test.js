@@ -15,7 +15,7 @@ function arrayEqual(arr1, arr2){
     assert.equal(JSON.stringify(arr1), JSON.stringify(arr2));
 }
 
-    const source2 = `#include <string.h>
+    const source2 = `
 #ifdef A
 "Should Not Exists 1"
 #endif
@@ -46,10 +46,8 @@ describe('preprocessor', function(){
     it('preprocessor should works', async function(){
 
         const fileName = "testFile";
-        const StringH = Headers.get("string.h");
-
         const {code} = preprocess(fileName, source2);
-        assert.equal(code, StringH + result)
+        assert.equal(code,result)
     });
     it('parse marco', function () {
         arrayEqual(

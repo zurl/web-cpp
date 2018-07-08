@@ -1,4 +1,5 @@
 # web-cpp
+[![Build Status](https://www.travis-ci.org/zurl/web-cpp.svg?branch=master)](https://www.travis-ci.org/zurl/web-cpp)
 a experimental c++ compiler in typescript
 
 ## usage
