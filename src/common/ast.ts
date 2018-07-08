@@ -734,10 +734,6 @@ export class LabeledStatement extends Statement {
         this.label = label;
         this.body = body;
     }
-
-    public getUniqueLabel() {
-        return this.label.name;
-    }
 }
 
 export class CompoundStatement extends Statement {

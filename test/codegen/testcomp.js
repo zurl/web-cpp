@@ -37,20 +37,22 @@ int main(){
 `;
 
 const source = `
-typedef void* va_list;
-#define va_start(ptr, arg) (ptr) = &(arg) + sizeof(arg) + 4
-#define va_arg(ptr, type) ((ptr)+=sizeof(type), *((type *)(ptr - sizeof(type))))
-
-void printf(const char * format, ...){
-    va_list ptr;
-    va_start(ptr, format);
-    int c = *(int *) ptr;
-}
+#include <stdio.h>
 
 int main(){
+    int c = 0;
+    fuck:
+    c ++;
+    goto fuck;
     
-    va_list a = "123";
-    //printf("aaa", 123, 477);
+    switch(c){
+    case 1: c++;
+    case 2: c++;
+    case 3: c++;
+    case 4: c++;
+    default: c++;
+    }
+    
 }
 `;
 

@@ -34,7 +34,6 @@ local var:  @foo@var1
 - [X] array
 - [X] sizeof
 - [X] typedef
-- [ ] enum
 - [X] union
 - [X] js native function
 - [X] string
@@ -43,26 +42,44 @@ local var:  @foo@var1
 - [X] doConstant about < > <= >= == & && | || >> << ...
 - [X] struct / class
 - [X] cast ope (hard)
-- [ ] const
 - [X] void return type;
-- [ ] non-return detect
 - [X] function call parameter type conversion
-- [ ] bit field of struct
 - [X] var args
-- [ ] switch case
-- [X] do-while
-- [X] break continue
-- [ ] goto label
-- [ ] js highlevel api
 - [X] allocator
 - [X] char * a = "123"
 - [X] write, read
 - [X] printf
-- [ ] postfix ++ --
+- [X] postfix ++ --
+- [X] do-while
+- [X] break continue
+- [X] goto label
+- [ ] enum
+- [ ] const
+- [ ] non-return detect
+- [ ] bit field of struct
+- [ ] switch case
+- [ ] js highlevel api
 - [ ] #if #elif
 - [ ] only export necessary scopeMap
+- [ ] ?:
+- [ ] #line __line__ __file__
 ## C++ Language
-
+- [ ] 异常处理
+- [ ] 左值引用
+- [ ] 静态成员变量
+- [ ] 访问控制
+- [ ] 静态成员函数
+- [ ] 成员函数
+- [ ] 虚成员函数
+- [ ] 函数重载
+- [ ] 运算符重载
+- [ ] using
+- [ ] 函数模板
+- [ ] class模板
+- [ ] new/delete
+- [ ] typeid
+- [ ] 构造函数
+- [ ] namespace
 ### reference
 ### operator overload
 ### function overload (mangled name)

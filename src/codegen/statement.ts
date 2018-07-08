@@ -8,15 +8,15 @@ import {
     BreakStatement,
     CompoundStatement, ContinueStatement, DoWhileStatement,
     ExpressionResultType,
-    ExpressionStatement, ForStatement,
-    IfStatement,
+    ExpressionStatement, ForStatement, GotoStatement,
+    IfStatement, LabeledStatement,
     ReturnStatement, WhileStatement,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
 import {extractRealType, PrimitiveTypes} from "../common/type";
 import {CompileContext} from "./context";
-import {convertTypeOnStack, loadIntoStack} from "./stack";
+import {convertTypeOnStack, loadIntoStack, recycleExpressionResult} from "./stack";
 
 CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
@@ -25,9 +25,28 @@ CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.exitScope();
 };
 
+LabeledStatement.prototype.codegen = function(ctx: CompileContext) {
+    const item = ctx.labelMap.get(this.label.name);
+    if (item !== undefined) {
+        throw new SyntaxError(`duplicated label ${this.label.name}`, this);
+    }
+    const t0 = ctx.currentBuilder.now;
+    ctx.labelMap.set(this.label.name, t0);
+    this.body.codegen(ctx);
+};
+
+GotoStatement.prototype.codegen = function(ctx: CompileContext) {
+    const item = ctx.labelMap.get(this.label.name);
+    if (item === undefined) {
+        throw new SyntaxError(`undefined label  ${this.label.name}`, this);
+    }
+    const t0 = ctx.currentBuilder.now;
+    ctx.build(OpCode.J, item - t0);
+};
+
 ExpressionStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
-    this.expression.codegen(ctx);
+    recycleExpressionResult(ctx, this.expression.codegen(ctx));
 };
 
 ReturnStatement.prototype.codegen = function(ctx: CompileContext) {

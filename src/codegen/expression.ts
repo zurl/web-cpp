@@ -12,7 +12,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    ParenthesisExpression, StringLiteral,
+    ParenthesisExpression, PostfixExpression, StringLiteral,
     SubscriptExpression, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
@@ -40,8 +40,14 @@ import {
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {CompileContext} from "./context";
-import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
-import {convertTypeOnStack, loadAddress, loadIntoStack, loadReference, popFromStack} from "./stack";
+import {
+    convertTypeOnStack,
+    loadAddress,
+    loadIntoStack,
+    loadReference,
+    popFromStack,
+    recycleExpressionResult,
+} from "./stack";
 
 ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     return this.expression.codegen(ctx);
@@ -695,6 +701,20 @@ CastExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
     throw new SyntaxError(`unsupport cast from ${expr.type} to ${type}`, this);
     // TODO:: which is hard
+};
+
+PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    const ope = this.operand.codegen(ctx);
+    loadIntoStack(ctx, ope);
+    recycleExpressionResult(ctx, new AssignmentExpression(this.location,
+         "=", this.operand, new BinaryExpression(
+             this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
+        )).codegen(ctx));
+    return {
+        form: ExpressionResultType.RVALUE,
+        type: ope.type,
+        value: 0,
+    };
 };
 
 /*

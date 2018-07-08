@@ -2,26 +2,14 @@ const TestBase = require('./testbase');
 const fs = require('fs');
 
 const source = `
-#include <syscall.h>
 #include <stdio.h>
-#include <stdarg.h>
-
-//__libcall void print(int x);
-//#define va_start(ptr, arg) (ptr) = &(arg) + sizeof(arg) + 4
-
-int printf(const char * format, ...){
-    va_list arg_list;
-    va_start(arg_list, format);
-    //(arg_list) = &(format) + sizeof(format) + 4;
-    int d = *(int *)arg_list;
-    printf("aaa");
-    return 123;
-}
 
 int main(){
-    int d = 17;
-    d += 13;
-    printf("%d, %d, %d\\n", 123, 477, 999);
+    int a = 1;
+    int b = a++;
+    a = 1;
+    int c = ++a;
+    printf("b=%d, c=%d", b, c);
     return 0;
 }
 `;

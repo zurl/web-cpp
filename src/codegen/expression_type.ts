@@ -3,7 +3,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant, MemberExpression,
-    ParenthesisExpression, SourceLocation, SubscriptExpression, TypeName, UnaryExpression,
+    ParenthesisExpression, PostfixExpression, SourceLocation, SubscriptExpression, TypeName, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
@@ -187,6 +187,10 @@ TypeName.prototype.deduceType = function(ctx: CompileContext): Type {
 
 CastExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     return this.typeName.deduceType(ctx);
+};
+
+PostfixExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    return this.operand.deduceType(ctx);
 };
 
 export function expression_type() {

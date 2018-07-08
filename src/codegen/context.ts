@@ -43,6 +43,7 @@ export class CompileContext {
     public scopeMap: Map<string, Scope>;
     public memory: MemoryLayout;
 
+    public labelMap: Map<string, number>;
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
     public currentScope: Scope;
@@ -70,6 +71,7 @@ export class CompileContext {
         this.loopContext = null;
         this.sourceMap = sourceMap;
         this.source = source;
+        this.labelMap = new Map<string, number>();
     }
 
     public isCpp(): boolean {
