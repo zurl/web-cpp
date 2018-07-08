@@ -3,7 +3,7 @@ const {fromBytesToString} = require( "../../dist/common/utils");
 const CodeGenTestBase = require("../codegen/testbase");
 const {VirtualMachine} = require("../../dist/vm/index");
 const {Headers, Impls, JsAPIMap} = require("../../dist/library/index");
-const Assert = require('chai');
+const {assert} = require('chai');
 
 function testRun(source, debug){
     let options = {};
@@ -42,9 +42,7 @@ function testRun(source, debug){
 
 function testRunCompareResult(source, expectOutput){
     const actualOutput = testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n");
-    const actualPlainOutput = actualOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
-    const expectPlainOutput = expectOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
-    Assert.assert.equal(actualPlainOutput, expectPlainOutput);
+    assert.equal(actualOutput.trim(), expectOutput.trim());
 }
 
 module.exports = {

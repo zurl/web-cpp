@@ -263,8 +263,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
         l2 = ctx.currentBuilder!.now;
         ctx.build(OpCode.JZ, 0);
     } else {
-        l2 = ctx.currentBuilder!.now;
-        ctx.build(OpCode.J, 0);
+        l2 = -1;
     }
 
     this.body.codegen(ctx);
@@ -279,7 +278,9 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
     ctx.build(OpCode.J, l1 - l3);
     const l4 = ctx.currentBuilder!.now;
-    ctx.currentBuilder!.codeView.setUint32(l2 + 1, l4 - l2);
+    if (this.test !== null) {
+        ctx.currentBuilder!.codeView.setUint32(l2 + 1, l4 - l2);
+    }
     ctx.loopContext.breakPos.map( (line) =>
         ctx.currentBuilder!.codeView.setUint32(line + 1, l4 - line),
     );

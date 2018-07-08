@@ -218,6 +218,9 @@ export function popFromStack(ctx: CompileContext, expr: ExpressionResult) {
     const rawType = extractRealType(expr.type);
     unsupportInt64(rawType);
     unsupportRRef(expr.type);
+    if ( rawType instanceof FloatType) {
+        ctx.build(OpCode.D2F);
+    }
     loadAddress(ctx, expr);
     if (expr.form === ExpressionResultType.LVALUE_MEMORY_EXTERN) {
         ctx.unresolve(expr.value as string);

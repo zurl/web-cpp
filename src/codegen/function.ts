@@ -14,7 +14,7 @@ import {
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
 import {
-    extractRealType,
+    extractRealType, FloatType,
     FunctionType,
     PointerType, PrimitiveTypes,
     QualifiedType,
@@ -138,6 +138,10 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
             ctx.currentNode = this;
             const rawType = extractRealType(val.type);
             loadIntoStack(ctx, val);
+            if (entity.type.variableArguments && rawType instanceof FloatType) {
+                ctx.build(OpCode.F2D);
+                varLength += 4;
+            }
             if (rawType.length > 4) {
                 varLength += rawType.length;
             } else {

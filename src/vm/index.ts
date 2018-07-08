@@ -116,8 +116,8 @@ export class VirtualMachine {
                 const addr = this.popUint32();
                 const i0 = this.popUint32();
                 const i1 = this.popUint32();
-                this.memory.setUint32(addr, i1);
-                this.memory.setUint32(addr + 4, i0);
+                this.memory.setUint32(addr, i0);
+                this.memory.setUint32(addr + 4, i1);
             } else if (op <= OpCode.OR) {
                 const i1 = this.memory.getInt32(this.sp);
                 const i0 = this.memory.getInt32(this.sp + 4);

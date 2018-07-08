@@ -24,7 +24,7 @@ describe('vm test cases', function () {
         TestBase.testASMCode(['PUI32 7171', 'PUI32 256', 'SM32'],
             {sp: 0, mem_u32: {addr: 256, val: 7171}});
         TestBase.testASMCode(['PUI32 7171', 'PUI32 7172', 'PUI32 256', 'SM64'],
-            {sp: 0, mem_u32: [{addr: 256, val: 7171}, {addr: 260, val: 7172}] });
+            {sp: 0, mem_u32: [{addr: 256, val: 7172}, {addr: 260, val: 7171}] });
     });
     it('LM', function () {
         const pre = ['PUI32 214000000', 'PUI32 256', 'SM32'];
@@ -65,6 +65,8 @@ describe('vm test cases', function () {
             {sp: -4, stop_i32: 8888 & 7777});
         TestBase.testASMCode([...pre, 'OR'],
             {sp: -4, stop_i32: 8888 | 7777});
+        TestBase.testASMCode([...pre, 'XOR'],
+            {sp: -4, stop_i32: 8888 ^ 7777});
     });
     it('INT >> <<', function () {
         const pre = ['PI32 8888', 'PI32 5'];

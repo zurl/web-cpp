@@ -43,7 +43,25 @@ export function printf(vm: VirtualMachine): void {
     while ( chr !== 0) {
         if ( chr === "%".charCodeAt(0)) {
             formatptr ++;
-            const chr2 = String.fromCharCode(vm.memory.getUint8(formatptr));
+            let chr2 = String.fromCharCode(vm.memory.getUint8(formatptr));
+            let intPart = 0, floatPart = 0, isFloat = false;
+            if ( chr2 === "." || (
+                chr2.charCodeAt(0) >= "0".charCodeAt(0) &&
+                chr2.charCodeAt(0) <= "9".charCodeAt(0))) {
+                while ( chr2 === "." || (
+                    chr2.charCodeAt(0) >= "0".charCodeAt(0) &&
+                    chr2.charCodeAt(0) <= "9".charCodeAt(0))) {
+                    if ( chr2 === ".") {
+                        isFloat = true;
+                    } else if ( isFloat ) {
+                        floatPart = floatPart * 10 + (+chr2);
+                    } else {
+                        intPart = intPart * 10 + (+chr2);
+                    }
+                    formatptr ++;
+                    chr2 = String.fromCharCode(vm.memory.getUint8(formatptr));
+                }
+            }
             if (chr2 === "%") {
                 printfView.setUint8(size, "%".charCodeAt(0));
             } else if (chr2 === "d") {
@@ -63,6 +81,20 @@ export function printf(vm: VirtualMachine): void {
                     strchr = vm.memory.getUint8(strptr);
                 }
                 argleft -= 4;
+            } else if (chr2 === "f") {
+                let str = vm.popFloat64().toString();
+                if ( floatPart !== 0) {
+                    const tokens = str.split(".");
+                    if (tokens.length >= 2) {
+                        tokens[1] = tokens[1].substr(0, floatPart);
+                    }
+                    str = tokens.join(".");
+                }
+                for (let j = 0; j < str.length; j++) {
+                    printfView.setUint8(size, str.charCodeAt(j));
+                    size++;
+                }
+                argleft -= 8;
             } else {
                 printfView.setUint8(size, "%".charCodeAt(0));
                 size++;

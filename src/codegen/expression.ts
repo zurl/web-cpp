@@ -594,7 +594,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             } else if ( this.operator === "+" ) {
                 // empty
             } else if ( this.operator === "!" ) {
-                ctx.build(OpCode.NEGF);
+                ctx.build(OpCode.D2I);
                 ctx.build(OpCode.NOT);
                 retType = PrimitiveTypes.bool;
             } else {
