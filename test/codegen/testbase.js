@@ -1,6 +1,6 @@
 const {mergeScopeMap} = require("../../dist/codegen/scope");
-const {Headers, JsAPIMap} = require("../../dist/library");
-const Preprocess = require('../../dist/preprocessor').default;
+const {Headers, Impls, JsAPIMap} = require("../../dist/library/index");
+const {preprocess} = require('../../dist/preprocessor/index');
 const {CParser} = require('../../dist/parser');
 const {codegen} = require('../../dist/codegen/index');
 const {CompileContext} = require('../../dist/codegen/context');
@@ -10,27 +10,27 @@ const Assert = require('chai');
 const {Node, SourceLocation} = require("../../dist/common/ast");
 const {dumpScopeMap} = require("../../dist/codegen/scope");
 
-function compile(name, source, headersMap, options = {}) {
-    const {code, map} = Preprocess.process(name, source);
+function compile(name, source, options = {}) {
+    const {code, map} = preprocess(name, source);
     const translationUnit = CParser.parse(code);
-    const ctx = new CompileContext(name, options, headersMap);
+    const ctx = new CompileContext(name, options, source, map);
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();
 }
 
-function precompileHeaders(){
-    const scopeMaps = [];
-    for(let header of Object.keys(Headers)){
-        const obj = compile(header, Headers[header]);
-        scopeMaps.push(obj.scopeMap);
+function precompileLibrarys() {
+    const objects = [];
+    for(let impl of Impls.keys()){
+        const obj = compile(impl, Impls.get(impl), {debugMode: true});
+        objects.push(obj);
     }
-    return mergeScopeMap(scopeMaps);
+    return objects;
 }
 
-const HeaderScopeMap = precompileHeaders();
+const LibraryObjects = precompileLibrarys();
 
 function generateAsm(testCode) {
-    const obj = compile("test.cpp", testCode, HeaderScopeMap);
+    const obj = compile("test.cpp", testCode);
     const ib = new InstructionBuilder();
     const bin = Linker.link([obj], {}, {});
     ib.codeView = bin.code;
@@ -97,7 +97,7 @@ function printAST(node, indent = 0, nameIndent = 0) {
     return result;
 }
 
-function showASM(source, bin){
+function showASM(metaInfo, bin){
     InstructionBuilder.showCode(bin.code, {
         withLabel: true,
         withAddress: true,
@@ -106,9 +106,7 @@ function showASM(source, bin){
         sourceMap: bin.sourceMap,
         dataStart: bin.dataStart,
         dataMap: bin.dataMap,
-        source: {
-            'main.cpp': source.split('\n')
-        }
+        metaInfo
     });
 }
 
@@ -117,7 +115,7 @@ module.exports = {
     testCode,
     testFullCode,
     components:{
-        Preprocess,
+        preprocess,
         CParser,
         codegen,
         CompileContext,
@@ -127,9 +125,9 @@ module.exports = {
     compile,
     printAST,
     JsAPIMap,
-    HeaderScopeMap,
     Headers,
     mergeScopeMap,
     showASM,
-    dumpScopeMap
+    dumpScopeMap,
+    LibraryObjects
 };

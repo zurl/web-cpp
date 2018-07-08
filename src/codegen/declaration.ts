@@ -142,8 +142,29 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
     const isTypedef = this.specifiers.includes("typedef");
     for (const declarator of this.initDeclarators) {
         const [type, name] = parseDeclarator(ctx, declarator.declarator, baseType);
-        if (ctx.currentScope.getInCurrentScope(name) != null) {
-            throw new SyntaxError("Redeclaration of name " + name, this);
+        if (ctx.currentScope.hasInCurrentScope(name)) {
+            const item = ctx.currentScope.get(name)!;
+            if ( item instanceof FunctionEntity) {
+                if (!type.equals(item.type)) {
+                    throw new SyntaxError(`conflict declartion of ${name}`, this);
+                } else {
+                    continue;
+                }
+            } else if ( item instanceof Type) {
+                if (!type.equals(item)) {
+                    throw new SyntaxError(`conflict declartion of ${name}`, this);
+                } else {
+                    continue;
+                }
+            } else if ( type.isExtern ) {
+                if (!type.equals(item.type)) {
+                    throw new SyntaxError(`conflict declartion of ${name}`, this);
+                } else {
+                    continue;
+                }
+            } else {
+                throw new SyntaxError(`redefine name ${name}`, this);
+            }
         }
         if ( isTypedef ) {
             ctx.currentScope.set(name, type);
@@ -172,10 +193,6 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             // TODO:: support static function variable;
             storageType = VariableStorageType.STACK;
             location = ctx.memory.allocStack(type.length);
-        }
-
-        if (ctx.currentScope.hasInCurrentScope(name)) {
-            throw new SyntaxError(`redefined name ${name}`, this);
         }
 
         if ( type instanceof FunctionType) {

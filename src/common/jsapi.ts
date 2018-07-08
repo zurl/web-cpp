@@ -36,7 +36,7 @@ function parseFunctionType(define: string): FunctionType | null {
         if (!TypeLookUpTable.hasOwnProperty(name)) { return null; }
         paramsType.push(TypeLookUpTable[name]);
     }
-    return new FunctionType("", returnType, paramsType, []);
+    return new FunctionType("", returnType, paramsType, [], false);
 }
 
 function wrapHighAPI(fn: Function, type: FunctionType): (vm: VirtualMachine) => void {

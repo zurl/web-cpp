@@ -19,7 +19,7 @@ import {
 } from "../common/type";
 import {CompileContext} from "./context";
 
-export function convertTypeOnStack(ctx: CompileContext, dst: Type, src: Type, node: Node) {
+export function convertTypeOnStack(ctx: CompileContext, dst: Type, src: Type) {
     unsupportInt64(dst);
     unsupportInt64(src);
     if (src instanceof QualifiedType) {

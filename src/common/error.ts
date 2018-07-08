@@ -41,6 +41,9 @@ export class SyntaxError extends CompilerError {
 export class PreprocessingError extends CompilerError {
 }
 
+export class PreprocessError extends Error {
+}
+
 export class ParserError extends Error {
     public pegError: PegjsError;
     public name: string;

@@ -1,107 +1,78 @@
 /**
  *  @file
  *  @author zcy <zurl@live.com>
- *  Created at 26/06/2018
+ *  Created at 08/07/2018
  */
-import {FunctionLikeDefineDirective, ObjectLikeDefineDirective} from "../common/ast";
-import {PreprocessingError} from "../common/error";
+import {SourceMapGenerator, SourceNode} from "source-map";
+import {PreprocessError} from "../common/error";
+import {parseMarco} from "./index";
 
-type Marcos = ObjectLikeDefineDirective|FunctionLikeDefineDirective;
+export interface Marco {
+    name: string;
+    parameters: string[] | null;
+    target: string;
+    parsedTarget: Array<string | number>;
+}
 
-export class PreprocessingContext {
+export interface Position {
+    line: number;
+    column: number;
+}
 
-    public fileName: string;
-    public source: string;
-    public parent?: PreprocessingContext;
-    public macros: Map<string, Marcos>;
-    public macroNamesBeingReplaced: Set<string>;
+export enum PreprocessStatus {
+    ON_IF,
+    ON_ELSE,
+}
 
-    constructor(fileName: string, source: string, parent?: PreprocessingContext) {
-        this.fileName = fileName!;
-        this.source = source!;
-        this.parent = parent;
-        this.macros = new Map<string, Marcos>();
-        this.macroNamesBeingReplaced = new Set<string>();
+export class PreprocessContext {
+    public node: SourceNode;
+    public sourceFileName: string;
+    public generatedFileName: string;
+    public marcoMap: Map<string, Marco>;
+    public skipBlock: boolean;
+    public status: Array<[PreprocessStatus, boolean]>;
+    public targetLine: number;
+    public targetColumn: number;
+    public onMultiLineComment: boolean;
+
+    constructor(fileName: string, marcoMap: Map<string, Marco>) {
+        this.sourceFileName = fileName;
+        this.generatedFileName = fileName.replace(".cpp", ".ii");
+        this.node = new SourceNode(1, 0, this.generatedFileName);
+        this.marcoMap = marcoMap;
+        this.skipBlock = false;
+        this.status = [];
+        this.targetLine = 0;
+        this.targetColumn = 0;
+        this.onMultiLineComment = false;
     }
 
-    public getFileName(): string {
-        if (this.fileName) {
-            return this.fileName;
+    public defineMarco(name: string, parameters: string[] | null, target: string) {
+        target = target.trim();
+        if (this.marcoMap.has(name)) {
+            throw new PreprocessError(`marco ${name} is already defined`);
         }
-        if (this.parent) {
-            return this.parent.getFileName();
-        }
-        return "";
-    }
-
-    public getSource(): string {
-        if (this.source) {
-            return this.source;
-        }
-        if (this.parent) {
-            return this.parent.getSource();
-        }
-        return "";
-    }
-
-    public defineMacro(macro: Marcos) {
-
-        if (this.parent) {
-            this.parent.defineMacro(macro);
-        }
-
-        const definedMacro = this.findMacro(macro.name.name);
-        if (definedMacro) {
-            if (!this.isMacroIdentical(definedMacro, macro)) {
-                throw new PreprocessingError(`Macro ${definedMacro.name.name} redefined`, macro.name);
-            }
+        if (parameters === null) {
+            const parsedTarget = parseMarco([], target);
+            this.marcoMap.set(name, {name, parameters, target, parsedTarget});
         } else {
-            this.macros.set(macro.name.name, macro);
-        }
-    }
-
-    public isMacroIdentical(macro1: Marcos, macro2: Marcos) {
-        // Two replacement lists are identical if and only if the preprocessing tokens in both have the same number,
-        // ordering, spelling, and white-space separation, where all white-space separations are considered identical.
-        // FIXME: The Punctuator-Identifier case.
-        return macro1.name === macro2.name;
-    }
-
-    public undefineMacro(name: string): boolean {
-
-        if (this.parent) {
-            return this.parent.undefineMacro(name);
+            const parsedTarget = parseMarco(parameters, target);
+            this.marcoMap.set(name, {name, parameters, target, parsedTarget});
         }
 
-        return this.macros.delete(name);
     }
 
-    public findMacro(name: string): Marcos {
-        if (this.parent) {
-            return this.parent.findMacro(name);
+    public undefineMarco(name: string) {
+        if (!this.marcoMap.has(name)) {
+            throw new PreprocessError(`marco ${name} is not defined`);
         }
-        return this.macros.get(name)!;
+        this.marcoMap.delete(name);
     }
 
-    public isMacroDefined(name: string): boolean {
-        return !!this.findMacro(name);
-    }
-
-    public isMacroBeingReplaced(name: string ): boolean {
-        if (this.macroNamesBeingReplaced.has(name)) {
-            return true;
-        }
-        if (this.parent) {
-            return this.parent.isMacroBeingReplaced(name);
-        }
-        return false;
-    }
-
-    public markMacroAsBeingReplaced(name: string) {
-        this.macroNamesBeingReplaced.add(name);
-    }
-
-    public newChildContext() {
-        return new PreprocessingContext(this.fileName, this.source, this);
+    public append(str: string, sourceStartPosition: Position) {
+        this.node.add(new SourceNode(
+            sourceStartPosition.line + 1,
+            sourceStartPosition.column,
+            this.sourceFileName, str));
     }
 }

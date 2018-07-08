@@ -468,11 +468,15 @@ export class FunctionEntity {
         this.fileName = fileName;
         this.code = null;
         this.type = type;
-        this.location = 0;
+        this.location = -1;
         this.fullName = fullName;
         this.isLibCall = false;
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
             .reduce((x, y) => x + y, 0);
+    }
+
+    public isDefine(): boolean {
+        return this.location !== -1 || this.isLibCall;
     }
 }

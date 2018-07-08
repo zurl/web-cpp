@@ -62,16 +62,16 @@ export function mergeScopeTo(dst: Scope, src: Scope) {
             if (srcval instanceof FunctionEntity
                 && dstval instanceof FunctionEntity
                 && srcval.type.equals(dstval.type)) {
-                if (srcval.code === null && dstval.code === null) { continue; }
-                if (srcval.code !== null && dstval.code === null) {
+                if (!srcval.isDefine() && !dstval.isDefine()) { continue; }
+                if (srcval.isDefine() && !dstval.isDefine()) {
                     dst.map.set(tuple[0], tuple[1]);
+                    continue;
                 }
-                if (srcval.code === null && dstval.code !== null) { continue; }
-                if (srcval.code !== null && dstval.code !== null) {
+                if (!srcval.isDefine() && dstval.isDefine()) { continue; }
+                if (srcval.isDefine() && dstval.isDefine()) {
                     throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
                 }
-            }
-            if (srcval instanceof Variable
+            } else if (srcval instanceof Variable
                 && dstval instanceof Variable
                 && srcval.type.equals(dstval.type)) {
                 if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
@@ -79,6 +79,7 @@ export function mergeScopeTo(dst: Scope, src: Scope) {
                 if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
                     && dstval.storageType === VariableStorageType.MEMORY_EXTERN) {
                     dst.map.set(tuple[0], tuple[1]);
+                    continue;
                 }
                 if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
                     && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) { continue; }
@@ -86,8 +87,11 @@ export function mergeScopeTo(dst: Scope, src: Scope) {
                     && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) {
                     throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
                 }
+            } else if (srcval instanceof Type && dstval instanceof Type) {
+                if (srcval.equals(dstval)) {
+                    continue;
+                }
             }
-
             throw new LinkerError(`Different definition of ${srcval.toString()} and  ${dstval.toString()}`);
         }
     }

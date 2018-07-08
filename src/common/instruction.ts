@@ -4,6 +4,7 @@
  *  Created at 16/06/2018
  */
 
+import {RawSourceMap, SourceMapConsumer, SourceMapGenerator} from "source-map";
 import {InternalError} from "./error";
 import {Variable} from "./type";
 import {
@@ -102,7 +103,7 @@ interface InstructionDumpOptions {
     withSourceMap?: boolean;
     friendlyJMP?: boolean;
     sourceMap?: Map<number, [string, number]>;
-    source?: { [key: string]: string[] };
+    metaInfo?: Map<string, [string, SourceMapGenerator]>;
     dataStart?: number;
     dataMap?: Map<number, Variable>;
 }
@@ -183,25 +184,47 @@ export class InstructionBuilder {
     public toString(options: InstructionDumpOptions = {}) {
         let i = 0, result = "";
         let lastFileName = "", lastFile = [] as string[], lastLine = -1;
+        let lastMapConsumer: SourceMapConsumer;
         const limit = options.dataStart ? options.dataStart : this.now;
+        const metaInfos = new Map<string, [string[], SourceMapConsumer]>();
+        if (options.metaInfo) {
+            for (const key of options.metaInfo.keys()) {
+                const item: [string, SourceMapGenerator] = options.metaInfo.get(key)!;
+                metaInfos.set(key, [item[0].split("\n"), new SourceMapConsumer(item[1].toString())]);
+            }
+        }
         while (i < limit) {
             if (options.withLabel && this.labels.get(i)) {
                 result += `${this.labels.get(i)}:\n`;
             }
-            if (options.withSourceMap && options.sourceMap && options.source) {
-                const item = options.sourceMap.get(i);
+            if (options.withSourceMap && options.metaInfo) {
+                const item = options.sourceMap!.get(i);
                 if (item) {
                     if (item[0] !== lastFileName) {
                         result += `>>>${item[0]}:\n`;
                         lastFileName = item[0];
-                        lastFile = options.source[lastFileName];
-                        lastLine = item[1] - 1;
+                        const metaInfo = metaInfos.get(lastFileName)!;
+                        lastFile = metaInfo[0];
+                        lastMapConsumer = metaInfo[1];
+                        const { line: newLine} = lastMapConsumer!.originalPositionFor({
+                            line: item[1],
+                            column: 0,
+                        });
+                        lastLine = newLine - 1;
                     }
-                    if (item[1] !== lastLine) {
-                        for (let j = lastLine + 1; j <= item[1]; j++) {
+                    const { line: startLine} = lastMapConsumer!.originalPositionFor({
+                        line: lastLine + 1,
+                        column: 0,
+                    });
+                    const { line: endLine} = lastMapConsumer!.originalPositionFor({
+                        line: item[1],
+                        column: 0,
+                    });
+                    if ( endLine > lastLine) {
+                        for (let j = Math.max(startLine, lastLine + 1); j <= endLine; j++) {
                             result += `#${j}:` + lastFile[j - 1] + "\n";
                         }
-                        lastLine = item[1];
+                        lastLine = endLine;
                     }
                 }
             }

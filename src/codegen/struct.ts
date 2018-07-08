@@ -107,7 +107,7 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         // 偏移一下
         if (!rawType.isUnion) {
             ctx.build(OpCode.PUI32, field.startOffset);
-            ctx.build(OpCode.ADDU);
+            ctx.build(OpCode.ADD);
         }
         return {
             type: new LeftReferenceType(field.type),

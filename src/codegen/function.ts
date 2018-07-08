@@ -16,7 +16,7 @@ import {OpCode} from "../common/instruction";
 import {
     extractRealType,
     FunctionType,
-    PointerType,
+    PointerType, PrimitiveTypes,
     QualifiedType,
     Type,
     Variable,
@@ -73,10 +73,20 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     if (functionType == null) {
         throw new SyntaxError(`illegal function definition`, this);
     }
-    const functionEntity = new FunctionEntity(functionType.name, ctx.fileName,
-        ctx.currentScope.getScopeName() + "@" + functionType.name, functionType);
-    if (ctx.scopeMap.get(functionEntity.fullName) !== undefined) {
-        throw new SyntaxError(`The function name ${functionEntity.fullName} has been defined`, this);
+    const fullName = ctx.currentScope.getScopeName() + "@" + functionType.name;
+    let functionEntity: FunctionEntity;
+    const oldEntity = ctx.currentScope.get(functionType.name);
+    if (oldEntity) {
+       if ( !(oldEntity instanceof FunctionEntity)) {
+           throw new SyntaxError(`The function ${functionType.name} has been defined var/type`, this);
+       } else if ( oldEntity.isDefine() ) {
+           throw new SyntaxError(`The function ${functionType.name} has been defined `, this);
+       } else {
+            functionEntity = oldEntity;
+       }
+    } else {
+        functionEntity = new FunctionEntity(functionType.name, ctx.fileName, fullName, functionType);
+        ctx.currentScope.set(functionEntity.name, functionEntity);
     }
     ctx.enterFunction(functionEntity);
     // alloc parameters
@@ -142,7 +152,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         // 这里应用 赋值隐式类型转换
         ctx.currentNode = this;
         loadIntoStack(ctx, val);
-        convertTypeOnStack(ctx, leftType, rightType, this);
+        convertTypeOnStack(ctx, leftType, rightType);
     }
     // TODO:: mangled name
     ctx.unresolve(entity.fullName);
@@ -150,7 +160,9 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         ctx.build(OpCode.LIBCALL, 0);
     } else {
         ctx.build(OpCode.CALL, 0);
-        loadFromMemory(ctx, entity.type.returnType);
+        if (!entity.type.returnType.equals(PrimitiveTypes.void)) {
+            loadFromMemory(ctx, entity.type.returnType);
+        }
     }
     return {
         form: ExpressionResultType.RVALUE,

@@ -3,6 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 18/06/2018
  */
+import {RawSourceMap} from "source-map";
 import {CompiledObject} from "../codegen/context";
 import {mergeScopeMap, Scope} from "../codegen/scope";
 import {LinkerError} from "../common/error";
@@ -23,6 +24,7 @@ export interface BinaryObject {
     dataMap: Map<number, Variable>;
     scopeMap: Map<string, Scope>;
     jsAPIList: JsAPIDefine[];
+    metaInfo: Map<string, [string, RawSourceMap]>;
 }
 
 function resolveSymbol(path: string,
@@ -43,6 +45,9 @@ function resolveSymbol(path: string,
     }
     if (item instanceof Variable && item.storageType === VariableStorageType.MEMORY_EXTERN) {
         throw new LinkerError(`no definition for symbol ${name} at ${path}`);
+    }
+    if (item instanceof FunctionEntity && !item.isDefine()) {
+        throw new LinkerError(`no implement of funcction ${item.name}`);
     }
     return item;
 }
@@ -126,6 +131,7 @@ export function link(inputs: CompiledObject[],
     const labelMap = new Map<number, string>();
     const sourceMap = new Map<number, [string, number]>();
     const dataMap = new Map<number, Variable>();
+    const metaInfo = new Map<string, [string, RawSourceMap]>();
 
     let globalCodeNow = 0;
     let codeNow = globalCodeSize;
@@ -140,6 +146,7 @@ export function link(inputs: CompiledObject[],
         dataLocMap.set(input.fileName, dataNow);
         codeLocMap.set(input.fileName, codeNow);
         bssLocMap.set(input.fileName, bssNow);
+        metaInfo.set(input.fileName, [input.source, input.sourceMap]);
         codeNow += input.assembly.size;
         dataNow += input.dataSize;
         bssNow += input.bssSize;
@@ -272,5 +279,6 @@ export function link(inputs: CompiledObject[],
         bssSize,
         dataMap,
         scopeMap: newScope,
+        metaInfo,
     };
 }

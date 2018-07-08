@@ -93,7 +93,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
     }
     loadIntoStack(ctx, right);
     // 在赋值运算符中，右运算数的值被转换成左运算数的无限定类型
-    convertTypeOnStack(ctx, leftType, rightType, this);
+    convertTypeOnStack(ctx, leftType, rightType);
     const left = this.left.codegen(ctx);
     if (leftType instanceof ClassType) {
         throw new SyntaxError(`unsupport operator overload`, this);

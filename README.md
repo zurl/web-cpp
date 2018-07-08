@@ -37,8 +37,9 @@ local var:  @foo@var1
 - [X] data segment data
 - [X] doConstant about < > <= >= == & && | || >> << ...
 - [X] struct / class
-- [ ] cast ope (hard)
+- [X] cast ope (hard)
 - [ ] const
+- [X] void return type;
 - [ ] non-return detect
 - [X] function call parameter type conversion
 - [ ] bit field of struct
@@ -49,8 +50,9 @@ local var:  @foo@var1
 - [ ] goto label
 - [ ] js highlevel api
 - [X] allocator
-- [ ] char * a = "123"
-- [ ] void return type;
+- [X] char * a = "123"
+- [ ] printf
+- [ ] postfix ++ --
 ## C++ Language
 
 ### reference

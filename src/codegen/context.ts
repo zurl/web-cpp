@@ -3,8 +3,9 @@
  *  @author zcy <zurl@live.com>
  *  Created at 15/06/2018
  */
+import {RawSourceMap} from "source-map";
 import {Node} from "../common/ast";
-import {InternalError} from "../common/error";
+import {InternalError, SyntaxError} from "../common/error";
 import {Assembly, InstructionBuilder, OpCode} from "../common/instruction";
 import {FunctionEntity} from "../common/type";
 import {MemoryLayout} from "./memory";
@@ -19,6 +20,8 @@ export interface CompiledObject {
     assembly: Assembly;
     scopeMap: Map<string, Scope>;
     labels: Array<[number, string]>;
+    sourceMap: RawSourceMap;
+    source: string;
 }
 
 interface CompileOptions {
@@ -47,21 +50,14 @@ export class CompileContext {
     public globalBuilder: InstructionBuilder;
     public currentBuilder: InstructionBuilder;
     public loopContext: LoopContext | null;
+    public sourceMap?: RawSourceMap;
+    public source?: string;
 
-    constructor(fileName: string, compileOptions: CompileOptions = {}, baseScopeMap?: Map<string, Scope>) {
-        if ( baseScopeMap ) {
-            this.scopeMap = cloneScopeMap(baseScopeMap);
-            if (this.scopeMap.has("@root")) {
-                this.currentScope = this.scopeMap.get("@root")!;
-            } else {
-                this.currentScope = new Scope("@root", null);
-                this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
-            }
-        } else {
-            this.scopeMap = new Map<string, Scope>();
-            this.currentScope = new Scope("@root", null);
-            this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
-        }
+    constructor(fileName: string, compileOptions: CompileOptions = {},
+                source?: string, sourceMap?: RawSourceMap) {
+        this.scopeMap = new Map<string, Scope>();
+        this.currentScope = new Scope("@root", null);
+        this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
         this.currentScope.isRoot = true;
         this.functionMap = new Map<string, FunctionEntity>();
         this.memory = new MemoryLayout(1000);
@@ -72,6 +68,8 @@ export class CompileContext {
         this.fileName = fileName;
         this.currentNode = null;
         this.loopContext = null;
+        this.sourceMap = sourceMap;
+        this.source = source;
     }
 
     public isCpp(): boolean {
@@ -102,7 +100,6 @@ export class CompileContext {
 
     public enterFunction(functionEntity: FunctionEntity) {
         this.functionMap.set(functionEntity.fullName, functionEntity);
-        this.currentScope.set(functionEntity.name, functionEntity);
         this.enterScope(functionEntity.name);
         this.memory.enterFunction();
         this.currentBuilder = new InstructionBuilder(1024);
@@ -182,6 +179,8 @@ export class CompileContext {
             dataSize: this.memory.dataPtr,
             bssSize: this.memory.bssPtr,
             data: this.memory.data,
+            source: this.source!,
+            sourceMap: this.sourceMap!,
         };
     }
 }

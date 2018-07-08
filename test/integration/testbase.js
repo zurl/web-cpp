@@ -1,15 +1,8 @@
 const {fromBytesToString} = require( "../../dist/common/utils");
 const CodeGenTestBase = require("../codegen/testbase");
 const {VirtualMachine} = require("../../dist/vm/index");
+const {Headers, Impls, JsAPIMap} = require("../../dist/library/index");
 const Assert = require('chai');
-const TestRunScopeMap = CodeGenTestBase.mergeScopeMap([
-    CodeGenTestBase.HeaderScopeMap,
-    CodeGenTestBase.compile("testrun.h", `
-    __libcall void print(int a);
-    __libcall void puts(void *str);
-`).scopeMap]
-);
-
 
 function testRun(source, debug){
     let options = {};
@@ -21,16 +14,18 @@ function testRun(source, debug){
     const puts = (vm) =>{
         result += fromBytesToString(vm.memory, vm.popUint32()) + "\n";
     };
-    const obj = CodeGenTestBase.compile('main.cpp', source, TestRunScopeMap, options);
-    const bin = CodeGenTestBase.components.Linker.link([obj],
+    const obj = CodeGenTestBase.compile('main.cpp', source, options);
+    const bin = CodeGenTestBase.components.Linker.link([
+        obj,
+        ...CodeGenTestBase.LibraryObjects
+        ],
         {
             ...CodeGenTestBase.JsAPIMap,
             print,
             puts
         }, options);
     if(debug) {
-        CodeGenTestBase.showASM(source, bin);
-
+        CodeGenTestBase.showASM(bin.metaInfo, bin);
     }
     const memoryBuffer = new ArrayBuffer(10000);
     const memory = new DataView(memoryBuffer);
@@ -51,7 +46,7 @@ function testRun(source, debug){
 
 
 function testRunCompareResult(source, expectOutput){
-    const actualOutput = testRun("int main(){ " + source + " return 0; }\n");
+    const actualOutput = testRun("#include<syscall.h>\nint main(){ " + source + " return 0; }\n");
     const actualPlainOutput = actualOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
     const expectPlainOutput = expectOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
     Assert.assert.equal(actualPlainOutput, expectPlainOutput);

@@ -56,7 +56,7 @@ int main(){
 
 describe('test compiler', function(){
     it('test compilers', function(){
-        const {code, map} = TestBase.components.Preprocess.process('main.cpp', source);
+        const {code, map} = TestBase.components.preprocess('main.cpp', source);
         const translationUnit = TestBase.components.CParser.parse(code);
         fs.writeFileSync('ast.map', TestBase.printAST(translationUnit));
         const ctx = new TestBase.components.CompileContext('main.cpp', {debugMode: true}, TestBase.HeaderScopeMap);

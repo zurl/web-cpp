@@ -2,25 +2,25 @@ const TestBase = require('./testbase');
 const fs = require('fs');
 
 const source = `
-typedef void* va_list;
-#define va_start(ptr, arg) (ptr) = &(arg) + sizeof(arg) + 4
-#define va_arg(ptr, type) ((ptr) += sizeof(type), *((type *)(ptr - sizeof(type))))
-#define va_end(ptr) (ptr) = 0;
+#include <syscall.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+//__libcall void print(int x);
+//#define va_start(ptr, arg) (ptr) = &(arg) + sizeof(arg) + 4
 
 int printf(const char * format, ...){
-    va_list ptr;
-    va_start(ptr, format);
-    int a = va_arg(ptr, int);
-    int b = va_arg(ptr, int);
-    int c = va_arg(ptr, int);
-    print(a);
-    print(b);
-    print(c);
-    return 0;
+    va_list arg_list;
+    va_start(arg_list, format);
+    //(arg_list) = &(format) + sizeof(format) + 4;
+    int d = *(int *)arg_list;
+    print(d);
+    return 123;
 }
 
 int main(){
-    va_list a = "123";
+    int d = 17;
+    d += 13;
     printf("aaa", 123, 477, 999);
     return 0;
 }

@@ -14,9 +14,9 @@ import {
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
-import {PrimitiveTypes} from "../common/type";
+import {extractRealType, PrimitiveTypes} from "../common/type";
 import {CompileContext} from "./context";
-import {loadIntoStack} from "./stack";
+import {convertTypeOnStack, loadIntoStack} from "./stack";
 
 CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
@@ -32,15 +32,19 @@ ExpressionStatement.prototype.codegen = function(ctx: CompileContext) {
 
 ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
-    // TODO:: return type check;
+    if ( ctx.currentFunction === null) {
+        throw new SyntaxError(`return outside function`, this);
+    }
     if (this.argument != null) {
         const result = this.argument.codegen(ctx);
         loadIntoStack(ctx, result);
+        convertTypeOnStack(ctx, ctx.currentFunction.type.returnType,
+            extractRealType(result.type));
     } else {
-        // TODO: empty return
-    }
-    if ( ctx.currentFunction === null) {
-        throw new SyntaxError(`return outside function`, this);
+        if (!ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
+            throw new SyntaxError(`illeagl return type`, this);
+        }
+        ctx.build(OpCode.PUI32, 0);
     }
     if ( ctx.currentFunction.type.variableArguments) {
         ctx.build(OpCode.RETVARGS, ctx.currentFunction!.parametersSize);
@@ -153,6 +157,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
 
     this.body.codegen(ctx);
 
+    const l5 = ctx.currentBuilder!.now;
     if (this.update) {
         this.update.codegen(ctx);
     }
@@ -167,7 +172,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
         ctx.currentBuilder!.codeView.setUint32(line + 1, l4 - line),
     );
     ctx.loopContext.continuePos.map( (line) =>
-        ctx.currentBuilder!.codeView.setUint32(line + 1, l1 - line),
+        ctx.currentBuilder!.codeView.setUint32(line + 1, l5 - line),
     );
     ctx.loopContext = saveLoopContext;
 };

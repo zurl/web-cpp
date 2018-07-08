@@ -1,5 +1,21 @@
 // TODO:: write some case
-const source = `#include <string.h>
+
+const {preprocess, parseMarco} = require("../../dist/preprocessor/index");
+const {SourceMapConsumer} = require("source-map");
+const {assert} = require("chai");
+const source = `
+dosth
+#define foo(a,b,c) a+b+c
+foo(doo(1),doo(2,3,4),3)
+#define salty doo
+salty fish
+`
+
+function arrayEqual(arr1, arr2){
+    assert.equal(JSON.stringify(arr1), JSON.stringify(arr2));
+}
+
+    const source2 = `#include <string.h>
 #ifdef A
 "Should Not Exists 1"
 #endif
@@ -14,11 +30,6 @@ const source = `#include <string.h>
 "Should Not Exists 2"
 #endif
 #define ABCD 2
-#if ABCD == 2
-"Should Exists 3"
-#else
-"Should Not Exists 3"
-#endif
 ABCD
 #undef ABCD
 ABCD
@@ -26,22 +37,29 @@ ABCD
 const result = `
 "Should Exists 1"
 "Should Exists 2"
-"Should Exists 3"
 2
 ABCD
 
 `;
 const {Headers} = require("../../dist/library/index");
-const Preprocess = require('../../dist/preprocessor').default;
-const Assert = require('chai');
-
 describe('preprocessor', function(){
     it('preprocessor should works', async function(){
 
         const fileName = "testFile";
         const StringH = Headers.get("string.h");
 
-        const {code} = Preprocess.process(fileName, source);
-        Assert.assert.equal(code, StringH + result)
-    })
+        const {code} = preprocess(fileName, source2);
+        assert.equal(code, StringH + result)
+    });
+    it('parse marco', function () {
+        arrayEqual(
+            parseMarco(["foo", "luu", "goo"], "foo goo luu"),
+            [ 0, ' ', 2, ' ', 1 ]);
+        arrayEqual(
+            parseMarco(["foo", "luu", "goo"], "foo##goo luu"),
+            [ 0, 2, ' ', 1 ]);
+        arrayEqual(
+            parseMarco(["foo", "luu", "goo"], "foo#goo luu"),
+            [ 0,"\"", 2, '\" ', 1 ]);
+    });
 });
