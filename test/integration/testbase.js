@@ -1,3 +1,4 @@
+const {NoInputFile, StringOutputFile} = require("../../dist/vm/vmfile");
 const {fromBytesToString} = require( "../../dist/common/utils");
 const CodeGenTestBase = require("../codegen/testbase");
 const {VirtualMachine} = require("../../dist/vm/index");
@@ -7,23 +8,12 @@ const Assert = require('chai');
 function testRun(source, debug){
     let options = {};
     if(debug) options = {debugMode: true};
-    let result = "";
-    const print = (vm) => {
-        result += vm.popInt32() + "\n";
-    };
-    const puts = (vm) =>{
-        result += fromBytesToString(vm.memory, vm.popUint32()) + "\n";
-    };
+    let result = [""];
     const obj = CodeGenTestBase.compile('main.cpp', source, options);
     const bin = CodeGenTestBase.components.Linker.link([
         obj,
         ...CodeGenTestBase.LibraryObjects
-        ],
-        {
-            ...CodeGenTestBase.JsAPIMap,
-            print,
-            puts
-        }, options);
+        ],CodeGenTestBase.JsAPIMap, options);
     if(debug) {
         CodeGenTestBase.showASM(bin.metaInfo, bin);
     }
@@ -35,18 +25,23 @@ function testRun(source, debug){
         memory,
         heapStart: bin.code.buffer.byteLength,
         jsAPIList: bin.jsAPIList,
+        files: [
+            new NoInputFile(),
+            new StringOutputFile(result),
+            new StringOutputFile(result),
+        ],
     });
     let i = 0;
     while( i < 100000 ){
         const ret = vm.runOneStep();
-        if(!ret) return result;
+        if(!ret) return result[0];
     }
     throw "code run too much";
 }
 
 
 function testRunCompareResult(source, expectOutput){
-    const actualOutput = testRun("#include<syscall.h>\nint main(){ " + source + " return 0; }\n");
+    const actualOutput = testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n");
     const actualPlainOutput = actualOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
     const expectPlainOutput = expectOutput.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
     Assert.assert.equal(actualPlainOutput, expectPlainOutput);

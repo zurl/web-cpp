@@ -7,11 +7,13 @@ import {RuntimeError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
 import {JsAPIDefine} from "../common/jsapi";
 import {HeapAllocator, LinkedHeapAllocator} from "./allocator";
+import {VMFile} from "./vmfile";
 
 interface VirtualMachineOptions {
     memory: DataView;
     heapStart: number;
     jsAPIList?: JsAPIDefine[];
+    files: VMFile[];
 }
 
 export class VirtualMachine {
@@ -24,6 +26,8 @@ export class VirtualMachine {
     public heapPointer: number;
     public jsAPIList: JsAPIDefine[];
     public heapAllocator: HeapAllocator;
+    public files: VMFile[];
+    public strictMode: boolean;
 
     constructor(options: VirtualMachineOptions) {
         this.memory = options.memory;
@@ -40,6 +44,8 @@ export class VirtualMachine {
         }
         this.heapAllocator = new LinkedHeapAllocator();
         this.heapAllocator.init(this);
+        this.files = options.files;
+        this.strictMode = true;
     }
 
     public allocHeap(size: number): number {
@@ -55,10 +61,26 @@ export class VirtualMachine {
         this.sp += 4;
         return val;
     }
+
+    public popFloat64(): number {
+        const val = this.memory.getFloat64(this.sp);
+        this.sp += 8;
+        return val;
+    }
     public popInt32(): number {
         const val = this.memory.getInt32(this.sp);
         this.sp += 4;
         return val;
+    }
+
+    public pushUint32(val: number) {
+        this.sp -= 4;
+        this.memory.setUint32(this.sp, val);
+    }
+
+    public pushInt32(val: number) {
+        this.sp -= 4;
+        this.memory.setInt32(this.sp, val);
     }
 
     public runOneStep(): boolean {

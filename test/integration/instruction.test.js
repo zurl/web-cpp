@@ -20,9 +20,9 @@ describe('instruction integration test', function () {
         } else {
             c = 3;
         }
-        print(a);
-        print(b);
-        print(c);
+        printf("%d\\n",a);
+        printf("%d\\n",b);
+        printf("%d\\n",c);
         `;
         const expectOutput = `
         1

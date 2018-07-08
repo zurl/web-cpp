@@ -51,8 +51,11 @@ local var:  @foo@var1
 - [ ] js highlevel api
 - [X] allocator
 - [X] char * a = "123"
-- [ ] printf
+- [X] write, read
+- [X] printf
 - [ ] postfix ++ --
+- [ ] #if #elif
+- [ ] only export necessary scopeMap
 ## C++ Language
 
 ### reference

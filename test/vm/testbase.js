@@ -17,7 +17,8 @@ function testASMCode(source, asserts){
     const asm = ib.toAssembly();
     const vm = new VirtualMachine({
         memory: asm.code,
-        heapStart: asm.size
+        heapStart: asm.size,
+        files: [],
     });
     while( vm.runOneStep() );
     if(asserts.hasOwnProperty('pc')){

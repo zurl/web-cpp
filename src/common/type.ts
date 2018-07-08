@@ -395,8 +395,14 @@ export function extractRealType(rawType: Type) {
         rawType = rawType.elementType;
     }
     if (rawType instanceof ArrayType) {
+        if (rawType.elementType instanceof QualifiedType ) {
+            return new PointerType(rawType.elementType.elementType);
+        }
         return new PointerType(rawType.elementType);
     } else if (rawType instanceof ReferenceType) {
+        if (rawType.elementType instanceof QualifiedType ) {
+            return rawType.elementType.elementType;
+        }
         return rawType.elementType;
     } else {
         return rawType;

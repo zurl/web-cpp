@@ -1,1 +1,6 @@
-void strcpy(const char *dst, const char *src);
+#ifndef _STRING_H
+#define _STRING_H
+
+unsigned int strlen(const char * str);
+
+#endif

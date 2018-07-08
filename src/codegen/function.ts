@@ -79,6 +79,8 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     if (oldEntity) {
        if ( !(oldEntity instanceof FunctionEntity)) {
            throw new SyntaxError(`The function ${functionType.name} has been defined var/type`, this);
+       } else if ( oldEntity.isLibCall ) {
+           return;
        } else if ( oldEntity.isDefine() ) {
            throw new SyntaxError(`The function ${functionType.name} has been defined `, this);
        } else {

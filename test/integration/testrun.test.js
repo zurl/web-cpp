@@ -14,14 +14,14 @@ int printf(const char * format, ...){
     va_start(arg_list, format);
     //(arg_list) = &(format) + sizeof(format) + 4;
     int d = *(int *)arg_list;
-    print(d);
+    printf("aaa");
     return 123;
 }
 
 int main(){
     int d = 17;
     d += 13;
-    printf("aaa", 123, 477, 999);
+    printf("%d, %d, %d\\n", 123, 477, 999);
     return 0;
 }
 `;
