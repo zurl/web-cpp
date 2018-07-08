@@ -3,4 +3,4 @@ node_js:
   - '10'
 before_script:
   - npm i -g typescript nyc mocha
-  - npm build
+  - npm run build
