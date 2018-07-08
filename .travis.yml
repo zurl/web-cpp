@@ -1,3 +1,3 @@
 language: node_js
 before_install:
-  - npm i -g typescript
+  - npm i -g typescript nyc mocha
