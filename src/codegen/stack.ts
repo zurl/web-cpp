@@ -236,7 +236,11 @@ export function popFromStack(ctx: CompileContext, expr: ExpressionResult) {
 
 export function recycleExpressionResult(ctx: CompileContext, expr: ExpressionResult) {
     if ( expr.form === ExpressionResultType.RVALUE ) {
-       ctx.build(OpCode.SSP, expr.type.length);
+        let len = expr.type.length;
+        if (len % 4 !== 0) {
+            len = len + 4 - len % 4;
+        }
+        ctx.build(OpCode.SSP, len);
     }
 }
 

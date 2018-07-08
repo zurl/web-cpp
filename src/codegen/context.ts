@@ -5,11 +5,11 @@
  */
 import {RawSourceMap} from "source-map";
 import {Node} from "../common/ast";
-import {InternalError, SyntaxError} from "../common/error";
+import {InternalError} from "../common/error";
 import {Assembly, InstructionBuilder, OpCode} from "../common/instruction";
 import {FunctionEntity} from "../common/type";
 import {MemoryLayout} from "./memory";
-import {cloneScopeMap, Scope} from "./scope";
+import {Scope} from "./scope";
 
 export interface CompiledObject {
     fileName: string;
@@ -44,6 +44,7 @@ export class CompileContext {
     public memory: MemoryLayout;
 
     public labelMap: Map<string, number>;
+    public unresolveGotoMap: Map<string, number[]>;
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
     public currentScope: Scope;
@@ -53,6 +54,7 @@ export class CompileContext {
     public loopContext: LoopContext | null;
     public sourceMap?: RawSourceMap;
     public source?: string;
+    public switchBuffer: number[];
 
     constructor(fileName: string, compileOptions: CompileOptions = {},
                 source?: string, sourceMap?: RawSourceMap) {
@@ -72,6 +74,8 @@ export class CompileContext {
         this.sourceMap = sourceMap;
         this.source = source;
         this.labelMap = new Map<string, number>();
+        this.unresolveGotoMap = new Map<string, number[]>();
+        this.switchBuffer = [];
     }
 
     public isCpp(): boolean {
@@ -101,11 +105,16 @@ export class CompileContext {
     }
 
     public enterFunction(functionEntity: FunctionEntity) {
+        if ( this.unresolveGotoMap.size !== 0) {
+            throw new InternalError("unresolved goto " +
+                this.unresolveGotoMap.keys().next().value[0]);
+        }
         this.functionMap.set(functionEntity.fullName, functionEntity);
         this.enterScope(functionEntity.name);
         this.memory.enterFunction();
         this.currentBuilder = new InstructionBuilder(1024);
         this.currentFunction = functionEntity;
+        this.labelMap = new Map<string, number>();
     }
 
     public exitFunction() {
@@ -138,6 +147,10 @@ export class CompileContext {
 
     // only call once
     public toCompiledObject(): CompiledObject {
+        if ( this.unresolveGotoMap.size !== 0) {
+            throw new InternalError("unresolved goto " +
+                this.unresolveGotoMap.keys().next().value[0]);
+        }
         const size = Array.from(this.functionMap.values())
             .filter((func) => func.code !== null)
             .map((func) => (func.code as Assembly).size)

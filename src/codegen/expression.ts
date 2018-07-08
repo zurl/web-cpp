@@ -105,6 +105,21 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         throw new SyntaxError(`unsupport operator overload`, this);
     }
     popFromStack(ctx, left);
+
+    if ( this.parentIsStmt ) {
+        // fake result
+        return {
+            type: PrimitiveTypes.void,
+            form: ExpressionResultType.CONSTANT,
+            value: 0,
+        };
+    }
+
+    if ( left.form === ExpressionResultType.RVALUE) {
+        // 这时往栈顶pop一次冗余操作
+        return this.left.codegen(ctx);
+    }
+
     return {
         type: leftType,
         form: left.form,
@@ -378,17 +393,37 @@ function generateExpressionTypeConversion(ctx: CompileContext,
 
 BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     // 救救刘人语小姐姐
+
+    const leftType = extractRealType(this.left.deduceType(ctx));
+    const rightType = extractRealType(this.right.deduceType(ctx));
+    // 计算结果不会出现const, array和引用，因为肯定在栈顶
+    const targetType = this.deduceType(ctx);
+
+    // 指针运算的时候要乘一个size
+    if ( leftType instanceof PointerType &&
+        rightType instanceof IntegerType &&
+        "+-".includes(this.operator)) {
+        this.right = new BinaryExpression(this.location,
+            "*", this.right, IntegerConstant.fromNumber(
+                this.location, leftType.elementType.length,
+            ));
+    }
+
+    if ( rightType instanceof PointerType &&
+        leftType instanceof IntegerType &&
+        "+-".includes(this.operator)) {
+        this.left = new BinaryExpression(this.location,
+            "*", this.left, IntegerConstant.fromNumber(
+                this.location, rightType.elementType.length,
+            ));
+    }
+
     const left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
 
     if ( this.operator === ",") {
         return right;
     }
-
-    const leftType = extractRealType(left.type);
-    const rightType = extractRealType(right.type);
-    // 计算结果不会出现const, array和引用，因为肯定在栈顶
-    const targetType = this.deduceType(ctx);
 
     const leftStorageType = getStackStorageType(leftType);
     const rightStorageType = getStackStorageType(rightType);

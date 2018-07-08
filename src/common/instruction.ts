@@ -35,7 +35,7 @@ export enum OpCode {
     NOT, NEG, NEGF, INV,
     ADDF, SUBF, MULF, DIVF, MODF,
     GT0, LT0, EQ0, NEQ0, LTE0, GTE0,
-    NOP, PRINT, // <== no impl
+    NOP, PRINT, JS, // <== no impl
     END,
     F2D, D2F, U2D, D2U, I2D, D2I,
     // 5 = [op u32 u32 u32 u32]

@@ -4,19 +4,20 @@
  *  Created at 16/06/2018
  */
 
+import * as Long from "long";
 import {
-    BreakStatement,
-    CompoundStatement, ContinueStatement, DoWhileStatement,
+    BreakStatement, CaseStatement,
+    CompoundStatement, ContinueStatement, DoWhileStatement, ExpressionResult,
     ExpressionResultType,
     ExpressionStatement, ForStatement, GotoStatement,
     IfStatement, LabeledStatement,
-    ReturnStatement, WhileStatement,
+    ReturnStatement, SwitchStatement, WhileStatement,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
-import {extractRealType, PrimitiveTypes} from "../common/type";
+import {extractRealType, IntegerType, PointerType, PrimitiveTypes} from "../common/type";
 import {CompileContext} from "./context";
-import {convertTypeOnStack, loadIntoStack, recycleExpressionResult} from "./stack";
+import {convertTypeOnStack, loadIntoStack, popFromStack, recycleExpressionResult} from "./stack";
 
 CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
@@ -32,20 +33,108 @@ LabeledStatement.prototype.codegen = function(ctx: CompileContext) {
     }
     const t0 = ctx.currentBuilder.now;
     ctx.labelMap.set(this.label.name, t0);
+    const unresolvedLabels = ctx.unresolveGotoMap.get(this.label.name);
+    if (unresolvedLabels !== undefined) {
+        unresolvedLabels.map( (loc) => {
+            ctx.currentBuilder.codeView.setUint32(loc + 1, t0 - loc);
+        });
+        ctx.unresolveGotoMap.delete(this.label.name);
+    }
     this.body.codegen(ctx);
 };
 
 GotoStatement.prototype.codegen = function(ctx: CompileContext) {
     const item = ctx.labelMap.get(this.label.name);
     if (item === undefined) {
-        throw new SyntaxError(`undefined label  ${this.label.name}`, this);
+        const t0 = ctx.currentBuilder.now;
+        ctx.build(OpCode.J, 0);
+        if (!ctx.unresolveGotoMap.has(this.label.name)) {
+            ctx.unresolveGotoMap.set(this.label.name, []);
+        }
+        ctx.unresolveGotoMap.get(this.label.name)!.push(t0);
+    } else {
+        const t0 = ctx.currentBuilder.now;
+        ctx.build(OpCode.J, item - t0);
     }
-    const t0 = ctx.currentBuilder.now;
-    ctx.build(OpCode.J, item - t0);
+};
+
+CaseStatement.prototype.codegen = function(ctx: CompileContext) {
+    const test = this.test.codegen(ctx);
+    if ( test.form !== ExpressionResultType.CONSTANT || !(test.type instanceof IntegerType)) {
+        throw new SyntaxError(`case value must be integer or enum`, this);
+    }
+    ctx.switchBuffer.push(ctx.currentBuilder.now);
+    this.body.codegen(ctx);
+};
+
+SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
+    const caseValues = [];
+    const gotoLocs = [];
+    const savedSwitchBuffer = ctx.switchBuffer;
+    ctx.switchBuffer = [];
+    if ( !(this.body instanceof CompoundStatement)) {
+        throw new SyntaxError(`switch case body must be CompoundStatement`, this);
+    }
+    for (const stmt of this.body.body) {
+        if ( stmt instanceof CaseStatement ) {
+            const test = stmt.test.codegen(ctx);
+            if ( test === null) { // default
+                caseValues.push("default");
+            } else {
+                if ( test.type instanceof IntegerType) {
+                    caseValues.push((test.value as Long).toNumber());
+                } else {
+                    throw new SyntaxError(`switch case value must be integer`, this);
+                }
+            }
+        }
+    }
+    const cond = this.discriminant.codegen(ctx);
+    const condType = extractRealType(cond.type);
+    if ( !(condType instanceof IntegerType)) {
+        throw new SyntaxError(`the cond of switch must be integer`, this);
+    }
+    loadIntoStack(ctx, cond);
+    const tmpCondVar: ExpressionResult = {
+        form: ExpressionResultType.LVALUE_STACK,
+        value: ctx.memory.allocStack(4),
+        type: PrimitiveTypes.int32,
+    };
+    popFromStack(ctx, tmpCondVar);
+    for (let i = 0; i < caseValues.length; i++) {
+        if (caseValues[i] !== "default") {
+            loadIntoStack(ctx, tmpCondVar);
+            ctx.build(OpCode.PI32, caseValues[i]);
+            ctx.build(OpCode.SUB);
+            gotoLocs.push(ctx.currentBuilder.now);
+            ctx.build(OpCode.JZ, 0);
+        } else {
+           gotoLocs.push(0);
+        }
+    }
+    const defaultLoc = ctx.currentBuilder.now;
+    ctx.build(OpCode.J, 0);
+    this.body.codegen(ctx);
+    const endLoc = ctx.currentBuilder.now;
+    for (let i = 0; i < ctx.switchBuffer.length; i++) {
+        const caseLoc = ctx.switchBuffer[i];
+        const gotoLoc = gotoLocs[i];
+        if ( caseValues[i] === "default" ) {
+            ctx.currentBuilder.codeView.setUint32(defaultLoc + 1, caseLoc - defaultLoc);
+        } else {
+            ctx.currentBuilder.codeView.setUint32(gotoLoc + 1, caseLoc - gotoLoc);
+        }
+    }
+    if ( !caseValues.includes("default")) {
+        ctx.currentBuilder.codeView.setUint32(endLoc + 1, defaultLoc - endLoc);
+
+    }
+    ctx.switchBuffer = savedSwitchBuffer;
 };
 
 ExpressionStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.currentNode = this;
+    this.expression.parentIsStmt = true;
     recycleExpressionResult(ctx, this.expression.codegen(ctx));
 };
 

@@ -5,11 +5,12 @@ const source = `
 #include <stdio.h>
 
 int main(){
-    int a = 1;
-    int b = a++;
-    a = 1;
-    int c = ++a;
-    printf("b=%d, c=%d", b, c);
+    int a = 2;
+    switch(a){
+        case 1: printf("1");
+        case 2: printf("2");
+        case 3: printf("3");
+    }
     return 0;
 }
 `;

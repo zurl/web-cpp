@@ -71,7 +71,7 @@ export abstract class Node {
     }
 
     public codegen(ctx: CompileContext): any {
-        throw new Error("no_impl at " + this.constructor.name);
+        throw new InternalError("no_impl at " + this.constructor.name);
     }
 }
 
@@ -106,8 +106,12 @@ export class PpChar extends Node {
 }
 
 export class Expression extends Node {
+
+    public parentIsStmt: boolean;
+
     constructor(location: SourceLocation) {
         super(location);
+        this.parentIsStmt = false;
     }
 
     public codegen(ctx: CompileContext): ExpressionResult {
@@ -144,6 +148,16 @@ export class IntegerConstant extends Constant {
         return OneConstant;
     }
 
+    public static fromNumber(location: SourceLocation, number: number) {
+        return new IntegerConstant(
+            location,
+            10,
+            Long.fromInt(number),
+            number.toString(),
+            null,
+        );
+    }
+
     public base: number;
     public value: Long;
     public raw: string;
@@ -156,6 +170,7 @@ export class IntegerConstant extends Constant {
         this.raw = raw;
         this.suffix = suffix;
     }
+
 }
 
 const OneConstant = new IntegerConstant(
@@ -713,15 +728,10 @@ export abstract class Statement extends Node {
 export class CaseStatement extends Statement {
     public test: Expression;
     public body: Statement;
-    // TODO::
-    // switchStatement: SwitchStatement;
-    // caseValue: number;
     constructor(location: SourceLocation, test: Expression, body: Statement) {
         super(location);
         this.test = test;
         this.body = body;
-        // this.switchStatement = null;
-        // this.caseValue = null;
     }
 }
 
@@ -782,15 +792,11 @@ export class IfStatement extends Statement {
 export class SwitchStatement extends Statement {
     public discriminant: Expression;
     public body: Statement;
-    public targetStatements: CaseStatement[];
-    public caseValues: Set<number>;
 
     constructor(location: SourceLocation, discriminant: Expression, body: Statement) {
         super(location);
         this.discriminant = discriminant;
         this.body = body;
-        this.caseValues = new Set();
-        this.targetStatements = [];
     }
 }
 

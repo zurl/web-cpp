@@ -53,11 +53,11 @@ local var:  @foo@var1
 - [X] do-while
 - [X] break continue
 - [X] goto label
+- [X] switch case
 - [ ] enum
 - [ ] const
 - [ ] non-return detect
 - [ ] bit field of struct
-- [ ] switch case
 - [ ] js highlevel api
 - [ ] #if #elif
 - [ ] only export necessary scopeMap
