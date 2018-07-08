@@ -4,3 +4,5 @@ node_js:
 before_script:
   - npm i -g typescript nyc mocha
   - npm run build
+script:
+  - npm run coveralls
