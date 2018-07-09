@@ -104,7 +104,7 @@ function showASM(metaInfo, bin){
         withSourceMap: true,
         friendlyJMP: true,
         sourceMap: bin.sourceMap,
-        dataStart: bin.dataStart,
+        dataStart: bin.codeSize,
         dataMap: bin.dataMap,
         metaInfo
     });

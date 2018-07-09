@@ -23,7 +23,7 @@ function testRun(source, debug){
     memoryArray.set(new Uint8Array(bin.code.buffer), 0);
     const vm = new VirtualMachine({
         memory,
-        heapStart: bin.code.buffer.byteLength,
+        heapStart: bin.code.buffer.byteLength + bin.bssSize,
         jsAPIList: bin.jsAPIList,
         files: [
             new NoInputFile(),

@@ -9,7 +9,7 @@ import {
     FunctionDeclarator,
     FunctionDefinition,
     IdentifierDeclarator,
-    ParameterList,
+    ParameterList, ReturnStatement,
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
@@ -112,6 +112,15 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     ctx.build(OpCode.SSP, 0);
     this.body.body.map((item) => item.codegen(ctx));
     ctx.currentBuilder.codeView.setInt32(l0 + 1, ctx.memory.stackPtr);
+    const l1 = ctx.currentBuilder.now;
+    const op = ctx.currentBuilder.codeView.getUint8(l1 - 5);
+    if ( op !== OpCode.RETVARGS && op !== OpCode.RET) {
+        if ( functionEntity.type.returnType.equals(PrimitiveTypes.void)) {
+            new ReturnStatement(this.location, null).codegen(ctx);
+        } else {
+            throw new SyntaxError(`Not of all branch of Function ${functionEntity.fullName} has return`, this);
+        }
+    }
     ctx.exitFunction();
 };
 

@@ -55,8 +55,9 @@ local var:  @foo@var1
 - [X] goto label
 - [X] switch case
 - [X] enum
+- [X] non-return detect
+- [X] cc-cli
 - [ ] const
-- [ ] non-return detect
 - [ ] bit field of struct
 - [ ] js highlevel api
 - [ ] only export necessary scopeMap

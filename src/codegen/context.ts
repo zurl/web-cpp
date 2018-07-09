@@ -3,7 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 15/06/2018
  */
-import {RawSourceMap} from "source-map";
+import {RawSourceMap, SourceMapGenerator} from "source-map";
 import {Node} from "../common/ast";
 import {InternalError} from "../common/error";
 import {Assembly, InstructionBuilder, OpCode} from "../common/instruction";
@@ -20,7 +20,7 @@ export interface CompiledObject {
     assembly: Assembly;
     scopeMap: Map<string, Scope>;
     labels: Array<[number, string]>;
-    sourceMap: RawSourceMap;
+    sourceMap: SourceMapGenerator;
     source: string;
 }
 
@@ -52,12 +52,12 @@ export class CompileContext {
     public globalBuilder: InstructionBuilder;
     public currentBuilder: InstructionBuilder;
     public loopContext: LoopContext | null;
-    public sourceMap?: RawSourceMap;
+    public sourceMap?: SourceMapGenerator;
     public source?: string;
     public switchBuffer: number[];
 
     constructor(fileName: string, compileOptions: CompileOptions = {},
-                source?: string, sourceMap?: RawSourceMap) {
+                source?: string, sourceMap?: SourceMapGenerator) {
         this.scopeMap = new Map<string, Scope>();
         this.currentScope = new Scope("@root", null);
         this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);

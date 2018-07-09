@@ -83,12 +83,6 @@ function loadParser(source: string, query: any) {
 
 const ConstantExpressionPegParser = loadParser(CGrammar,
     {parserName: "ConstantExpression", allowedStartRules: "ConstantExpression"});
-const HeaderNamePegParser = loadParser(CGrammar,
-    {parserName: "HeaderName", allowedStartRules: "HeaderName"});
-const PreprocessingFilePegParser = loadParser(CGrammar,
-    {parserName: "PreprocessingFile", allowedStartRules: "PreprocessingFile"});
-const PreprocessingTokenPegParser = loadParser(CGrammar,
-    {parserName: "PreprocessingToken", allowedStartRules: "PreprocessingToken"});
 const TranslationUnitPegParser = loadParser(CGrammar,
     {parserName: "TranslationUnitPegParser"});
 const CPPTranslationUnitPegParser = loadParser(CPPGrammar,
@@ -111,9 +105,5 @@ function wrapPegParser(parser: any) {
 }
 
 export const ConstantExpressionParser = wrapPegParser(ConstantExpressionPegParser);
-export const HeaderNameParser = wrapPegParser(HeaderNamePegParser);
-export const PreprocessingFileParser = wrapPegParser(PreprocessingFilePegParser);
-export const PreprocessingTokenParser = wrapPegParser(PreprocessingTokenPegParser);
-
 export const CParser = wrapPegParser(TranslationUnitPegParser);
 export const CPPParser = wrapPegParser(CPPTranslationUnitPegParser);

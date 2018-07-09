@@ -47,7 +47,7 @@ export class CommandOutputFile extends VMFile {
         if (this.buffer.includes("\n")) {
             const lines = this.buffer.split("\n");
             this.buffer = lines[lines.length - 1];
-            lines.slice(0, lines.length - 10).map((line) => console.log(line));
+            lines.slice(0, lines.length - 1).map((line) => console.log(line));
         }
         return buffer.byteLength;
     }

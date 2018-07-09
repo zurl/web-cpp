@@ -3,7 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 18/06/2018
  */
-import {RawSourceMap} from "source-map";
+import {RawSourceMap, SourceMapGenerator} from "source-map";
 import {CompiledObject} from "../codegen/context";
 import {mergeScopeMap, Scope} from "../codegen/scope";
 import {LinkerError} from "../common/error";
@@ -17,14 +17,15 @@ interface LinkOptions {
 
 export interface BinaryObject {
     code: DataView;
-    dataStart: number;
+    codeSize: number;
+    dataSize: number;
     bssSize: number;
-    labelMap: Map<number, string>;
-    sourceMap: Map<number, [string, number]>;
-    dataMap: Map<number, Variable>;
-    scopeMap: Map<string, Scope>;
     jsAPIList: JsAPIDefine[];
-    metaInfo: Map<string, [string, RawSourceMap]>;
+    labelMap?: Map<number, string>;
+    sourceMap?: Map<number, [string, number]>;
+    dataMap?: Map<number, Variable>;
+    scopeMap?: Map<string, Scope>;
+    metaInfo?: Map<string, [string, SourceMapGenerator]>;
 }
 
 function resolveSymbol(path: string,
@@ -131,7 +132,7 @@ export function link(inputs: CompiledObject[],
     const labelMap = new Map<number, string>();
     const sourceMap = new Map<number, [string, number]>();
     const dataMap = new Map<number, Variable>();
-    const metaInfo = new Map<string, [string, RawSourceMap]>();
+    const metaInfo = new Map<string, [string, SourceMapGenerator]>();
 
     let globalCodeNow = 0;
     let codeNow = globalCodeSize;
@@ -275,7 +276,8 @@ export function link(inputs: CompiledObject[],
         code,
         labelMap,
         sourceMap,
-        dataStart: globalCodeSize + codeSize,
+        codeSize: globalCodeSize + codeSize,
+        dataSize,
         bssSize,
         dataMap,
         scopeMap: newScope,

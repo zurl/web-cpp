@@ -132,7 +132,7 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
             };
         } else if ( left.form === ExpressionResultType.RVALUE) {
             // ??? why rvalue fuck exist
-            throw new InternalError(`unsupport form rvalue`);
+            throw new SyntaxError(`unsupport form rvalue`, this);
         } else {
             throw new InternalError(`unsupport form`);
         }

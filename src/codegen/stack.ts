@@ -156,6 +156,11 @@ export function loadFromMemory(ctx: CompileContext, type: Type) {
  * @param {ExpressionResult} expr
  */
 export function loadIntoStack(ctx: CompileContext, expr: ExpressionResult) {
+    if ( expr.type instanceof ArrayType &&
+        expr.form === ExpressionResultType.LVALUE_STACK) {
+        ctx.build(OpCode.PBP, expr.value as number);
+        return;
+    }
     if (expr.type instanceof LeftReferenceType) {
         loadFromMemory(ctx, expr.type.elementType);
         return;
@@ -211,6 +216,9 @@ export function saveToMemory(ctx: CompileContext, type: Type) {
  * @param {ExpressionResult} expr
  */
 export function popFromStack(ctx: CompileContext, expr: ExpressionResult) {
+    if ( expr.type instanceof ArrayType) {
+        throw new SyntaxError(`unable to assign to array`, ctx.currentNode!);
+    }
     if (expr.type instanceof LeftReferenceType) {
         saveToMemory(ctx, expr.type.elementType);
         return;
