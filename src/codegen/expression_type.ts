@@ -1,5 +1,5 @@
 import {
-    AssignmentExpression, BinaryExpression, CallExpression, CastExpression,
+    AssignmentExpression, BinaryExpression, CallExpression, CastExpression, ConditionalExpression,
     FloatingConstant,
     Identifier,
     IntegerConstant, MemberExpression,
@@ -44,24 +44,28 @@ Identifier.prototype.deduceType = function(ctx: CompileContext): Type {
     return this.codegen(ctx).type;
 };
 
+function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
+    if (left instanceof FloatingType || right instanceof FloatingType) {
+        return PrimitiveTypes.double;
+    }
+    if (left instanceof UnsignedInt64Type || right instanceof UnsignedInt64Type) {
+        return PrimitiveTypes.uint64;
+    }
+    if (left instanceof Int64Type || right instanceof Int64Type) {
+        return PrimitiveTypes.int64;
+    }
+    if (left instanceof UnsignedIntegerType || right instanceof UnsignedIntegerType) {
+        return PrimitiveTypes.uint32;
+    }
+    return PrimitiveTypes.int32;
+}
+
 BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     const left = extractRealType(this.left.deduceType(ctx));
     const right = extractRealType(this.right.deduceType(ctx));
     if ("+-*%/".includes(this.operator)) {
         if (left instanceof ArithmeticType && right instanceof ArithmeticType) {
-            if (left instanceof FloatingType || right instanceof FloatingType) {
-                return PrimitiveTypes.double;
-            }
-            if (left instanceof UnsignedInt64Type || right instanceof UnsignedInt64Type) {
-                return PrimitiveTypes.uint64;
-            }
-            if (left instanceof Int64Type || right instanceof Int64Type) {
-                return PrimitiveTypes.int64;
-            }
-            if (left instanceof UnsignedIntegerType || right instanceof UnsignedIntegerType) {
-                return PrimitiveTypes.uint32;
-            }
-            return PrimitiveTypes.int32;
+            return arithmeticDeduce(left, right);
         } else if (left instanceof PointerType || right instanceof PointerType) {
             if (left instanceof PointerType && right instanceof PointerType) {
                 throw new TypeError(`could not apply ope on two pointer`, this);
@@ -191,6 +195,18 @@ CastExpression.prototype.deduceType = function(ctx: CompileContext): Type {
 
 PostfixExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     return this.operand.deduceType(ctx);
+};
+
+ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    const leftType = extractRealType(this.consequent.deduceType(ctx));
+    const rightType = extractRealType(this.alternate.deduceType(ctx));
+    if (leftType instanceof ArithmeticType && rightType instanceof ArithmeticType) {
+        return arithmeticDeduce(leftType, rightType);
+    } else if (leftType.equals(rightType)) {
+        return leftType;
+    } else {
+        throw new SyntaxError(`the type between conditional expression is not same`, this);
+    }
 };
 
 export function expression_type() {

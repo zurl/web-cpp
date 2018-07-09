@@ -28,6 +28,7 @@ interface CompileOptions {
     debugMode?: boolean;
     experimentalCpp?: boolean;
     eliminateConstantVariable?: boolean;
+    detectStackPollution?: boolean;
 }
 
 interface LoopContext {
@@ -76,6 +77,7 @@ export class CompileContext {
         this.labelMap = new Map<string, number>();
         this.unresolveGotoMap = new Map<string, number[]>();
         this.switchBuffer = [];
+        this.options.detectStackPollution = true;
     }
 
     public isCpp(): boolean {

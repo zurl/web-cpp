@@ -124,7 +124,7 @@ describe('instruction integration test', function () {
         printf("%d,%.3f,", -a, -d);
         printf("%d,", ~a);
         `;
-        const expectOutput = `0,0,0,1,10,7,-10,-7,-11,`;
+        const expectOutput = `0,0,0,0,10,7,-10,-7,-11,`;
         TestBase.testRunCompareResult(testCode, expectOutput);
     });
     it('var init',function() {

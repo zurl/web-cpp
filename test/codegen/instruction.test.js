@@ -278,6 +278,7 @@ describe('instruction test', function () {
            s2.b = 4;
            s2.c = &s1;
            s2p = &s2;
+           return 0;
         }
         `;
         const expectCode = `
@@ -303,6 +304,9 @@ describe('instruction test', function () {
         PBP -24
         PBP -28
         SM32
+        ASSERTSP -28
+        PI32 0
+        RET 0x00000000
         `;
         TestBase.testFullCode(testCode, expectCode);
     });

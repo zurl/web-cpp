@@ -469,6 +469,7 @@ export class FunctionEntity {
     public fullName: string;
     public isLibCall: boolean;
     public parametersSize: number;
+    public assertPostions: number[];
 
     constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
         this.name = name;
@@ -478,6 +479,7 @@ export class FunctionEntity {
         this.location = -1;
         this.fullName = fullName;
         this.isLibCall = false;
+        this.assertPostions = [];
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
             .reduce((x, y) => x + y, 0);

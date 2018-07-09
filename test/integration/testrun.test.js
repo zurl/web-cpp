@@ -7,9 +7,9 @@ struct mystruct{
     int a, b, c;
 };
 int main(){
-    struct mystruct u[10];
-    u[2].a = 123;
-    printf("%d", u[2].a);
+    int a = 3;
+    int b = a == 4 ? 1 : 2;
+    printf("%d\\n", b); 
     return 0;
 }
 `;

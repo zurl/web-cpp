@@ -6,7 +6,7 @@
 import * as Long from "long";
 import {
     AssignmentExpression,
-    BinaryExpression, CastExpression, CharacterConstant,
+    BinaryExpression, CastExpression, CharacterConstant, ConditionalExpression,
     ExpressionResult,
     ExpressionResultType,
     FloatingConstant,
@@ -429,6 +429,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     const right = this.right.codegen(ctx);
 
     if ( this.operator === ",") {
+        recycleExpressionResult(ctx, left);
         return right;
     }
 
@@ -534,7 +535,6 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
         // ~ => int
         // ! => int, double, pointer
         const rawType = extractRealType(expr.type);
-        loadIntoStack(ctx, expr);
         if ( expr.form === ExpressionResultType.CONSTANT ) {
             let type: Type, value: Long | number;
             if ( rawType instanceof IntegerType) {
@@ -572,6 +572,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
                 value,
             };
         }
+        loadIntoStack(ctx, expr);
         if ( rawType instanceof IntegerType) {
             let retType = PrimitiveTypes.int32;
             if ( this.operator === "-" ) {
@@ -755,6 +756,31 @@ PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionR
     return {
         form: ExpressionResultType.RVALUE,
         type: ope.type,
+        value: 0,
+    };
+};
+
+ConditionalExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    const test = this.test.codegen(ctx);
+    const targetType = extractRealType(this.deduceType(ctx));
+    loadIntoStack(ctx, test);
+    const t0 = ctx.currentBuilder.now;
+    ctx.build(OpCode.JZ, 0);
+    const con = this.consequent.codegen(ctx);
+    loadIntoStack(ctx, con);
+    convertTypeOnStack(ctx, targetType, extractRealType(con.type));
+    const t1 = ctx.currentBuilder.now;
+    ctx.build(OpCode.J, 0);
+    const t2 = ctx.currentBuilder.now;
+    ctx.currentBuilder.codeView.setUint32(t0 + 1, t2 - t0);
+    const alt = this.alternate.codegen(ctx);
+    loadIntoStack(ctx, alt);
+    convertTypeOnStack(ctx, targetType, extractRealType(alt.type));
+    const t3 = ctx.currentBuilder.now;
+    ctx.currentBuilder.codeView.setUint32(t1 + 1, t3 - t1);
+    return {
+        type: targetType,
+        form: ExpressionResultType.RVALUE,
         value: 0,
     };
 };

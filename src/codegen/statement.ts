@@ -7,7 +7,7 @@
 import * as Long from "long";
 import {
     BreakStatement, CaseStatement,
-    CompoundStatement, ContinueStatement, DoWhileStatement, ExpressionResult,
+    CompoundStatement, ContinueStatement, Declaration, DoWhileStatement, ExpressionResult,
     ExpressionResultType,
     ExpressionStatement, ForStatement, GotoStatement,
     IfStatement, LabeledStatement,
@@ -148,6 +148,10 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
     if ( ctx.currentFunction === null) {
         throw new SyntaxError(`return outside function`, this);
     }
+    if (ctx.options.detectStackPollution) {
+        ctx.currentFunction.assertPostions.push(ctx.currentBuilder.now);
+        ctx.build(OpCode.ASSERTSP, 0);
+    }
     if (this.argument != null) {
         const result = this.argument.codegen(ctx);
         loadIntoStack(ctx, result);
@@ -251,7 +255,11 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     };
 
     if (this.init !== null) {
-        this.init.codegen(ctx);
+        if ( this.init instanceof Declaration) {
+            this.init.codegen(ctx);
+        } else {
+            recycleExpressionResult(ctx, this.init.codegen(ctx));
+        }
     }
 
     const l1 = ctx.currentBuilder!.now;
@@ -270,7 +278,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
 
     const l5 = ctx.currentBuilder!.now;
     if (this.update) {
-        this.update.codegen(ctx);
+        recycleExpressionResult(ctx, this.update.codegen(ctx));
     }
 
     ctx.currentNode = this;

@@ -58,6 +58,7 @@ export enum OpCode {
     PF32,  // push f32
     PBP,   // push $bp + i32
     SSP,   // $sp = $sp + i32
+    ASSERTSP, // for debug
     J,     // $pc = $pc + i32
     JZ,    // if [$sp++] == 0: $pc = $pc + i32
     JNZ,   // if [$sp++] != 0: $pc = $pc + i32
@@ -233,7 +234,11 @@ export class InstructionBuilder {
             }
             const op = this.codeView.getUint8(i);
             i++;
-            if (op <= OpCodeLimit.L1) {
+            if ( options.friendlyJMP &&
+                (op === OpCode.J || op === OpCode.JZ || op === OpCode.JNZ)) {
+                result += `\t${OpCode[op]} ${toHexString(i + this.codeView.getUint32(i) - 1)}`;
+                i += 4;
+            } else if (op <= OpCodeLimit.L1) {
                 result += `\t${OpCode[op]}`;
             } else if (op <= OpCodeLimit.L5U) {
                 result += `\t${OpCode[op]} ${toHexString(this.codeView.getUint32(i))}`;

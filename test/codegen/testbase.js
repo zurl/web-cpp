@@ -40,8 +40,9 @@ function generateAsm(testCode) {
 }
 
 function testCode(testCode, expectCode) {
-    const actualCode = generateAsm("int main(){ " + testCode + " }\n");
-    const actualPlainCode = actualCode.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
+    const actualCode = generateAsm("int main(){ " + testCode + " return 0;}\n");
+    const actualCodeLines = actualCode.trim().split('\n').slice(2);
+    const actualPlainCode = actualCodeLines.slice(0, actualCodeLines.length - 3).map(x => x.trim()).join('\n');
     const expectPlainCode = expectCode.trim().split('\n').map(x => x.trim()).join('\n');
     Assert.assert.equal(actualPlainCode, expectPlainCode);
 }

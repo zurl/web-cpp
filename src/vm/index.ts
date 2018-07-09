@@ -6,6 +6,7 @@
 import {RuntimeError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
 import {JsAPIDefine} from "../common/jsapi";
+import {toHexString} from "../common/utils";
 import {HeapAllocator, LinkedHeapAllocator} from "./allocator";
 import {VMFile} from "./vmfile";
 
@@ -282,6 +283,12 @@ export class VirtualMachine {
                 }
             } else if (op === OpCode.SSP) {
                 this.sp = this.sp + imm;
+            } else if ( op === OpCode.ASSERTSP) {
+                const offset = this.sp - this.bp;
+                if ( offset !== imm) {
+                    throw new RuntimeError(`$sp assertion failed at ${toHexString(this.pc)}`
+                        + `, actual=${offset}, expect=${imm}, the stack could be polluted`);
+                }
             }
             this.pc += 5;
         } else if (op === OpCode.PF64) {

@@ -41,7 +41,7 @@ function testRun(source, debug){
 
 
 function testRunCompareResult(source, expectOutput){
-    const actualOutput = testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n");
+    const actualOutput = testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n", true);
     assert.equal(actualOutput.trim(), expectOutput.trim());
 }
 
