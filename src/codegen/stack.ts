@@ -156,11 +156,6 @@ export function loadFromMemory(ctx: CompileContext, type: Type) {
  * @param {ExpressionResult} expr
  */
 export function loadIntoStack(ctx: CompileContext, expr: ExpressionResult) {
-    if ( expr.type instanceof ArrayType &&
-        expr.form === ExpressionResultType.LVALUE_STACK) {
-        ctx.build(OpCode.PBP, expr.value as number);
-        return;
-    }
     if (expr.type instanceof LeftReferenceType) {
         loadFromMemory(ctx, expr.type.elementType);
         return;
@@ -241,7 +236,7 @@ export function popFromStack(ctx: CompileContext, expr: ExpressionResult) {
     ) {
         saveToMemory(ctx, expr.type);
     } else {
-        throw new InternalError(`unsupport form in loadIntoStakc`);
+        throw new InternalError(`unsupport form in loadIntoStack`);
     }
 }
 

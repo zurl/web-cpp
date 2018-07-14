@@ -208,36 +208,38 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
         type = type.elementType;
     }
 
+    let result: ExpressionResult;
+
     if (item.storageType === VariableStorageType.STACK) {
-        return {
+        result = {
             type,
             form: ExpressionResultType.LVALUE_STACK,
             value: item.location,
             isConst,
         };
     } else if (item.storageType === VariableStorageType.MEMORY_DATA) {
-        return {
+        result = {
             type,
             form: ExpressionResultType.LVALUE_MEMORY_DATA,
             value: item.location,
             isConst,
         };
     } else if (item.storageType === VariableStorageType.MEMORY_BSS) {
-        return {
+        result = {
             type,
             form: ExpressionResultType.LVALUE_MEMORY_BSS,
             value: item.location,
             isConst,
         };
     } else if (item.storageType === VariableStorageType.MEMORY_EXTERN) {
-        return {
+        result = {
             type,
             form: ExpressionResultType.LVALUE_MEMORY_EXTERN,
             value: item.location,
             isConst,
         };
     } else if (item.storageType === VariableStorageType.CONSTANT) {
-        return {
+        result = {
             type,
             form: ExpressionResultType.CONSTANT,
             value: Long.fromInt(item.location as number),
@@ -246,6 +248,18 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     } else {
         throw new InternalError(`unknown error at item.storageType`);
     }
+
+    if ( type instanceof ArrayType) {
+        loadAddress(ctx, result);
+        result = {
+            type,
+            form: ExpressionResultType.RVALUE,
+            value: 0,
+            isConst,
+        };
+    }
+
+    return result;
 };
 
 // Require: left.type and right.type instanceof ArithmeticType
@@ -401,6 +415,11 @@ function generateExpressionTypeConversion(ctx: CompileContext,
 BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     // 救救刘人语小姐姐
 
+    if ( this.operator === ",") {
+        recycleExpressionResult(ctx, this.left.codegen(ctx));
+        return this.right.codegen(ctx);
+    }
+
     const leftType = extractRealType(this.left.deduceType(ctx));
     const rightType = extractRealType(this.right.deduceType(ctx));
     // 计算结果不会出现const, array和引用，因为肯定在栈顶
@@ -425,17 +444,6 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
             ));
     }
 
-    const left = this.left.codegen(ctx);
-    const right = this.right.codegen(ctx);
-
-    if ( this.operator === ",") {
-        recycleExpressionResult(ctx, left);
-        return right;
-    }
-
-    const leftStorageType = getStackStorageType(leftType);
-    const rightStorageType = getStackStorageType(rightType);
-
     // targetStorageType must be uint32 / int32 / float64
     let targetStorageType = getStackStorageType(targetType);
 
@@ -445,15 +453,18 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         targetStorageType = StackStorageType.float64;
     }
 
-    // 常量折叠
-    if (left.form === ExpressionResultType.CONSTANT && right.form === ExpressionResultType.CONSTANT) {
-        return doConstantCompute(left, right, this.operator);
-    }
+    const left = this.left.codegen(ctx);
+    const leftStorageType = getStackStorageType(leftType);
 
     ctx.currentNode = this;
 
     loadIntoStack(ctx, left);
     generateExpressionTypeConversion(ctx, leftStorageType, targetStorageType, this.operator);
+
+    const right = this.right.codegen(ctx);
+    const rightStorageType = getStackStorageType(rightType);
+
+
     loadIntoStack(ctx, right);
     generateExpressionTypeConversion(ctx, rightStorageType, targetStorageType, this.operator);
 

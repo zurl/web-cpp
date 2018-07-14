@@ -84,6 +84,30 @@ export class VirtualMachine {
         this.memory.setInt32(this.sp, val);
     }
 
+    public dumpStatus() {
+        console.log("PC: " + toHexString(this.pc) + ", BP: " + toHexString(this.bp)
+        + ", SP: " + toHexString(this.sp));
+    }
+
+    public simpleRun() {
+        try {
+            let i = 0;
+            while (i < 100000) {
+                i++;
+                this.runOneStep();
+            }
+        } catch (e) {
+            if (e instanceof RuntimeError) {
+                console.log("Runtime Error: " + e.message);
+                this.dumpStatus();
+            } else if (e instanceof RangeError) {
+                console.log("Segment Fault: " + e.message);
+                this.dumpStatus();
+            }
+            throw e;
+        }
+    }
+
     public runOneStep(): boolean {
         const op = this.memory.getUint8(this.pc);
         // console.log(`pc:${this.pc}, op:${OpCode[op]}, sp:${this.sp - this.memory.byteLength},` +

@@ -44,7 +44,7 @@ local var:  @foo@var1
 - [X] cast ope (hard)
 - [X] void return type;
 - [X] function call parameter type conversion
-- [X] var args
+- [ ] var args
 - [X] allocator
 - [X] char * a = "123"
 - [X] write, read

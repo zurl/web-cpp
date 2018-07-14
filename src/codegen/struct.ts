@@ -102,24 +102,32 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     }
     ctx.currentNode = this;
     if ( left.type instanceof LeftReferenceType ) {
-        loadReference(ctx, left);
-        // 现在stacktop是结构体指针
-        // 偏移一下
-        if (!rawType.isUnion) {
-            ctx.build(OpCode.PUI32, field.startOffset);
-            ctx.build(OpCode.ADD);
+        if (left.form === ExpressionResultType.RVALUE){
+            // 现在stacktop是结构体指针
+            // 偏移一下
+            if (!rawType.isUnion) {
+                ctx.build(OpCode.PUI32, field.startOffset);
+                ctx.build(OpCode.ADD);
+            }
+            return {
+                type: new LeftReferenceType(field.type),
+                form: ExpressionResultType.RVALUE,
+                value: 0,
+            };
+        } else {
+            return {
+                type: new LeftReferenceType(field.type),
+                form: left.form,
+                value: left.value as number + field.startOffset,
+            };
         }
-        return {
-            type: new LeftReferenceType(field.type),
-            form: ExpressionResultType.RVALUE,
-            value: 0,
-        };
     } else {
         if ( left.form === ExpressionResultType.LVALUE_MEMORY_EXTERN) {
             return {
                 type: field.type,
                 value: left.value,
                 form: left.form,
+                // TODO:: here extern offset
                 offset: field.startOffset,
             };
         } else if ( left.form === ExpressionResultType.LVALUE_MEMORY_DATA

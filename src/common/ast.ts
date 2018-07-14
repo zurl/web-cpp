@@ -1,8 +1,8 @@
 import * as Long from "long";
-import {CompileContext} from "../codegen/context";
+import {CompileContext} from "../ng_codegen/context";
+import {WExpression} from "../wasm/node";
 import {InternalError} from "./error";
-import {FunctionEntity} from "./type";
-import {Type} from "./type";
+import {FunctionEntity, Type} from "./type";
 
 export type SpecifierType =
     string
@@ -12,21 +12,10 @@ export type SpecifierType =
     | TypedefName
     | AlignmentSpecifier;
 
-export enum ExpressionResultType {
-    CONSTANT,                       // value => constant
-    LVALUE_STACK,                   // value => bp_offset
-    LVALUE_MEMORY_DATA,             // value => data_offset
-    LVALUE_MEMORY_BSS,              // value => bss_offset
-    LVALUE_MEMORY_EXTERN,           // value => string
-    RVALUE,                         // value => 0, pos => stack_top
-}
-
 export interface ExpressionResult {
     type: Type;
-    form: ExpressionResultType;
-    value: Long | number | string | FunctionEntity;
-    isConst?: boolean;
-    offset?: number;
+    expr: WExpression | FunctionEntity;
+    isLeft: boolean;
 }
 
 export class Position {

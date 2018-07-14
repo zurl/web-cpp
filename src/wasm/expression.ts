@@ -5,21 +5,15 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
+import {doBinaryCompute, doUnaryCompute} from "./calculator";
 import {
     BinaryOperator,
-    Control,
-    F32,
-    F32Binary,
-    F32Unary,
-    F64,
-    F64Binary,
-    F64Unary,
-    I32,
-    I32Binary,
-    I32Unary,
-    I64,
-    I64Binary,
-    I64Unary, OpTypeMap, UnaryOperator,
+    Control, ConvertOperator,
+    F32, F32Convert,
+    F64, F64Convert, getTypeConvertOpe,
+    I32, I32Convert,
+    I64, I64Convert,
+    OpTypeMap, UnaryOperator,
     WType,
     WTypeMap,
 } from "./constant";
@@ -75,6 +69,11 @@ export class WCall extends WExpression {
         }
     }
 
+    public fold(): WExpression {
+        this.argument = this.argument.map((x) => x.fold());
+        return this;
+    }
+
 }
 
 export class WUnaryOperation extends WExpression {
@@ -101,6 +100,24 @@ export class WUnaryOperation extends WExpression {
             throw new EmitError(`type mismatch at unary ope`);
         }
         return this.operand.deduceType(e);
+    }
+
+    public fold(): WExpression {
+        this.operand = this.operand.fold();
+        if (this.operand instanceof WConst) {
+            const type = OpTypeMap.get(this.ope)!;
+            if (type === WType.f32 || type === WType.f64) {
+                return new WConst(type,
+                    doUnaryCompute(this.ope,
+                        parseFloat(this.operand.constant)).toString());
+            } else {
+                return new WConst(type,
+                    doUnaryCompute(this.ope,
+                        parseInt(this.operand.constant)).toString());
+            }
+        } else {
+            return this;
+        }
     }
 }
 
@@ -134,6 +151,27 @@ export class WBinaryOperation extends WExpression {
         }
         return lhs;
     }
+
+    public fold(): WExpression {
+        this.lhs = this.lhs.fold();
+        this.rhs = this.rhs.fold();
+        if (this.lhs instanceof WConst && this.rhs instanceof WConst) {
+            const type = OpTypeMap.get(this.ope)!;
+            if (type === WType.f32 || type === WType.f64) {
+                return new WConst(type,
+                    doBinaryCompute(this.ope,
+                        parseFloat(this.lhs.constant),
+                        parseFloat(this.rhs.constant)).toString());
+            } else {
+                return new WConst(type,
+                    doBinaryCompute(this.ope,
+                        parseInt(this.lhs.constant),
+                        parseInt(this.rhs.constant)).toString());
+            }
+        } else {
+            return this;
+        }
+    }
 }
 
 export class WLoad extends WExpression {
@@ -162,6 +200,65 @@ export class WLoad extends WExpression {
 
     public deduceType(e: Emitter): WType {
         return this.type;
+    }
+
+    public fold(): WExpression {
+        this.address = this.address.fold();
+        return this;
+    }
+}
+
+export class WMockLocalConst extends WExpression {
+    public offset: number;
+
+    constructor(offset: number, location?: SourceLocation) {
+        super(location);
+        this.offset = offset;
+    }
+
+    public emit(e: Emitter): void {
+        throw new EmitError(`mock local`);
+    }
+
+    public length(e: Emitter): number {
+        throw new EmitError(`mock local`);
+    }
+
+    public deduceType(e: Emitter): WType {
+        throw new EmitError(`mock local`);
+    }
+
+    public fold(): WExpression {
+        return this;
+    }
+
+}
+
+export class WGetLocal extends WExpression {
+    public type: WType;
+    public offset: number;
+
+    constructor(type: WType, offset: number, location?: SourceLocation) {
+        super(location);
+        this.type = type;
+        this.offset = offset;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(Control.get_local);
+        e.writeUint32(this.offset);
+    }
+
+    public length(e: Emitter): number {
+        return 1 + getLeb128UintLength(this.offset);
+    }
+
+    public deduceType(e: Emitter): WType {
+        return this.type;
+    }
+
+    public fold(): WExpression {
+        return this;
     }
 }
 
@@ -214,4 +311,50 @@ export class WConst extends WExpression {
         return Number.MAX_SAFE_INTEGER;
     }
 
+    public fold(): WExpression {
+        return this;
+    }
+
+}
+
+export class WCovertOperation extends WExpression {
+    public srcType: WType;
+    public dstType: WType;
+    public ope: ConvertOperator;
+    public operand: WExpression;
+
+    constructor(srcType: WType, dstType: WType, operand: WExpression, ope: ConvertOperator, location?: SourceLocation) {
+        super(location);
+        this.srcType = srcType;
+        this.dstType = dstType;
+        this.operand = operand;
+        this.ope = ope;
+    }
+
+    public emit(e: Emitter): void {
+        this.operand.emit(e);
+        e.writeByte(this.ope);
+    }
+
+    public deduceType(e: Emitter): WType {
+        return this.dstType;
+    }
+
+    public length(e: Emitter): number {
+        return this.operand.length(e) + 1;
+    }
+
+    public fold(): WExpression {
+        this.operand = this.operand.fold();
+        if (this.operand instanceof WConst) {
+            if ( this.dstType === WType.f32 || this.dstType === WType.f64) {
+                this.operand.constant = parseFloat(this.operand.constant).toString();
+            } else {
+                this.operand.constant = parseInt(this.operand.constant).toString();
+            }
+            return this.operand;
+        } else {
+            return this;
+        }
+    }
 }

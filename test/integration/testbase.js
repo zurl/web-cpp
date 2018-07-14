@@ -31,12 +31,8 @@ function testRun(source, debug){
             new StringOutputFile(result),
         ],
     });
-    let i = 0;
-    while( i < 100000 ){
-        const ret = vm.runOneStep();
-        if(!ret) return result[0];
-    }
-    throw "code run too much";
+    vm.simpleRun();
+    return result[0];
 }
 
 

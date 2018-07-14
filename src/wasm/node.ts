@@ -22,6 +22,8 @@ export abstract class WNode {
 export abstract class WExpression extends WNode {
 
     public abstract deduceType(e: Emitter): WType;
+
+    public abstract fold(): WExpression;
 }
 
 export abstract class WStatement extends WNode {

@@ -1,3 +1,5 @@
+import {WBinaryOperation} from "./expression";
+
 export enum Control {
     unreachable = 0x0,
     nop = 0x1,
@@ -181,6 +183,9 @@ export enum I32Unary {
     clz = 0x67,
     ctz = 0x68,
     popcnt = 0x69,
+}
+
+export enum I32Convert {
     wrap$i64 = 0xa7,
     trunc_s$f32 = 0xa8,
     trunc_u$f32 = 0xa9,
@@ -193,6 +198,9 @@ export enum I64Unary {
     clz = 0x79,
     ctz = 0x7a,
     popcnt = 0x7b,
+}
+
+export enum I64Convert {
     extend_s$i32 = 0xac,
     extend_u$i32 = 0xad,
     trunc_s$f32 = 0xae,
@@ -210,6 +218,9 @@ export enum F32Unary {
     min = 0x96,
     max = 0x97,
     copysign = 0x98,
+}
+
+export enum F32Convert {
     convert_s$i32 = 0xb2,
     convert_u$i32 = 0xb3,
     convert_s$i64 = 0xb4,
@@ -226,6 +237,10 @@ export enum F64Unary {
     min = 0xa4,
     max = 0xa5,
     copysign = 0xa6,
+
+}
+
+export enum F64Convert {
     convert_s$i32 = 0xb7,
     convert_u$i32 = 0xb8,
     convert_s$i64 = 0xb9,
@@ -273,6 +288,7 @@ export const WTypeMap = new Map<WType, any>([
 ]);
 export type UnaryOperator = I32Unary | F32Unary | I64Unary | F64Unary;
 export type BinaryOperator = I32Binary | F32Binary | I64Binary | F64Binary;
+export type ConvertOperator = I32Convert | F32Convert | I64Convert | F64Convert;
 
 function createMapItem(array: any, target: WType): Array<[number, WType]> {
     return Object.keys(array)
@@ -290,4 +306,188 @@ export const OpTypeMap = new Map<UnaryOperator | BinaryOperator, WType>([
     ...createMapItem(I64Binary, WType.i64),
     ...createMapItem(F32Binary, WType.f32),
     ...createMapItem(F64Binary, WType.f64),
+    ...createMapItem(I32Convert, WType.i32),
+    ...createMapItem(I64Convert, WType.i64),
+    ...createMapItem(F32Convert, WType.f32),
+    ...createMapItem(F64Convert, WType.f64),
 ]);
+
+export function getTypeConvertOpe(srcType: WType, dstType: WType): ConvertOperator | null {
+    switch (srcType) {
+        case WType.i32:
+            switch (dstType) {
+                case WType.i32: return null;
+                case WType.u32: return null;
+                case WType.i64: return I64Convert.extend_s$i32;
+                case WType.u64: return I64Convert.extend_s$i32;
+                case WType.f32: return F32Convert.convert_s$i32;
+                case WType.f64: return F64Convert.convert_s$i32;
+            }
+            return null;
+        case WType.u32:
+            switch (dstType) {
+                case WType.i32: return null;
+                case WType.u32: return null;
+                case WType.i64: return I64Convert.extend_u$i32;
+                case WType.u64: return I64Convert.extend_u$i32;
+                case WType.f32: return F32Convert.convert_u$i32;
+                case WType.f64: return F64Convert.convert_u$i32;
+            }
+            return null;
+        case WType.i64:
+            switch (dstType) {
+                case WType.i32: return I32Convert.wrap$i64;
+                case WType.u32: return I32Convert.wrap$i64;
+                case WType.i64: return null;
+                case WType.u64: return null;
+                case WType.f32: return F32Convert.convert_s$i64;
+                case WType.f64: return F64Convert.convert_s$i64;
+            }
+            return null;
+        case WType.u64:
+            switch (dstType) {
+                case WType.i32: return I32Convert.wrap$i64;
+                case WType.u32: return I32Convert.wrap$i64;
+                case WType.i64: return null;
+                case WType.u64: return null;
+                case WType.f32: return F32Convert.convert_u$i64;
+                case WType.f64: return F64Convert.convert_u$i64;
+            }
+            return null;
+        case WType.f32:
+            switch (dstType) {
+                case WType.i32: return I32Convert.trunc_s$f32;
+                case WType.u32: return I32Convert.trunc_u$f32;
+                case WType.i64: return I64Convert.trunc_s$f32;
+                case WType.u64: return I64Convert.trunc_u$f32;
+                case WType.f32: return null;
+                case WType.f64: return F64Convert.promote$f32;
+            }
+            return null;
+        case WType.f64:
+            switch (dstType) {
+                case WType.i32: return I32Convert.trunc_s$f64;
+                case WType.u32: return I32Convert.trunc_u$f64;
+                case WType.i64: return I64Convert.trunc_s$f64;
+                case WType.u64: return I64Convert.trunc_u$f64;
+                case WType.f32: return F32Convert.demote$f64;
+                case WType.f64: return null;
+            }
+            return null;
+    }
+    return null;
+}
+
+export function getOpFromStr(op: string, type: WType): BinaryOperator | null {
+    switch (type) {
+        case WType.i32:
+            switch (op) {
+                case "+": return I32Binary.add;
+                case "-": return I32Binary.sub;
+                case "*": return I32Binary.mul;
+                case "/": return I32Binary.div_s;
+                case "%": return I32Binary.rem_s;
+                case "<": return I32Binary.lt_s;
+                case ">": return I32Binary.gt_s;
+                case "<=": return I32Binary.le_s;
+                case ">=": return I32Binary.ge_s;
+                case "==": return I32Binary.eq;
+                case "!=": return I32Binary.ne;
+                case "&": return I32Binary.and;
+                case "|": return I32Binary.or;
+                case "^": return I32Binary.xor;
+                case ">>": return I32Binary.shr_s;
+                case "<<": return I32Binary.shr_s;
+            }
+            return null;
+        case WType.u32:
+            switch (op) {
+                case "+": return I32Binary.add;
+                case "-": return I32Binary.sub;
+                case "*": return I32Binary.mul;
+                case "/": return I32Binary.div_u;
+                case "%": return I32Binary.rem_u;
+                case "<": return I32Binary.lt_u;
+                case ">": return I32Binary.gt_u;
+                case "<=": return I32Binary.le_u;
+                case ">=": return I32Binary.ge_u;
+                case "==": return I32Binary.eq;
+                case "!=": return I32Binary.ne;
+                case "&": return I32Binary.and;
+                case "|": return I32Binary.or;
+                case "^": return I32Binary.xor;
+                case ">>": return I32Binary.shr_u;
+                case "<<": return I32Binary.shr_u;
+            }
+            return null;
+        case WType.i64:
+            switch (op) {
+                case "+": return I64Binary.add;
+                case "-": return I64Binary.sub;
+                case "*": return I64Binary.mul;
+                case "/": return I64Binary.div_s;
+                case "%": return I64Binary.rem_s;
+                case "<": return I64Binary.lt_s;
+                case ">": return I64Binary.gt_s;
+                case "<=": return I64Binary.le_s;
+                case ">=": return I64Binary.ge_s;
+                case "==": return I64Binary.eq;
+                case "!=": return I64Binary.ne;
+                case "&": return I64Binary.and;
+                case "|": return I64Binary.or;
+                case "^": return I64Binary.xor;
+                case ">>": return I64Binary.shr_s;
+                case "<<": return I64Binary.shr_s;
+            }
+            return null;
+        case WType.u64:
+            switch (op) {
+                case "+": return I64Binary.add;
+                case "-": return I64Binary.sub;
+                case "*": return I64Binary.mul;
+                case "/": return I64Binary.div_u;
+                case "%": return I64Binary.rem_u;
+                case "<": return I64Binary.lt_u;
+                case ">": return I64Binary.gt_u;
+                case "<=": return I64Binary.le_u;
+                case ">=": return I64Binary.ge_u;
+                case "==": return I64Binary.eq;
+                case "!=": return I64Binary.ne;
+                case "&": return I64Binary.and;
+                case "|": return I64Binary.or;
+                case "^": return I64Binary.xor;
+                case ">>": return I64Binary.shr_u;
+                case "<<": return I64Binary.shr_u;
+            }
+            return null;
+        case WType.f32:
+            switch (op) {
+                case "+": return F32Binary.add;
+                case "-": return F32Binary.sub;
+                case "*": return F32Binary.mul;
+                case "/": return F32Binary.div;
+                case "<": return F32Binary.lt;
+                case ">": return F32Binary.gt;
+                case "<=": return F32Binary.le;
+                case ">=": return F32Binary.ge;
+                case "==": return F32Binary.eq;
+                case "!=": return F32Binary.ne;
+            }
+            return null;
+        case WType.f64:
+            switch (op) {
+                case "+": return F64Binary.add;
+                case "-": return F64Binary.sub;
+                case "*": return F64Binary.mul;
+                case "/": return F64Binary.div;
+                case "<": return F64Binary.lt;
+                case ">": return F64Binary.gt;
+                case "<=": return F64Binary.le;
+                case ">=": return F64Binary.ge;
+                case "==": return F64Binary.eq;
+                case "!=": return F64Binary.ne;
+            }
+            return null;
+    }
+    return null;
+}

@@ -41,7 +41,14 @@ FloatingConstant.prototype.deduceType = function(ctx: CompileContext): Type {
 };
 
 Identifier.prototype.deduceType = function(ctx: CompileContext): Type {
-    return this.codegen(ctx).type;
+    const item = ctx.currentScope.get(this.name);
+    if (item === null) {
+        throw new SyntaxError(`Unresolve Name ${this.name}`, this);
+    }
+    if (item instanceof Type) {
+        throw new SyntaxError(`${this.name} expect to be variable, but it is a type :)`, this);
+    }
+    return item.type;
 };
 
 function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {

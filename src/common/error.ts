@@ -20,6 +20,10 @@ export class RuntimeError extends Error {
 
 }
 
+export class EmitError extends Error{
+
+}
+
 export class CompilerError extends Error {
     public name: string;
     public node: Node;

@@ -17,6 +17,9 @@ export class WReturn extends WStatement {
     constructor(expr: WExpression | null, location?: SourceLocation) {
         super(location);
         this.expr = expr;
+        if (expr !== null) {
+            this.expr = expr;
+        }
     }
 
     public emit(e: Emitter): void {
@@ -81,6 +84,29 @@ export class WStore extends WStatement {
         return this.address.length(e) + this.value.length(e) +
             getLeb128UintLength(getAlign(this.offset)) +
             getLeb128UintLength(this.offset) + 1;
+    }
+
+}
+export class WSetLocal extends WStatement {
+    public type: WType;
+    public offset: number;
+    public value: WExpression;
+
+    constructor(type: WType, offset: number, value: WExpression, location?: SourceLocation) {
+        super(location);
+        this.type = type;
+        this.offset = offset;
+        this.value = value;
+    }
+
+    public emit(e: Emitter): void {
+        this.value.emit(e);
+        e.writeByte(Control.set_local);
+        e.writeUint32(this.offset);
+    }
+
+    public length(e: Emitter): number {
+        return this.value.length(e) + 1 + getLeb128UintLength(this.offset);
     }
 
 }

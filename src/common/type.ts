@@ -1,3 +1,4 @@
+import {WType} from "../wasm";
 import {InternalError, TypeError} from "./error";
 import {Assembly} from "./instruction";
 import {isArrayEqual} from "./utils";
@@ -8,19 +9,21 @@ export abstract class Type {
 
     public isExtern: boolean;
     public isStatic: boolean;
+    public isConst: boolean;
 
     constructor() {
         this.isExtern = false;
         this.isStatic = false;
+        this.isConst = false;
     }
-
-    abstract get length(): number;
 
     public equals(type: Type) {
         return this.constructor === type.constructor;
     }
 
+    public abstract toWType(): WType;
     public abstract toString(): string;
+    public abstract get length(): number;
 }
 
 export abstract class CompoundType extends Type {
@@ -46,6 +49,10 @@ export class PointerType extends CompoundType {
     public toString() {
         return this.elementType.toString() + "*";
     }
+
+    public toWType() {
+        return WType.u32;
+    }
 }
 
 export abstract class ReferenceType extends CompoundType {
@@ -62,36 +69,20 @@ export class LeftReferenceType extends ReferenceType {
     public toString() {
         return this.elementType.toString() + "&";
     }
+
+    public toWType() {
+        return WType.u32;
+    }
 }
 
 export class RightReferenceType extends ReferenceType {
     public toString() {
         return this.elementType.toString() + "&&";
     }
-}
 
-export class QualifiedType extends CompoundType {
-    public isConst: boolean;
-    public isVolatile: boolean;
-
-    constructor(elementType: Type, isConst: boolean, isVolatile: boolean) {
-        super(elementType);
-        this.isConst = isConst;
-        this.isVolatile = isVolatile;
+    public toWType() {
+        return WType.u32;
     }
-
-    get length() {
-        return this.elementType.length;
-    }
-
-    public toString(): string {
-        if (this.isConst) {
-            return "const " + this.elementType.toString();
-        } else {
-            return this.elementType.toString();
-        }
-    }
-
 }
 
 export abstract class PrimitiveType extends Type {
@@ -104,11 +95,19 @@ export class VoidType extends PrimitiveType {
     get length(): number {
         return 1;
     }
+
+    public toWType() {
+        return WType.i32;
+    }
 }
 
 export class NullptrType extends PrimitiveType {
     get length(): number {
         return 1;
+    }
+
+    public toWType() {
+        return WType.i32;
     }
 }
 
@@ -116,15 +115,22 @@ export abstract class ArithmeticType extends PrimitiveType {
 }
 
 export abstract class IntegerType extends ArithmeticType {
+
 }
 
 export abstract class FloatingType extends ArithmeticType {
 }
 
 export abstract class SignedIntegerType extends IntegerType {
+    public toWType() {
+        return WType.i32;
+    }
 }
 
 export abstract class UnsignedIntegerType extends IntegerType {
+    public toWType() {
+        return WType.u32;
+    }
 }
 
 export class BoolType extends UnsignedIntegerType {
@@ -156,6 +162,10 @@ export class Int64Type extends SignedIntegerType {
     get length(): number {
         return 8;
     }
+
+    public toWType() {
+        return WType.i64;
+    }
 }
 
 export class UnsignedCharType extends UnsignedIntegerType {
@@ -180,17 +190,29 @@ export class UnsignedInt64Type extends UnsignedIntegerType {
     get length(): number {
         return 8;
     }
+
+    public toWType() {
+        return WType.u64;
+    }
 }
 
 export class FloatType extends FloatingType {
     get length(): number {
         return 4;
     }
+
+    public toWType() {
+        return WType.f32;
+    }
 }
 
 export class DoubleType extends FloatingType {
     get length(): number {
         return 8;
+    }
+
+    public toWType() {
+        return WType.f64;
     }
 }
 
@@ -224,6 +246,10 @@ export class FunctionType extends Type {
 
     public toString() {
         return "[Function]";
+    }
+
+    public toWType(): WType {
+        throw new InternalError(`could not to Wtype of func`);
     }
 }
 
@@ -270,6 +296,10 @@ export class ClassType extends Type {
                 .map((field) => field.type.length)
                 .reduce((x, y) => x + y, 0);
         }
+    }
+
+    public toWType(): WType {
+        throw new InternalError(`could not to Wtype of func`);
     }
 
     public toString() {
@@ -339,6 +369,10 @@ export class ArrayType extends Type {
     public toString() {
         return this.elementType.toString() + `[${this.length}]`;
     }
+
+    public toWType(): WType {
+        throw new InternalError(`could not to Wtype of func`);
+    }
 }
 
 export const PrimitiveTypes = {
@@ -355,8 +389,6 @@ export const PrimitiveTypes = {
     uint64: new UnsignedInt64Type(),
     float: new FloatType(),
     double: new DoubleType(),
-    __charptr: new PointerType(new CharType()),
-    __ccharptr: new PointerType(new QualifiedType(new CharType(), true, false)),
 };
 
 export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
@@ -382,39 +414,13 @@ export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
     // [[['_Bool']],                                                               PrimitiveTypes._Bool]
 ]);
 
-/**
- * C语言 运算类型提取
- * 1. 把引用转普通
- * 2. 数组转指针
- * 3. 去const
- * @param {Type} rawType
- * @returns {Type}
- */
-export function extractRealType(rawType: Type) {
-    if ( rawType instanceof QualifiedType) {
-        rawType = rawType.elementType;
-    }
-    if (rawType instanceof ArrayType) {
-        if (rawType.elementType instanceof QualifiedType ) {
-            return new PointerType(rawType.elementType.elementType);
-        }
-        return new PointerType(rawType.elementType);
-    } else if (rawType instanceof ReferenceType) {
-        if (rawType.elementType instanceof QualifiedType ) {
-            return rawType.elementType.elementType;
-        }
-        return rawType.elementType;
-    } else {
-        return rawType;
-    }
-}
-
 export enum StackStorageType {
     int32,
     uint32,
     float32,
     float64,
 }
+
 export function getStackStorageType(rawType: Type): StackStorageType {
     if (rawType instanceof SignedIntegerType) {
         return StackStorageType.int32;
@@ -432,6 +438,7 @@ export function getStackStorageType(rawType: Type): StackStorageType {
 }
 
 export enum VariableStorageType {
+    LOCAL,
     STACK,
     MEMORY_DATA,
     MEMORY_BSS,
