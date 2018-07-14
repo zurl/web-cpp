@@ -15,3 +15,5 @@ yarn-error.log*
 ast.map
 .debug/
 coverage/
+*.wasm
+*.wast

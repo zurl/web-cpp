@@ -57,13 +57,15 @@ local var:  @foo@var1
 - [X] enum
 - [X] non-return detect
 - [X] cc-cli
+- [X] ?:
 - [ ] const
 - [ ] bit field of struct
 - [ ] js highlevel api
 - [ ] only export necessary scopeMap
 - [ ] #if #elif
-- [ ] ?:
 - [ ] #line __line__ __file__
+- [ ] & array
+- [ ] constant fold on tree
 ## C++ Language
 - [ ] 异常处理
 - [ ] 左值引用
