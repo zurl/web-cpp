@@ -30,6 +30,7 @@ export interface CompiledObject {
     functions: WFunction[];
     imports: ImportSymbol[];
     exports: ExportSymbol[];
+    data: ArrayBuffer;
 
     // debug only
     scopeMap?: Map<string, Scope>;

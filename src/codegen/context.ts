@@ -127,6 +127,7 @@ export class CompileContext {
             functions: this.functions,
             imports: this.imports,
             exports: [], // TODO:: exports
+            data: this.memory.dataBuffer,
         };
     }
 }

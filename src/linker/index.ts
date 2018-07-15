@@ -7,6 +7,7 @@ import {i32, u32, WASMEmitter, WConst, WFunction, WGlobalVariable, WImportFuncti
 import {printWNode} from "../wasm/tools";
 
 import * as fs from "fs";
+import {WDataSegment} from "../wasm/section";
 
 /**
  *  @file
@@ -23,16 +24,26 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     const importObjects: string[] = [];
     const imports: WImportFunction[] = [];
     const functions: WFunction[] = [];
+    const data: WDataSegment[] = [];
     const externVarMap: Map<string, number> = new Map<string, number>();
 
-    // 1. set function dataStart
+    // 1. set function dataStart && bssStart
     let dataNow = 0;
     for (const object of objects) {
         for (const func of object.functions) {
             func.dataStart = dataNow;
+        }
+        data.push(new WDataSegment(dataNow, object.data.slice(0, object.dataSize)));
+        dataNow += object.dataSize;
+    }
+
+    let bssNow = dataNow;
+    for (const object of objects) {
+        for (const func of object.functions) {
+            func.bssStart = bssNow;
             functions.push(func);
         }
-        dataNow += object.dataSize;
+        bssNow += object.dataSize;
     }
 
     // 2. build extern map
@@ -70,6 +81,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         globals: [
             new WGlobalVariable("$sp", u32, new WConst(u32, "1024")),
         ],
+        data,
     });
 
     fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");

@@ -7,27 +7,26 @@ import * as Long from "long";
 import {
     AssignmentExpression,
     BinaryExpression,
-    CastExpression,
+    CastExpression, CharacterConstant,
     ExpressionResult,
-    FloatingConstant,
-    Identifier,
+    FloatingConstant, Identifier,
     IntegerConstant,
-    ParenthesisExpression, PostfixExpression,
+    Node,
+    ParenthesisExpression, PostfixExpression, StringLiteral,
     SubscriptExpression,
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
-import {OpCode} from "../common/instruction";
 import {
-    AddressType,
-    FunctionEntity,
+    AddressType, CharType, DoubleType, FloatingType, FloatType,
+    FunctionEntity, Int16Type, Int32Type, Int64Type, IntegerType,
     PointerType,
     PrimitiveTypes,
-    Type,
+    Type, UnsignedCharType, UnsignedInt16Type, UnsignedInt32Type, UnsignedInt64Type,
 } from "../common/type";
-import {I32Unary, WType, WUnaryOperation} from "../wasm";
+import {I32Binary, I32Unary, WLoad, WType, WUnaryOperation} from "../wasm";
 import {BinaryOperator, getOpFromStr} from "../wasm/constant";
-import {WBinaryOperation, WConst} from "../wasm/expression";
+import {WBinaryOperation, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
@@ -47,20 +46,6 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
             this.right);
     }
 
-    // TODO:: 暂时不支持
-    //  对于初始化表达式 支持常量初始化到data段
-    // if (this.isInitExpr
-    //     && this.left instanceof Identifier
-    //     && right.form === ExpressionResultType.CONSTANT
-    //     && (right.type instanceof IntegerType ||
-    //         right.type instanceof FloatingType ||
-    //         right.type.equals(PrimitiveTypes.__ccharptr))) {
-    //     const item = this.left.codegen(ctx);
-    //     if (item.form === ExpressionResultType.LVALUE_MEMORY_DATA) {
-    //         return doVarInit(ctx, item, right);
-    //     }
-    // }
-
     const left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
 
@@ -70,6 +55,19 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
 
     if (right.expr instanceof FunctionEntity) {
         throw new SyntaxError(`could not assign a function name`, this);
+    }
+
+    // 对于初始化表达式 支持常量初始化到data段
+    if (this.isInitExpr && this.left instanceof Identifier
+        && right.expr instanceof WConst
+        && (right.type instanceof IntegerType ||
+            right.type instanceof FloatingType ||
+            right.type.equals(PrimitiveTypes.__ccharptr))) {
+        if (left.expr.type === AddressType.MEMORY_DATA) {
+            doVarInit(ctx, left.type, right.type, left.expr.place as number,
+                right.expr.constant, this);
+            return left;
+        }
     }
 
     ctx.submitStatement(left.expr.createStore(ctx, left.type.toWType(),
@@ -114,23 +112,23 @@ FloatingConstant.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     };
 };
 
-// StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-//     ctx.currentNode = this;
-//     return {
-//         type: PrimitiveTypes.__ccharptr,
-//         form: ExpressionResultType.CONSTANT,
-//         value: ctx.memory.allocString(this.value),
-//     };
-// };
-//
-// CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-//     ctx.currentNode = this;
-//     return {
-//         type: PrimitiveTypes.char,
-//         form: ExpressionResultType.CONSTANT,
-//         value: Long.fromInt(this.value.charCodeAt(0)),
-//     };
-// };
+StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    const expr = new WGetAddress(WMemoryLocation.DATA, this.location);
+    expr.offset = ctx.memory.allocString(this.value);
+    return {
+        type: PrimitiveTypes.__ccharptr,
+        expr,
+        isLeft: false,
+    };
+};
+
+CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    return {
+        type: PrimitiveTypes.char,
+        expr: new WConst(WType.i8, this.value.charCodeAt(0).toString(), this.location),
+        isLeft: false,
+    };
+};
 
 Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     const item = ctx.currentScope.get(this.name);
@@ -172,6 +170,24 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         throw new InternalError(`unsupport op ${this.operator}`);
     }
 
+    if ( dstType instanceof PointerType ) {
+        if ( left.type instanceof IntegerType ) {
+            if ( left.expr instanceof FunctionEntity ) {
+                throw new InternalError(`unsupportfunc name`);
+            }
+            left.type = dstType;
+            left.expr = new WBinaryOperation(I32Binary.mul, left.expr,
+                new WConst(WType.u32, dstType.elementType.length.toString(), this.location));
+        } else if ( right.type instanceof IntegerType ) {
+            if ( right.expr instanceof FunctionEntity ) {
+                throw new InternalError(`unsupportfunc name`);
+            }
+            right.type = dstType;
+            right.expr = new WBinaryOperation(I32Binary.mul, right.expr,
+                new WConst(WType.u32, dstType.elementType.length.toString(), this.location));
+        }
+    }
+
     return {
         type: dstType,
         isLeft: false,
@@ -203,7 +219,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
     }
     const expr = this.operand.codegen(ctx);
     if (this.operator === "*") {
-        const newExpr = doValueTransform(expr, this);
+        const newExpr = doValueTransform(ctx, expr, this);
         if (newExpr.type instanceof PointerType) {
             if ( newExpr.expr instanceof FunctionEntity) {
                 throw new SyntaxError(`unsupport function name`, this);
@@ -227,7 +243,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             expr: expr.expr.createLoadAddress(ctx),
         };
     } else if ( this.operator === "+") {
-        return doValueTransform(this.operand.codegen(ctx), this);
+        return doValueTransform(ctx, this.operand.codegen(ctx), this);
     } else if ( this.operator === "-") {
         return new BinaryExpression(this.location, "-",
             IntegerConstant.getZero(),
@@ -263,57 +279,41 @@ SubscriptExpression.prototype.codegen = function(ctx: CompileContext): Expressio
     ).codegen(ctx);
 };
 
-// export function doVarInit(ctx: CompileContext, left: ExpressionResult,
-//                           right: ExpressionResult): ExpressionResult {
-//     // charptr, int, double
-//     const leftValue = left.value as number;
-//     if (right.type.equals(PrimitiveTypes.__ccharptr)) {
-//         if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr)) ) {
-//             throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, ctx.currentNode!);
-//         }
-//         ctx.memory.data.setUint32(leftValue, right.value as number);
-//     }
-//     let rightValue = right.value as number;
-//     if (right.type instanceof IntegerType) {
-//         rightValue = (right.value as Long).toNumber();
-//     }
-//     if (left.type instanceof UnsignedCharType) {
-//         ctx.memory.data.setUint8(leftValue, rightValue);
-//     } else if (left.type instanceof CharType) {
-//         ctx.memory.data.setInt8(leftValue, rightValue);
-//     } else if (left.type instanceof UnsignedInt16Type) {
-//         ctx.memory.data.setUint16(leftValue, rightValue);
-//     } else if (left.type instanceof UnsignedInt32Type) {
-//         ctx.memory.data.setUint32(leftValue, rightValue);
-//     } else if (left.type instanceof UnsignedInt64Type) {
-//         if (right.type instanceof IntegerType) {
-//             ctx.memory.data.setUint32(leftValue, (right.value as Long).high);
-//             ctx.memory.data.setUint32(leftValue + 4, (right.value as Long).low);
-//         } else {
-//             ctx.memory.data.setUint32(leftValue, rightValue >> 32);
-//             ctx.memory.data.setUint32(leftValue + 4, rightValue);
-//         }
-//     } else if (left.type instanceof Int16Type) {
-//         ctx.memory.data.setInt16(leftValue, rightValue);
-//     } else if (left.type instanceof Int32Type) {
-//         ctx.memory.data.setInt32(leftValue, rightValue);
-//     } else if (left.type instanceof Int64Type) {
-//         if (right.type instanceof IntegerType) {
-//             ctx.memory.data.setInt32(leftValue, (right.value as Long).high);
-//             ctx.memory.data.setInt32(leftValue + 4, (right.value as Long).low);
-//         } else {
-//             ctx.memory.data.setInt32(leftValue, rightValue >> 32);
-//             ctx.memory.data.setInt32(leftValue + 4, rightValue);
-//         }
-//     } else if (left.type instanceof FloatType) {
-//         ctx.memory.data.setFloat32(leftValue, rightValue);
-//     } else if (left.type instanceof DoubleType) {
-//         ctx.memory.data.setFloat64(leftValue, rightValue);
-//     } else {
-//         throw new InternalError(`unsupport type assignment`);
-//     }
-//     return left;
-// }
+export function doVarInit(ctx: CompileContext, leftType: Type, rightType: Type,
+                          leftValue: number, rightValue: string, node: Node) {
+    // charptr, int, double
+    if (rightType.equals(PrimitiveTypes.__ccharptr)) {
+        if (!(leftType.equals(PrimitiveTypes.__charptr)) && !(leftType.equals(PrimitiveTypes.__ccharptr)) ) {
+            throw new SyntaxError(`unsupport init from ${leftType} to ${rightType}`, node);
+        }
+        ctx.memory.data.setUint32(leftValue, parseInt(rightValue));
+    }
+    if (leftType instanceof UnsignedCharType) {
+        ctx.memory.data.setUint8(leftValue, parseInt(rightValue));
+    } else if (leftType instanceof CharType) {
+        ctx.memory.data.setInt8(leftValue, parseInt(rightValue));
+    } else if (leftType instanceof UnsignedInt16Type) {
+        ctx.memory.data.setUint16(leftValue, parseInt(rightValue));
+    } else if (leftType instanceof UnsignedInt32Type) {
+        ctx.memory.data.setUint32(leftValue, parseInt(rightValue));
+    } else if (leftType instanceof UnsignedInt64Type) {
+        ctx.memory.data.setUint32(leftValue, Long.fromString(rightValue).high);
+        ctx.memory.data.setUint32(leftValue + 4, Long.fromString(rightValue).low);
+    } else if (leftType instanceof Int16Type) {
+        ctx.memory.data.setInt16(leftValue, parseInt(rightValue));
+    } else if (leftType instanceof Int32Type) {
+        ctx.memory.data.setInt32(leftValue, parseInt(rightValue));
+    } else if (leftType instanceof Int64Type) {
+        ctx.memory.data.setInt32(leftValue, Long.fromString(rightValue).high);
+        ctx.memory.data.setInt32(leftValue + 4, Long.fromString(rightValue).low);
+    } else if (leftType instanceof FloatType) {
+        ctx.memory.data.setFloat32(leftValue, parseFloat(rightValue));
+    } else if (leftType instanceof DoubleType) {
+        ctx.memory.data.setFloat64(leftValue, parseFloat(rightValue));
+    } else {
+        throw new InternalError(`unsupport type assignment`);
+    }
+}
 
 CastExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     const type = this.deduceType(ctx);

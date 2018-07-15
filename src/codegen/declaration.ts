@@ -180,6 +180,9 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             } else if (declarator.initializer !== null) {
                 storageType = AddressType.MEMORY_DATA;
                 location = ctx.memory.allocData(type.length);
+            } else {
+                storageType = AddressType.MEMORY_BSS;
+                location = ctx.memory.allocBss(type.length);
             }
         } else {
             if (type.isExtern) {

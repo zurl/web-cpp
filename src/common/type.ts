@@ -1,6 +1,5 @@
 import {WType} from "../wasm";
 import {InternalError, TypeError} from "./error";
-import {Assembly} from "./instruction";
 import {isArrayEqual} from "./utils";
 
 const MACHINE_POINTER_LENGTH = 4;
@@ -413,7 +412,10 @@ export const PrimitiveTypes = {
     uint64: new UnsignedInt64Type(),
     float: new FloatType(),
     double: new DoubleType(),
+    __ccharptr: new PointerType(new CharType()),
+    __charptr: new PointerType(new CharType()),
 };
+PrimitiveTypes.__ccharptr.isConst = true;
 
 export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
     [[["void"]], PrimitiveTypes.void],
@@ -466,6 +468,7 @@ export enum AddressType {
     LOCAL,
     STACK,
     MEMORY_DATA,
+    MEMORY_BSS,
     MEMORY_EXTERN,
     RVALUE,
     CONSTANT,
@@ -495,7 +498,6 @@ export class Variable {
 export class FunctionEntity {
     public name: string;
     public fileName: string;
-    public code: Assembly | null;
     public location: string | number;
     public type: FunctionType;
     public fullName: string;
@@ -506,7 +508,6 @@ export class FunctionEntity {
     constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
         this.name = name;
         this.fileName = fileName;
-        this.code = null;
         this.type = type;
         this.location = -1;
         this.fullName = fullName;

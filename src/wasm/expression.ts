@@ -22,16 +22,7 @@ import {getLeb128IntLength, getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
 
 export function getAlign(number: number) {
-    const i = number % 4;
-    if (i === 0) {
-        return 2;
-    } else if (i === 1) {
-        return 0;
-    } else if (i === 2) {
-        return 1;
-    } else {
-        return 0;
-    }
+    return 0;
 }
 
 export class WCall extends WExpression {
@@ -189,6 +180,7 @@ export class WBinaryOperation extends WExpression {
 export enum WMemoryLocation {
     RAW,
     DATA,
+    BSS,
     EXTERN,
 }
 
@@ -213,6 +205,8 @@ export class WLoad extends WExpression {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
@@ -241,6 +235,8 @@ export class WLoad extends WExpression {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
@@ -463,10 +459,11 @@ export class WGetAddress extends WExpression {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().dataStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
-        e.writeUint32(getAlign(offset));
         e.writeUint32(offset);
     }
 
@@ -474,11 +471,12 @@ export class WGetAddress extends WExpression {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().dataStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
-        return getLeb128UintLength(getAlign(offset)) +
-            getLeb128UintLength(offset) + 1;
+        return getLeb128UintLength(offset) + 1;
     }
 
     public deduceType(e: Emitter): WType {

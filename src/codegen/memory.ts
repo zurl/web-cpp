@@ -9,6 +9,7 @@ export class MemoryLayout {
 
     public stackScope: number[];
     public dataPtr: number;
+    public bssPtr: number;
     public stackPtr: number;
     public localPtr: number;
     public data: DataView;
@@ -23,6 +24,7 @@ export class MemoryLayout {
         this.dataPtr = 0;
         this.stackPtr = 0;
         this.localPtr = 0;
+        this.bssPtr = 0;
         this.stackScope = [];
         this.dataBuffer = new ArrayBuffer(dataSize);
         this.data = new DataView(this.dataBuffer);
@@ -35,6 +37,12 @@ export class MemoryLayout {
     public allocData(size: number): number {
         const result = this.dataPtr;
         this.dataPtr += size;
+        return result;
+    }
+
+    public allocBss(size: number): number {
+        const result = this.bssPtr;
+        this.bssPtr += size;
         return result;
     }
 

@@ -6,6 +6,7 @@
 import {SourceLocation} from "../common/ast";
 import {Control, getNativeType, SectionCode, WType} from "./constant";
 import {Emitter} from "./emitter";
+import {WConst} from "./expression";
 import {getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WNode, WSection, WStatement} from "./node";
 import {getUtf8StringLength} from "./utf8";
@@ -19,6 +20,7 @@ export class WFunction extends WNode {
 
     // fill in linking
     public dataStart: number;
+    public bssStart: number;
     public fileName: string;
 
     constructor(name: string, returnType: WType[], parameters: WType[],
@@ -32,6 +34,7 @@ export class WFunction extends WNode {
 
         // fill in linking
         this.dataStart = 0;
+        this.bssStart = 0;
         this.fileName = "";
     }
 
@@ -49,9 +52,12 @@ export class WFunction extends WNode {
     }
 
     public getBodyLength(e: Emitter): number {
-        return getLeb128UintLength(this.local.length) +
+        e.setCurrentFunc(this);
+        const result = getLeb128UintLength(this.local.length) +
             getArrayLength(this.local, (x) => 1 + getLeb128UintLength(x)) +
             getArrayLength(this.body, (x) => x.length(e)) + 1;
+        e.setCurrentFunc();
+        return result;
     }
 
     public length(e: Emitter): number {
@@ -374,11 +380,69 @@ export class WGlobalSection extends WSection {
     }
 }
 
+export class WDataSegment extends WNode {
+    public memIdx: number;
+    public offset: WExpression;
+    public dataBuffer: ArrayBuffer;
+
+    constructor(offset: number, dataBuffer: ArrayBuffer, location?: SourceLocation) {
+        super(location);
+        this.memIdx = 0;
+        this.offset = new WConst(WType.i32, offset.toString(), location);
+        this.dataBuffer = dataBuffer;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeUint32(this.memIdx);
+        this.offset.emit(e);
+        e.writeByte(Control.end);
+        e.writeUint32(this.dataBuffer.byteLength);
+        const ui8a = new Uint8Array(this.dataBuffer);
+        for (let i = 0; i < this.dataBuffer.byteLength; i++) {
+            e.writeByte(ui8a[i]);
+        }
+    }
+
+    public length(e: Emitter): number {
+        return 1 + getLeb128UintLength(this.memIdx) +
+            this.offset.length(e) + this.dataBuffer.byteLength +
+            getLeb128UintLength(this.dataBuffer.byteLength);
+    }
+
+}
+
+export class WDataSection extends WSection {
+    public segments: WDataSegment[];
+
+    constructor(segments: WDataSegment[], location?: SourceLocation) {
+        super(location);
+        this.segments = segments;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(SectionCode.data);
+        e.writeUint32(this.getBodyLength(e));
+        e.writeUint32(this.segments.length);
+        this.segments.map((x) => x.emit(e));
+    }
+
+    public getBodyLength(e: Emitter): number {
+        return getLeb128UintLength(this.segments.length) +
+            getArrayLength(this.segments, (x) => x.length(e));
+    }
+
+    public length(e: Emitter): number {
+        return getLeb128UintLength(this.getBodyLength(e)) +
+            this.getBodyLength(e) + 1;
+    }
+}
+
 export interface WModuleConfig {
     functions: WFunction[];
     imports: WImportFunction[];
     exports: string[];
     globals: WGlobalVariable[];
+    data: WDataSegment[];
 }
 
 export class WModule extends WNode {
@@ -386,6 +450,7 @@ export class WModule extends WNode {
     public imports: WImportFunction[];
     public exports: string[];
     public globals: WGlobalVariable[];
+    public data: WDataSegment[];
 
     constructor(config: WModuleConfig, location?: SourceLocation) {
         super(location);
@@ -393,6 +458,7 @@ export class WModule extends WNode {
         this.imports = config.imports;
         this.exports = config.exports;
         this.globals = config.globals;
+        this.data = config.data;
     }
 
     public emit(e: Emitter): void {
@@ -406,6 +472,7 @@ export class WModule extends WNode {
             globalSection,
             exportSection,
             codeSection,
+            dataSection,
         } = this.generateSections();
         typeSection.emit(e);
         importSection.emit(e);
@@ -414,6 +481,7 @@ export class WModule extends WNode {
         globalSection.emit(e);
         exportSection.emit(e);
         codeSection.emit(e);
+        dataSection.emit(e);
     }
 
     public length(e: Emitter): number {
@@ -436,6 +504,7 @@ export class WModule extends WNode {
         const typeSection = new WTypeSection(funcTypes, this.location);
         const codeSection = new WCodeSection(this.functions, this.location);
         const exportSection = new WExportSection(exports, this.location);
+        const dataSection = new WDataSection(this.data, this.location);
 
         return {
             typeSection,
@@ -445,6 +514,7 @@ export class WModule extends WNode {
             globalSection,
             exportSection,
             codeSection,
+            dataSection,
         };
     }
 

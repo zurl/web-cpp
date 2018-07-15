@@ -5,7 +5,7 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
-import {Control, F32, F64, I32, I32Binary, I64, WType, WTypeMap} from "./constant";
+import {Control, F32, F64, getNativeType, I32, I32Binary, I64, WType, WTypeMap} from "./constant";
 import {Emitter} from "./emitter";
 import {getAlign, WBinaryOperation, WCall, WConst, WMemoryLocation} from "./expression";
 import {getLeb128UintLength} from "./leb128";
@@ -72,19 +72,20 @@ export class WStore extends WStatement {
     }
 
     public emit(e: Emitter): void {
-        if ( this.value.deduceType(e) !== this.type) {
+        if (getNativeType(this.value.deduceType(e)) !== getNativeType(this.type)) {
             throw new EmitError(`type mismatch at store`);
         }
         if ( this.address.deduceType(e) !== WType.u32 && this.address.deduceType(e) !== WType.i32 ) {
-            throw new EmitError(`type mismatch at store`);
+            throw new EmitError(`type mismatch at store, address`);
         }
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
-
         if ( offset < 0 ) {
             this.replaceAddress();
             offset = 0;
@@ -119,6 +120,8 @@ export class WStore extends WStatement {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
