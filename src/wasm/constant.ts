@@ -90,7 +90,6 @@ export enum I64 {
 }
 
 export enum I32Binary {
-    eqz = 0x45,
     eq = 0x46,
     ne = 0x47,
     lt_s = 0x48,
@@ -119,7 +118,6 @@ export enum I32Binary {
 }
 
 export enum I64Binary {
-    eqz = 0x50,
     eq = 0x51,
     ne = 0x52,
     lt_s = 0x53,
@@ -180,6 +178,7 @@ export enum F64Binary {
 }
 
 export enum I32Unary {
+    eqz = 0x45,
     clz = 0x67,
     ctz = 0x68,
     popcnt = 0x69,
@@ -195,6 +194,7 @@ export enum I32Convert {
 }
 
 export enum I64Unary {
+    eqz = 0x50,
     clz = 0x79,
     ctz = 0x7a,
     popcnt = 0x7b,
@@ -378,7 +378,7 @@ export function getTypeConvertOpe(srcType: WType, dstType: WType): ConvertOperat
     return null;
 }
 
-export function getOpFromStr(op: string, type: WType): BinaryOperator | null {
+export function getOpFromStr(op: string, type: WType): BinaryOperator| UnaryOperator | null {
     switch (type) {
         case WType.i32:
             switch (op) {
@@ -398,6 +398,7 @@ export function getOpFromStr(op: string, type: WType): BinaryOperator | null {
                 case "^": return I32Binary.xor;
                 case ">>": return I32Binary.shr_s;
                 case "<<": return I32Binary.shr_s;
+                case "!": return I32Unary.eqz;
             }
             return null;
         case WType.u32:
@@ -418,6 +419,7 @@ export function getOpFromStr(op: string, type: WType): BinaryOperator | null {
                 case "^": return I32Binary.xor;
                 case ">>": return I32Binary.shr_u;
                 case "<<": return I32Binary.shr_u;
+                case "!": return I32Unary.eqz;
             }
             return null;
         case WType.i64:
@@ -438,6 +440,7 @@ export function getOpFromStr(op: string, type: WType): BinaryOperator | null {
                 case "^": return I64Binary.xor;
                 case ">>": return I64Binary.shr_s;
                 case "<<": return I64Binary.shr_s;
+                case "!": return I64Unary.eqz;
             }
             return null;
         case WType.u64:

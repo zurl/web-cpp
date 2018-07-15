@@ -36,7 +36,7 @@ import {
     UnsignedInt16Type,
     UnsignedInt32Type,
     UnsignedInt64Type,
-    UnsignedIntegerType, VariableStorageType,
+    UnsignedIntegerType, AddressType,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {CompileContext} from "./context";
@@ -210,35 +210,35 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
 
     let result: ExpressionResult;
 
-    if (item.storageType === VariableStorageType.STACK) {
+    if (item.addressType === AddressType.STACK) {
         result = {
             type,
             form: ExpressionResultType.LVALUE_STACK,
             value: item.location,
             isConst,
         };
-    } else if (item.storageType === VariableStorageType.MEMORY_DATA) {
+    } else if (item.addressType === AddressType.MEMORY_DATA) {
         result = {
             type,
             form: ExpressionResultType.LVALUE_MEMORY_DATA,
             value: item.location,
             isConst,
         };
-    } else if (item.storageType === VariableStorageType.MEMORY_BSS) {
+    } else if (item.addressType === AddressType.MEMORY_BSS) {
         result = {
             type,
             form: ExpressionResultType.LVALUE_MEMORY_BSS,
             value: item.location,
             isConst,
         };
-    } else if (item.storageType === VariableStorageType.MEMORY_EXTERN) {
+    } else if (item.addressType === AddressType.MEMORY_EXTERN) {
         result = {
             type,
             form: ExpressionResultType.LVALUE_MEMORY_EXTERN,
             value: item.location,
             isConst,
         };
-    } else if (item.storageType === VariableStorageType.CONSTANT) {
+    } else if (item.addressType === AddressType.CONSTANT) {
         result = {
             type,
             form: ExpressionResultType.CONSTANT,

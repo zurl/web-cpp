@@ -5,7 +5,7 @@
  */
 
 import {InternalError, LinkerError} from "../common/error";
-import {FunctionEntity, Type, Variable, VariableStorageType} from "../common/type";
+import {FunctionEntity, Type, Variable, AddressType} from "../common/type";
 import {getIndent} from "../common/utils";
 
 export class Scope {
@@ -91,21 +91,21 @@ export function mergeScopeTo(dst: Scope, src: Scope) {
             } else if (srcval instanceof Variable
                 && dstval instanceof Variable
                 && srcval.type.equals(dstval.type)) {
-                if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) {
+                if (srcval.addressType === AddressType.MEMORY_EXTERN
+                    && dstval.addressType === AddressType.MEMORY_EXTERN) {
                     continue;
                 }
-                if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType === VariableStorageType.MEMORY_EXTERN) {
+                if (srcval.addressType !== AddressType.MEMORY_EXTERN
+                    && dstval.addressType === AddressType.MEMORY_EXTERN) {
                     dst.map.set(tuple[0], tuple[1]);
                     continue;
                 }
-                if (srcval.storageType === VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) {
+                if (srcval.addressType === AddressType.MEMORY_EXTERN
+                    && dstval.addressType !== AddressType.MEMORY_EXTERN) {
                     continue;
                 }
-                if (srcval.storageType !== VariableStorageType.MEMORY_EXTERN
-                    && dstval.storageType !== VariableStorageType.MEMORY_EXTERN) {
+                if (srcval.addressType !== AddressType.MEMORY_EXTERN
+                    && dstval.addressType !== AddressType.MEMORY_EXTERN) {
                     throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
                 }
             } else if (srcval instanceof Type && dstval instanceof Type) {
@@ -145,7 +145,7 @@ export function dumpScopeMap(scopeMap: Map<string, Scope>): string {
                 result += `\t(Func)${key}: ${item.type.toString()}\n`;
             } else if (item instanceof Variable) {
                 result += `\t(Var)${key}: ${item.type.toString()},` +
-                    `${VariableStorageType[item.storageType]}, len=${item.type.length}`
+                    `${AddressType[item.addressType]}, len=${item.type.length}`
                     + `, loc=${item.location}\n`;
             }
         }

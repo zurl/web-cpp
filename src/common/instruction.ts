@@ -14,7 +14,7 @@ import {
     Int32Type, PrimitiveTypes, QualifiedType,
     UnsignedCharType,
     UnsignedInt16Type,
-    UnsignedInt32Type, VariableStorageType,
+    UnsignedInt32Type, AddressType,
 } from "./type";
 import {fromBytesToString, toHexString} from "./utils";
 //          12|  param 2    |  <= $sp after ret?
@@ -262,7 +262,7 @@ export class InstructionBuilder {
         let result = "DATA:\n";
         for (const line of dataMap.keys()) {
             const item = dataMap.get(line)!;
-            if ( item.storageType !== VariableStorageType.MEMORY_DATA) {
+            if ( item.addressType !== AddressType.MEMORY_DATA) {
                 continue;
             }
             result += toHexString(line) + "\t" + item.fileName + "@" + item.name + "\t:\t";

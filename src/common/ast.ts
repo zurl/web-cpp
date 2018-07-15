@@ -103,8 +103,16 @@ export class Constant extends Expression {
 
 export class IntegerConstant extends Constant {
 
+    public static getZero() {
+        return ZeroConstant;
+    }
+
     public static getOne() {
         return OneConstant;
+    }
+
+    public static getNegOne(){
+        return NegOneConstant;
     }
 
     public static fromNumber(location: SourceLocation, number: number) {
@@ -132,6 +140,17 @@ export class IntegerConstant extends Constant {
 
 }
 
+const ZeroConstant = new IntegerConstant(
+    new SourceLocation("",
+        new Position(1, 1, 1),
+        new Position(1, 1, 1),
+    ),
+    10,
+    Long.fromInt(0),
+    "0",
+    null,
+);
+
 const OneConstant = new IntegerConstant(
     new SourceLocation("",
         new Position(1, 1, 1),
@@ -140,6 +159,17 @@ const OneConstant = new IntegerConstant(
     10,
     Long.fromInt(1),
     "1",
+    null,
+);
+
+const NegOneConstant = new IntegerConstant(
+    new SourceLocation("",
+        new Position(1, 1, 1),
+        new Position(1, 1, 1),
+    ),
+    10,
+    Long.fromInt(-1),
+    "-1",
     null,
 );
 

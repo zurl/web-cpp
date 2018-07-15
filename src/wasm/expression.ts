@@ -18,9 +18,8 @@ import {
     WTypeMap,
 } from "./constant";
 import {Emitter} from "./emitter";
-import {i32} from "./index";
 import {getLeb128IntLength, getLeb128UintLength} from "./leb128";
-import {getArrayLength, WExpression} from "./node";
+import {getArrayLength, WExpression, WStatement} from "./node";
 
 export function getAlign(number: number) {
     const i = number % 4;
@@ -74,6 +73,10 @@ export class WCall extends WExpression {
         return this;
     }
 
+    public isPure(): boolean {
+        return false;
+    }
+
 }
 
 export class WUnaryOperation extends WExpression {
@@ -119,6 +122,11 @@ export class WUnaryOperation extends WExpression {
             return this;
         }
     }
+
+    public isPure(): boolean {
+        return this.operand.isPure();
+    }
+
 }
 
 export class WBinaryOperation extends WExpression {
@@ -172,6 +180,10 @@ export class WBinaryOperation extends WExpression {
             return this;
         }
     }
+
+    public isPure(): boolean {
+        return this.lhs.isPure() && this.rhs.isPure();
+    }
 }
 
 export class WLoad extends WExpression {
@@ -206,32 +218,10 @@ export class WLoad extends WExpression {
         this.address = this.address.fold();
         return this;
     }
-}
 
-export class WMockLocalConst extends WExpression {
-    public offset: number;
-
-    constructor(offset: number, location?: SourceLocation) {
-        super(location);
-        this.offset = offset;
+    public isPure(): boolean {
+        return this.address.isPure();
     }
-
-    public emit(e: Emitter): void {
-        throw new EmitError(`mock local`);
-    }
-
-    public length(e: Emitter): number {
-        throw new EmitError(`mock local`);
-    }
-
-    public deduceType(e: Emitter): WType {
-        throw new EmitError(`mock local`);
-    }
-
-    public fold(): WExpression {
-        return this;
-    }
-
 }
 
 export class WGetLocal extends WExpression {
@@ -259,6 +249,10 @@ export class WGetLocal extends WExpression {
 
     public fold(): WExpression {
         return this;
+    }
+
+    public isPure(): boolean {
+        return true;
     }
 }
 
@@ -315,6 +309,9 @@ export class WConst extends WExpression {
         return this;
     }
 
+    public isPure(): boolean {
+        return true;
+    }
 }
 
 export class WCovertOperation extends WExpression {
@@ -356,5 +353,9 @@ export class WCovertOperation extends WExpression {
         } else {
             return this;
         }
+    }
+
+    public isPure(): boolean {
+        return this.operand.isPure();
     }
 }

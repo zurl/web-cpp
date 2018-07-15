@@ -24,6 +24,8 @@ export abstract class WExpression extends WNode {
     public abstract deduceType(e: Emitter): WType;
 
     public abstract fold(): WExpression;
+
+    public abstract isPure(): boolean;
 }
 
 export abstract class WStatement extends WNode {
@@ -32,24 +34,6 @@ export abstract class WStatement extends WNode {
 
 export abstract class WSection extends WNode {
 
-}
-
-export class WBlock extends WStatement {
-    public body: WStatement[];
-
-    constructor(body: WStatement[], location?: SourceLocation) {
-        super(location);
-        this.body = body;
-    }
-}
-
-export class WLoop extends WStatement {
-    public body: WStatement[];
-
-    constructor(body: WStatement[], location?: SourceLocation) {
-        super(location);
-        this.body = body;
-    }
 }
 
 export function getArrayLength<T>(array: T[], mapper: (t: T) => number) {

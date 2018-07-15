@@ -4,7 +4,7 @@
  *  Created at 14/07/2018
  */
 import {SourceLocation} from "../common/ast";
-import {SectionCode, WType} from "./constant";
+import {Control, SectionCode, WType} from "./constant";
 import {Emitter} from "./emitter";
 import {getLeb128UintLength} from "./leb128";
 import {getArrayLength, WNode, WSection, WStatement} from "./node";
@@ -37,7 +37,7 @@ export class WFunction extends WNode {
         e.setCurrentFunc(this);
         this.body.map((stmt) => stmt.emit(e));
         e.setCurrentFunc();
-        e.writeByte(0x0B);
+        e.writeByte(Control.end);
     }
 
     public getBodyLength(e: Emitter): number {
@@ -165,7 +165,7 @@ class WFunctionSection extends WSection {
     }
 
     public emit(e: Emitter): void {
-        e.writeByte(0x03);
+        e.writeByte(SectionCode.function);
         e.writeUint32(this.getBodyLength(e));
         e.writeUint32(this.functions.length);
         this.functions.map((x) => e.setFuncIdx(x.name, x.type));

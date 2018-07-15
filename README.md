@@ -49,15 +49,16 @@ local var:  @foo@var1
 - [X] char * a = "123"
 - [X] write, read
 - [X] printf
-- [X] postfix ++ --
+- [ ] postfix ++ --
 - [X] do-while
 - [X] break continue
-- [X] goto label
-- [X] switch case
+- [ ] goto label
+- [ ] switch case
 - [X] enum
 - [X] non-return detect
 - [X] cc-cli
 - [X] ?:
+- [ ] 对局部变量取地址
 - [ ] const
 - [ ] bit field of struct
 - [ ] js highlevel api

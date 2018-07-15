@@ -20,7 +20,7 @@ import {
     QualifiedType,
     Type,
     Variable,
-    VariableStorageType,
+    AddressType,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {CompileContext} from "./context";
@@ -103,7 +103,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
             throw new SyntaxError(`redefined parameter ${name}`, this);
         }
         ctx.currentScope.set(name, new Variable(
-            name, ctx.fileName, type, VariableStorageType.STACK, loc,
+            name, ctx.fileName, type, AddressType.STACK, loc,
         ));
         loc += type.length;
     }

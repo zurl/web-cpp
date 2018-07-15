@@ -36,7 +36,7 @@ import {
     IntegerType,
     PointerType, PrimitiveTypes,
     QualifiedType,
-    Type, Variable, VariableStorageType,
+    Type, Variable, AddressType,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
@@ -173,17 +173,17 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
         if ( type instanceof ClassType && !type.isComplete) {
             throw new SyntaxError(`cannot instancelize incomplete type`, this);
         }
-        let storageType = VariableStorageType.STACK;
+        let storageType = AddressType.STACK;
         let location: number | string = 0;
         if (ctx.currentScope.isRoot || type.isStatic) {
             if (type.isExtern) {
-                storageType = VariableStorageType.MEMORY_EXTERN;
+                storageType = AddressType.MEMORY_EXTERN;
                 location = ctx.currentScope.getScopeName() + "@" + name;
             } else if (declarator.initializer !== null) {
-                storageType = VariableStorageType.MEMORY_DATA;
+                storageType = AddressType.MEMORY_DATA;
                 location = ctx.memory.allocData(type.length);
             } else {
-                storageType = VariableStorageType.MEMORY_BSS;
+                storageType = AddressType.MEMORY_BSS;
                 location = ctx.memory.allocBSS(type.length);
             }
         } else {
@@ -191,7 +191,7 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                 throw new SyntaxError("local variable could not be extern:  " + name, this);
             }
             // TODO:: support static function variable;
-            storageType = VariableStorageType.STACK;
+            storageType = AddressType.STACK;
             location = ctx.memory.allocStack(type.length);
         }
 
@@ -257,7 +257,7 @@ EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
             }
             ctx.currentScope.set(this.identifier.name, new Variable(
                 this.identifier.name, ctx.fileName, PrimitiveTypes.int32,
-                VariableStorageType.CONSTANT, val,
+                AddressType.CONSTANT, val,
             ));
         }
     }

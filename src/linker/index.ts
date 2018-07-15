@@ -9,7 +9,7 @@ import {mergeScopeMap, Scope} from "../codegen/scope";
 import {LinkerError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
 import {JsAPIDefine} from "../common/jsapi";
-import {FunctionEntity, PrimitiveTypes, Type, Variable, VariableStorageType} from "../common/type";
+import {FunctionEntity, PrimitiveTypes, Type, Variable, AddressType} from "../common/type";
 
 interface LinkOptions {
     debugMode?: boolean;
@@ -44,7 +44,7 @@ function resolveSymbol(path: string,
     if (item instanceof Type) {
         throw new LinkerError(`symbol ${name} is a type....`);
     }
-    if (item instanceof Variable && item.storageType === VariableStorageType.MEMORY_EXTERN) {
+    if (item instanceof Variable && item.addressType === AddressType.MEMORY_EXTERN) {
         throw new LinkerError(`no definition for symbol ${name} at ${path}`);
     }
     if (item instanceof FunctionEntity && !item.isDefine()) {
@@ -179,10 +179,10 @@ export function link(inputs: CompiledObject[],
                     code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                         + (codeLocMap.get(symbol.fileName) as number) - codeNow);
                 }
-            } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
+            } else if (symbol.addressType === AddressType.MEMORY_DATA) {
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
-            } else if (symbol.storageType === VariableStorageType.MEMORY_BSS) {
+            } else if (symbol.addressType === AddressType.MEMORY_BSS) {
                 code.setUint8(globalCodeNow + tuple[0], OpCode.PBSS);
                 code.setUint32(globalCodeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);
@@ -225,10 +225,10 @@ export function link(inputs: CompiledObject[],
                     code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                         + (codeLocMap.get(symbol.fileName) as number) - codeNow);
                 }
-             } else if (symbol.storageType === VariableStorageType.MEMORY_DATA) {
+             } else if (symbol.addressType === AddressType.MEMORY_DATA) {
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (dataLocMap.get(symbol.fileName) as number) - dataNow);
-            } else if (symbol.storageType === VariableStorageType.MEMORY_BSS) {
+            } else if (symbol.addressType === AddressType.MEMORY_BSS) {
                 code.setUint8(codeNow + tuple[0], OpCode.PBSS);
                 code.setUint32(codeNow + tuple[0] + 1, symbol.location as number
                     + (bssLocMap.get(symbol.fileName) as number) - bssNow);

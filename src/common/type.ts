@@ -437,12 +437,13 @@ export function getStackStorageType(rawType: Type): StackStorageType {
     }
 }
 
-export enum VariableStorageType {
+export enum AddressType {
     LOCAL,
     STACK,
     MEMORY_DATA,
     MEMORY_BSS,
     MEMORY_EXTERN,
+    RVALUE,
     CONSTANT,
 }
 
@@ -450,15 +451,15 @@ export class Variable {
     public name: string;
     public fileName: string;
     public type: Type;
-    public storageType: VariableStorageType;
+    public addressType: AddressType;
     public location: number | string;
 
     constructor(name: string, fileName: string, type: Type,
-                storageType: VariableStorageType, location: number | string) {
+                storageType: AddressType, location: number | string) {
         this.name = name;
         this.fileName = fileName;
         this.type = type;
-        this.storageType = storageType;
+        this.addressType = storageType;
         this.location = location;
     }
 
