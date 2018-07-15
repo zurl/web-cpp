@@ -12,7 +12,6 @@ import {
     ParameterList, ReturnStatement,
 } from "../common/ast";
 import {assertType, SyntaxError} from "../common/error";
-import {OpCode} from "../common/instruction";
 import {
     AddressType, ArrayType, ClassType,
     FunctionType,
@@ -105,7 +104,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         } else {
             parameterWTypes.push(type.toWType());
             ctx.currentScope.set(name, new Variable(
-                name, ctx.fileName, type, AddressType.LOCAL, ctx.memory.allocLocal(),
+                name, ctx.fileName, type, AddressType.LOCAL, ctx.memory.allocLocal(type.toWType()),
             ));
         }
     }
@@ -125,7 +124,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
 
     // register sp & bp
     // TODO:: could optimize it out
-    functionEntity.$sp = ctx.memory.allocLocal();
+    functionEntity.$sp = ctx.memory.allocLocal(WType.u32);
 
     // sp = $sp
     ctx.submitStatement(
@@ -142,11 +141,6 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
 
     this.body.body.map((item) => item.codegen(ctx));
 
-    // $sp = sp
-    ctx.submitStatement(
-        new WSetGlobal(WType.u32, "$sp",
-            new WGetLocal(WType.u32, functionEntity.$sp, this.location), this.location));
-
     ctx.setStatementContainer(savedStatements);
     ctx.exitFunction();
 
@@ -154,7 +148,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         functionEntity.fullName,
         returnWTypes,
         parameterWTypes,
-        [], //TODO:: add local
+        ctx.memory.localTypes, // TODO:: add local
         bodyStatements,
         this.location,
     ));
@@ -173,7 +167,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     for (let i = callee.type.parameterTypes.length - 1; i >= 0; i--) {
         const src = this.arguments[i].codegen(ctx);
         const dstType = callee.type.parameterTypes[i];
-        argus.push(doConversion(dstType, src, this));
+        argus.push(doConversion(ctx, dstType, src, this));
     }
     return {
         type: callee.type.returnType,

@@ -254,13 +254,13 @@ export enum WType {
     i64 = 0x7E,
     f32 = 0x7D,
     f64 = 0x7C,
-    u32,
-    u64,
-    i8,
-    u8,
-    i16,
-    u16,
-    none,
+    u32 = 0x01,
+    u64 = 0x02,
+    i8 = 0x03,
+    u8 = 0x04,
+    i16 = 0x05,
+    u16 = 0x06,
+    none = 0x00,
 }
 
 export enum SectionCode {
@@ -379,7 +379,7 @@ export function getTypeConvertOpe(srcType: WType, dstType: WType): ConvertOperat
 }
 
 export function getOpFromStr(op: string, type: WType): BinaryOperator| UnaryOperator | null {
-    switch (type) {
+    switch (getOperationType(type)) {
         case WType.i32:
             switch (op) {
                 case "+": return I32Binary.add;

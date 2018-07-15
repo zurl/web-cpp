@@ -12,12 +12,13 @@ import {
     ReturnStatement, SwitchStatement, UnaryExpression, WhileStatement,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
-import {OpCode} from "../common/instruction";
 import {FunctionEntity, IntegerType, PointerType, PrimitiveTypes} from "../common/type";
 import {WStatement} from "../wasm/node";
-import {WBlock, WBr, WBrIf, WDrop, WIfElseBlock, WLoop, WReturn} from "../wasm/statement";
+import {WBlock, WBr, WBrIf, WDrop, WExprStatement, WIfElseBlock, WLoop, WReturn, WSetGlobal} from "../wasm/statement";
 import {CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
+import {WGetLocal} from "../wasm/expression";
+import {WType} from "../wasm";
 
 export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: ExpressionResult) {
     if ( expr.expr instanceof FunctionEntity) {
@@ -26,7 +27,11 @@ export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: E
     if ( expr.isLeft && expr.expr.isPure()) {
         return;
     }
-    ctx.submitStatement(new WDrop(expr.expr, node.location));
+    if (expr.type.equals(PrimitiveTypes.void)) {
+        ctx.submitStatement(new WExprStatement(expr.expr, node.location));
+    } else {
+        ctx.submitStatement(new WDrop(expr.expr, node.location));
+    }
 }
 
 CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
@@ -154,12 +159,17 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
     if ( ctx.currentFunction === null) {
         throw new SyntaxError(`return outside function`, this);
     }
+    // $sp = sp
+    ctx.submitStatement(
+        new WSetGlobal(WType.u32, "$sp",
+            new WGetLocal(WType.u32, ctx.currentFunction.$sp, this.location), this.location));
+
     if (this.argument !== null) {
         if (ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
             throw new SyntaxError(`return type mismatch`, this);
         }
         const expr = this.argument.codegen(ctx);
-        expr.expr = doConversion(ctx.currentFunction.type.returnType, expr, this);
+        expr.expr = doConversion(ctx, ctx.currentFunction.type.returnType, expr, this);
         ctx.submitStatement(new WReturn(expr.expr, this.location));
     } else {
         if (!ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
@@ -174,7 +184,7 @@ IfStatement.prototype.codegen = function(ctx: CompileContext) {
     const elseStatements: WStatement[] = [];
     const condition = this.test.codegen(ctx);
 
-    condition.expr = doConversion(PrimitiveTypes.int32, condition, this);
+    condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
 
     const savedContainer = ctx.getStatementContainer();
@@ -204,7 +214,7 @@ WhileStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.setStatementContainer(thenStatements);
     const condition = new UnaryExpression(this.location,
         "!", this.test).codegen(ctx);
-    condition.expr = doConversion(PrimitiveTypes.int32, condition, this);
+    condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
     ctx.submitStatement(new WBrIf(1, condition.expr, this.location));
     ctx.loopLevel ++;
@@ -231,7 +241,7 @@ DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
     this.body.codegen(ctx);
     ctx.loopLevel --;
     const condition =  this.test.codegen(ctx);
-    condition.expr = doConversion(PrimitiveTypes.int32, condition, this);
+    condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
     ctx.submitStatement(new WBrIf(0, condition.expr, this.location));
     ctx.setStatementContainer(savedContainer);
@@ -260,7 +270,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     } else {
         const condition = new UnaryExpression(this.location,
             "!", this.test).codegen(ctx);
-        condition.expr = doConversion(PrimitiveTypes.int32, condition, this);
+        condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
         condition.type = PrimitiveTypes.int32;
         ctx.submitStatement(new WBrIf(1, condition.expr, this.location));
     }

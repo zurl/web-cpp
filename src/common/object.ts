@@ -4,6 +4,7 @@ import {WFunction, WImportFunction} from "../wasm";
 import {WMemoryLocation} from "../wasm/expression";
 import {Type} from "./type";
 import {ImportObject} from "../runtime/runtime";
+import {WFunctionType} from "../wasm/section";
 
 /**
  *  @file
@@ -18,11 +19,16 @@ export interface ExportSymbol {
     location: number;
 }
 
+export interface ImportSymbol {
+    name: string;
+    type: WFunctionType;
+}
+
 export interface CompiledObject {
     fileName: string;
     dataSize: number;
-    function: Function[];
-    imports: ImportObject[];
+    functions: WFunction[];
+    imports: ImportSymbol[];
     exports: ExportSymbol[];
 
     // debug only

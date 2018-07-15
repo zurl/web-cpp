@@ -5,7 +5,9 @@
  */
 import {SourceMapGenerator} from "source-map";
 import {InternalError} from "../common/error";
+import {CompiledObject, ImportSymbol} from "../common/object";
 import {FunctionEntity} from "../common/type";
+import {ImportObject} from "../runtime/runtime";
 import {WFunction, WImportFunction} from "../wasm";
 import {WStatement} from "../wasm/node";
 import {MemoryLayout} from "./memory";
@@ -28,11 +30,11 @@ export class CompileContext {
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
     public currentScope: Scope;
-    public statementContainer: WStatement[] | null;
+    public statementContainer: WStatement[];
 
     // result
     public functions: WFunction[];
-    public imports: WImportFunction[];
+    public imports: ImportSymbol[];
 
     // debug
     public source?: string;
@@ -41,7 +43,7 @@ export class CompileContext {
     constructor(fileName: string, compileOptions: CompileOptions = {},
                 source?: string, sourceMap?: SourceMapGenerator) {
         this.scopeMap = new Map<string, Scope>();
-        this.currentScope = new Scope("@root", null);
+        this.currentScope = new Scope("", null);
         this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
         this.currentScope.isRoot = true;
         this.functionMap = new Map<string, FunctionEntity>();
@@ -52,7 +54,7 @@ export class CompileContext {
         this.sourceMap = sourceMap;
         this.source = source;
         this.options.detectStackPollution = true;
-        this.statementContainer = null;
+        this.statementContainer = [];
         this.loopLevel = 0;
         this.functions = [];
         this.imports = [];
@@ -103,16 +105,10 @@ export class CompileContext {
     }
 
     public getStatementContainer(): WStatement[] {
-        if ( this.statementContainer === null) {
-            throw new InternalError(`illegal statement submission`);
-        }
         return this.statementContainer;
     }
 
     public submitStatement(statement: WStatement) {
-        if ( this.statementContainer === null) {
-            throw new InternalError(`illegal statement submission`);
-        }
         this.statementContainer.push(statement);
     }
 
@@ -122,5 +118,15 @@ export class CompileContext {
 
     public raiseWarning(content: string) {
         console.log("[Warning]: " + content);
+    }
+
+    public toCompiledObject(): CompiledObject {
+        return {
+            fileName: this.fileName,
+            dataSize: this.memory.dataPtr,
+            functions: this.functions,
+            imports: this.imports,
+            exports: [], // TODO:: exports
+        };
     }
 }

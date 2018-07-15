@@ -5,9 +5,9 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
-import {Control, F32, F64, I32, I64, WType, WTypeMap} from "./constant";
+import {Control, F32, F64, I32, I32Binary, I64, WType, WTypeMap} from "./constant";
 import {Emitter} from "./emitter";
-import {getAlign, WMemoryLocation} from "./expression";
+import {getAlign, WBinaryOperation, WCall, WConst, WMemoryLocation} from "./expression";
 import {getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
 
@@ -78,6 +78,17 @@ export class WStore extends WStatement {
         if ( this.address.deduceType(e) !== WType.u32 && this.address.deduceType(e) !== WType.i32 ) {
             throw new EmitError(`type mismatch at store`);
         }
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+
+        if ( offset < 0 ) {
+            this.replaceAddress();
+            offset = 0;
+        }
         this.address.emit(e);
         this.value.emit(e);
         switch (this.type) {
@@ -92,14 +103,16 @@ export class WStore extends WStatement {
             case WType.i64:
             case WType.u64: e.writeByte(I64.store); break;
         }
-        let offset = this.offset;
-        if ( this.form === WMemoryLocation.DATA ) {
-            offset += e.getCurrentFunc().dataStart;
-        } else if ( this.form === WMemoryLocation.EXTERN ) {
-            offset += e.getExternLocation(this.offsetName);
-        }
         e.writeUint32(getAlign(offset));
         e.writeUint32(offset);
+    }
+
+    public replaceAddress() {
+        this.address = new WBinaryOperation(I32Binary.add,
+            this.address,
+            new WConst(WType.i32, this.offset.toString()),
+            this.location);
+        this.offset = 0;
     }
 
     public length(e: Emitter): number {
@@ -108,6 +121,10 @@ export class WStore extends WStatement {
             offset += e.getCurrentFunc().dataStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
+        }
+        if ( offset < 0 ) {
+            this.replaceAddress();
+            offset = 0;
         }
         return this.address.length(e) + this.value.length(e) +
             getLeb128UintLength(getAlign(offset)) +
@@ -156,7 +173,7 @@ export class WSetGlobal extends WStatement {
         }
         this.value.emit(e);
         e.writeByte(Control.set_global);
-        e.writeUint32(e.getGlobalType(this.name));
+        e.writeUint32(e.getGlobalIdx(this.name));
     }
 
     public length(e: Emitter): number {
@@ -268,12 +285,13 @@ export class WBlock extends WStatement {
 
     public emit(e: Emitter): void {
         e.writeByte(Control.block);
+        e.writeByte(0x40);
         this.body.map((stmt) => stmt.emit(e));
         e.writeByte(Control.end);
     }
 
     public length(e: Emitter): number {
-        return getArrayLength(this.body, (stmt) => stmt.length(e)) + 2;
+        return getArrayLength(this.body, (stmt) => stmt.length(e)) + 3;
     }
 }
 
@@ -287,12 +305,31 @@ export class WLoop extends WStatement {
 
     public emit(e: Emitter): void {
         e.writeByte(Control.loop);
+        e.writeByte(0x40);
         this.body.map((stmt) => stmt.emit(e));
         e.writeByte(Control.end);
     }
 
     public length(e: Emitter): number {
-        return getArrayLength(this.body, (stmt) => stmt.length(e)) + 2;
+        return getArrayLength(this.body, (stmt) => stmt.length(e)) + 3;
+    }
+
+}
+
+export class WExprStatement extends WStatement {
+    public expr: WExpression;
+
+    constructor(expr: WExpression, location?: SourceLocation) {
+        super(location);
+        this.expr = expr;
+    }
+
+    public emit(e: Emitter): void {
+        this.expr.emit(e);
+    }
+
+    public length(e: Emitter): number {
+        return this.expr.length(e);
     }
 
 }

@@ -49,7 +49,7 @@ int main(){
     printf("\\n");
     return 0;
 }
-`
+`;
 
 describe('test run', function(){
     it('test run', function(){

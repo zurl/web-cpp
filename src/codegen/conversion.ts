@@ -17,6 +17,7 @@ import {getTypeConvertOpe} from "../wasm/constant";
 import {WConst, WCovertOperation} from "../wasm/expression";
 import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
+import {CompileContext} from "./context";
 
 export function doTypeTransfrom(type: Type): Type {
     // array to pointer transform
@@ -30,7 +31,7 @@ export function doTypeTransfrom(type: Type): Type {
     return type;
 }
 
-export function doValueTransform(expr: ExpressionResult, node: Node): ExpressionResult {
+export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, node: Node): ExpressionResult {
     // left value transform
     if (expr.isLeft) {
         expr.isLeft = false;
@@ -42,7 +43,7 @@ export function doValueTransform(expr: ExpressionResult, node: Node): Expression
             throw new InternalError(`if( !(expr.expr instanceof WAddressHolder)) {`);
         }
 
-        expr.expr = expr.expr.createLoad(expr.type.toWType());
+        expr.expr = expr.expr.createLoad(ctx, expr.type.toWType());
 
     }
 
@@ -57,9 +58,9 @@ export function doValueTransform(expr: ExpressionResult, node: Node): Expression
     return expr;
 }
 
-export function doConversion(dstType: Type, src: ExpressionResult,
+export function doConversion(ctx: CompileContext, dstType: Type, src: ExpressionResult,
                              node: Node, force: boolean = false): WExpression {
-    src = doValueTransform(src, node);
+    src = doValueTransform(ctx, src, node);
 
     if ( src.expr instanceof FunctionEntity) {
         throw new SyntaxError(`unsupport function name`, node);

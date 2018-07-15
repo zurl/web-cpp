@@ -12,6 +12,7 @@
     "no-string-literal": false,
     "ban-types": false,
     "prefer-for-of": false,
-    "variable-name": false
+    "variable-name": false,
+    "no-reference":false
   }
 }

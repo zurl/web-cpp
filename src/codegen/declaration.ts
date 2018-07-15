@@ -3,7 +3,6 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
-import * as Long from "long";
 import {
     AbstractArrayDeclarator,
     AbstractDeclarator, AbstractFunctionDeclarator, AbstractPointerDeclarator,
@@ -37,8 +36,9 @@ import {
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
-import {WConst} from "../wasm";
+import {WConst, WType} from "../wasm";
 import {WExpression} from "../wasm/node";
+import {WFunctionType} from "../wasm/section";
 import {CompileContext} from "./context";
 
 export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: SpecifierType[], nodeForError: Node): Type {
@@ -196,6 +196,16 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                 ctx.currentScope.getScopeName() + "@" + type.name, type);
             if ( this.specifiers.includes("__libcall") ) {
                 entity.isLibCall = true;
+                const returnTypes: WType[]  = [];
+                const parametersTypes: WType[] = [];
+                if ( !entity.type.returnType.equals(PrimitiveTypes.void)) {
+                    returnTypes.push(entity.type.returnType.toWType());
+                }
+                entity.type.parameterTypes.map((t) => parametersTypes.push(t.toWType()));
+                ctx.imports.push({
+                    name: entity.fullName,
+                    type: new WFunctionType(returnTypes, parametersTypes),
+                });
             }
             ctx.currentScope.set(name, entity);
             return;

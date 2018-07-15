@@ -11,7 +11,7 @@ import {
     Control, ConvertOperator,
     F32, F32Convert,
     F64, F64Convert, getNativeType, getOperationType, getTypeConvertOpe,
-    I32, I32Convert,
+    I32, I32Binary, I32Convert,
     I64, I64Convert,
     OpTypeMap, UnaryOperator,
     WType,
@@ -210,6 +210,16 @@ export class WLoad extends WExpression {
     }
 
     public emit(e: Emitter): void {
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        if ( offset < 0 ) {
+            this.replaceAddress();
+            offset = 0;
+        }
         this.address.emit(e);
         switch (this.type) {
             case WType.u8: e.writeByte(I32.load8_u); break;
@@ -223,12 +233,6 @@ export class WLoad extends WExpression {
             case WType.i64:
             case WType.u64: e.writeByte(I64.load); break;
         }
-        let offset = this.offset;
-        if ( this.form === WMemoryLocation.DATA ) {
-            offset += e.getCurrentFunc().dataStart;
-        } else if ( this.form === WMemoryLocation.EXTERN ) {
-            offset += e.getExternLocation(this.offsetName);
-        }
         e.writeUint32(getAlign(offset));
         e.writeUint32(offset);
     }
@@ -240,8 +244,21 @@ export class WLoad extends WExpression {
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
+        if ( offset < 0 ) {
+            this.replaceAddress();
+            offset = 0;
+        }
         return this.address.length(e) + getLeb128UintLength(getAlign(offset)) +
             getLeb128UintLength(offset) + 1;
+
+    }
+
+    public replaceAddress() {
+        this.address = new WBinaryOperation(I32Binary.add,
+            this.address,
+            new WConst(WType.i32, this.offset.toString()),
+            this.location);
+        this.offset = 0;
     }
 
     public deduceType(e: Emitter): WType {

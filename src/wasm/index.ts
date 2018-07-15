@@ -27,6 +27,9 @@ export {
 export {
     WStore,
     WReturn,
+    WBlock,
+    WLoop,
+    WIfElseBlock,
 } from "./statement";
 
 export {

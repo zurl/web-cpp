@@ -1,6 +1,7 @@
+
 const {
-    WCodeSection, WFunction, WModule, WLoad,
-    F32Binary, F32Const, WReturn, WImportFunction,
+    WCodeSection, WFunction, WModule, WLoad, WBlock,
+    F32Binary, F32Const, WReturn, WImportFunction,WLoop,
     F32Unary,
     F64Binary, F64Const, WCall, WGlobalVariable,
     F64Unary,
@@ -18,13 +19,11 @@ describe('wasm', function () {
     it('should works', async function () {
         const _ = new SourceLocation("", new Position(0, 0, 0), new Position(0, 0, 0));
         const ins = [
-            new WStore(i32,
-                new WConst(i32, '123'),
-                new WBinaryOperation(
-                    I32Binary.add,
-                    new WLoad(i32, new WConst(i32, '123')),
-                    new WConst(i32, '123')
-                )),
+            new WBlock([
+                new WLoop([
+                    new WCall("print", [new WConst(i32, '123')]),
+                ]),
+            ]),
             new WCall("print", [new WConst(i32, '123')]),
             new WReturn(new WConst(i32, '123'))
         ];

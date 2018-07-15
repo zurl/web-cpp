@@ -12,7 +12,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    ParenthesisExpression,
+    ParenthesisExpression, PostfixExpression,
     SubscriptExpression,
     UnaryExpression,
 } from "../common/ast";
@@ -73,7 +73,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
     }
 
     ctx.submitStatement(left.expr.createStore(ctx, left.type.toWType(),
-        doConversion(left.type, right, this).fold()));
+        doConversion(ctx, left.type, right, this).fold()));
 
     return left;
 };
@@ -177,8 +177,8 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         isLeft: false,
         expr: new WBinaryOperation(
             op as BinaryOperator,
-            doConversion(dstType, left, this),
-            doConversion(dstType, right, this),
+            doConversion(ctx, dstType, left, this),
+            doConversion(ctx, dstType, right, this),
             this.location,
         ),
     };
@@ -234,7 +234,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             this.operand,
         ).codegen(ctx);
     } else if ( this.operator === "!") {
-        const value = doConversion(PrimitiveTypes.int32, this.operand.codegen(ctx), this);
+        const value = doConversion(ctx, PrimitiveTypes.int32, this.operand.codegen(ctx), this);
         return {
             type: PrimitiveTypes.int32,
             isLeft: false,
@@ -320,24 +320,22 @@ CastExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     const expr = this.operand.codegen(ctx);
     return {
         type,
-        expr: doConversion(type, expr, this, true),
+        expr: doConversion(ctx, type, expr, this, true),
         isLeft: false,
     };
 };
 
-// PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-//     const ope = this.operand.codegen(ctx);
-//     loadIntoStack(ctx, ope);
-//     recycleExpressionResult(ctx, new AssignmentExpression(this.location,
-//          "=", this.operand, new BinaryExpression(
-//              this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
-//         )).codegen(ctx));
-//     return {
-//         form: ExpressionResultType.RVALUE,
-//         type: ope.type,
-//         value: 0,
-//     };
-// };
+PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    const ope = this.operand.codegen(ctx);
+    if (!ope.isLeft || !(ope.expr instanceof WAddressHolder)) {
+        throw new SyntaxError(`your could not ++ a left value`, this);
+    }
+    recycleExpressionResult(ctx, this, new AssignmentExpression(this.location,
+         "=", this.operand, new BinaryExpression(
+             this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
+        )).codegen(ctx));
+    return ope;
+};
 
 // ConditionalExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
 //     const test = this.test.codegen(ctx);

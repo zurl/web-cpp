@@ -4,9 +4,7 @@ const {preprocess} = require('../../dist/preprocessor/index');
 const {CParser} = require('../../dist/parser');
 const {codegen} = require('../../dist/codegen/index');
 const {CompileContext} = require('../../dist/codegen/context');
-const {InstructionBuilder} = require('../../dist/common/instruction');
 const Linker = require('../../dist/linker');
-const Assert = require('chai');
 const {Node, SourceLocation} = require("../../dist/common/ast");
 const {dumpScopeMap} = require("../../dist/codegen/scope");
 
@@ -18,41 +16,41 @@ function compile(name, source, options = {}) {
     return ctx.toCompiledObject();
 }
 
-function precompileLibrarys() {
-    const objects = [];
-    for(let impl of Impls.keys()){
-        const obj = compile(impl, Impls.get(impl), {debugMode: true});
-        objects.push(obj);
-    }
-    return objects;
-}
+// function precompileLibrarys() {
+//     const objects = [];
+//     for(let impl of Impls.keys()){
+//         const obj = compile(impl, Impls.get(impl), {debugMode: true});
+//         objects.push(obj);
+//     }
+//     return objects;
+// }
+//
+// const LibraryObjects = precompileLibrarys();
 
-const LibraryObjects = precompileLibrarys();
-
-function generateAsm(testCode) {
-    const obj = compile("test.cpp", testCode);
-    const ib = new InstructionBuilder();
-    const bin = Linker.link([obj], {}, {});
-    ib.codeView = bin.code;
-    ib.now = bin.code.buffer.byteLength;
-    ib.labels = bin.labelMap;
-    return ib.toString();
-}
-
-function testCode(testCode, expectCode) {
-    const actualCode = generateAsm("int main(){ " + testCode + " return 0;}\n");
-    const actualCodeLines = actualCode.trim().split('\n').slice(2);
-    const actualPlainCode = actualCodeLines.slice(0, actualCodeLines.length - 3).map(x => x.trim()).join('\n');
-    const expectPlainCode = expectCode.trim().split('\n').map(x => x.trim()).join('\n');
-    Assert.assert.equal(actualPlainCode, expectPlainCode);
-}
-
-function testFullCode(testCode, expectCode) {
-    const actualCode = generateAsm(testCode + "\n");
-    const actualPlainCode = actualCode.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
-    const expectPlainCode = expectCode.trim().split('\n').map(x => x.trim()).join('\n');
-    Assert.assert.equal(actualPlainCode, expectPlainCode);
-}
+// function generateAsm(testCode) {
+//     const obj = compile("test.cpp", testCode);
+//     const ib = new InstructionBuilder();
+//     const bin = Linker.link([obj], {}, {});
+//     ib.codeView = bin.code;
+//     ib.now = bin.code.buffer.byteLength;
+//     ib.labels = bin.labelMap;
+//     return ib.toString();
+// }
+//
+// function testCode(testCode, expectCode) {
+//     const actualCode = generateAsm("int main(){ " + testCode + " return 0;}\n");
+//     const actualCodeLines = actualCode.trim().split('\n').slice(2);
+//     const actualPlainCode = actualCodeLines.slice(0, actualCodeLines.length - 3).map(x => x.trim()).join('\n');
+//     const expectPlainCode = expectCode.trim().split('\n').map(x => x.trim()).join('\n');
+//     Assert.assert.equal(actualPlainCode, expectPlainCode);
+// }
+//
+// function testFullCode(testCode, expectCode) {
+//     const actualCode = generateAsm(testCode + "\n");
+//     const actualPlainCode = actualCode.trim().split('\n').slice(2).map(x => x.trim()).join('\n');
+//     const expectPlainCode = expectCode.trim().split('\n').map(x => x.trim()).join('\n');
+//     Assert.assert.equal(actualPlainCode, expectPlainCode);
+// }
 
 function print(str, indent){
     let space = "";
@@ -98,18 +96,18 @@ function printAST(node, indent = 0, nameIndent = 0) {
     return result;
 }
 
-function showASM(metaInfo, bin){
-    InstructionBuilder.showCode(bin.code, {
-        withLabel: true,
-        withAddress: true,
-        withSourceMap: true,
-        friendlyJMP: true,
-        sourceMap: bin.sourceMap,
-        dataStart: bin.codeSize,
-        dataMap: bin.dataMap,
-        metaInfo
-    });
-}
+// function showASM(metaInfo, bin){
+//     InstructionBuilder.showCode(bin.code, {
+//         withLabel: true,
+//         withAddress: true,
+//         withSourceMap: true,
+//         friendlyJMP: true,
+//         sourceMap: bin.sourceMap,
+//         dataStart: bin.codeSize,
+//         dataMap: bin.dataMap,
+//         metaInfo
+//     });
+// }
 
 module.exports = {
     generateAsm,

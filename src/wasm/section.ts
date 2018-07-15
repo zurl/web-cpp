@@ -4,7 +4,7 @@
  *  Created at 14/07/2018
  */
 import {SourceLocation} from "../common/ast";
-import {Control, SectionCode, WType} from "./constant";
+import {Control, getNativeType, SectionCode, WType} from "./constant";
 import {Emitter} from "./emitter";
 import {getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WNode, WSection, WStatement} from "./node";
@@ -19,7 +19,6 @@ export class WFunction extends WNode {
 
     // fill in linking
     public dataStart: number;
-    public bssStart: number;
     public fileName: string;
 
     constructor(name: string, returnType: WType[], parameters: WType[],
@@ -33,7 +32,6 @@ export class WFunction extends WNode {
 
         // fill in linking
         this.dataStart = 0;
-        this.bssStart = 0;
         this.fileName = "";
     }
 
@@ -42,7 +40,7 @@ export class WFunction extends WNode {
         e.writeUint32(this.local.length);
         this.local.map((x) => {
             e.writeUint32(1);
-            e.writeByte(x);
+            e.writeByte(getNativeType(x));
         });
         e.setCurrentFunc(this);
         this.body.map((stmt) => stmt.emit(e));
@@ -338,8 +336,8 @@ export class WGlobalVariable extends WNode {
 
     public emit(e: Emitter): void {
         e.setGlobalIdx(this.name, this.type);
-        e.writeByte(this.type);
-        e.writeByte(0x00); // mutable
+        e.writeByte(getNativeType(this.type));
+        e.writeByte(0x01); // mutable
         this.init.emit(e);
         e.writeByte(Control.end);
     }

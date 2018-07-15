@@ -108,6 +108,10 @@
   version "0.0.33"
   resolved "http://registry.npm.taobao.org/@types/text-encoding/download/@types/text-encoding-0.0.33.tgz#67618d2da2cb6055c16c7caa2e967c1c6d1e7600"
 
+"@types/webassembly-js-api@^0.0.1":
+  version "0.0.1"
+  resolved "http://registry.npm.taobao.org/@types/webassembly-js-api/download/@types/webassembly-js-api-0.0.1.tgz#62d50b201077d7d4cc109bb1cada22fdfd4523fb"
+
 ajv@^5.1.0:
   version "5.5.2"
   resolved "http://registry.npm.taobao.org/ajv/download/ajv-5.5.2.tgz#73b5eeca3fab653e3d3f9422b341ad42205dc965"

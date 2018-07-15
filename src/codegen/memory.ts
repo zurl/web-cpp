@@ -3,6 +3,8 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
+import {WType} from "../wasm";
+
 export class MemoryLayout {
 
     public stackScope: number[];
@@ -12,6 +14,7 @@ export class MemoryLayout {
     public data: DataView;
     public dataBuffer: ArrayBuffer;
     public stringMap: Map<string, number>;
+    public localTypes: WType[];
 
     public MEMORY_$SP: number;
     public MEMORY_$BP: number;
@@ -26,6 +29,7 @@ export class MemoryLayout {
         this.stringMap = new Map<string, number>();
         this.MEMORY_$BP = 0;
         this.MEMORY_$SP = 0;
+        this.localTypes = [];
     }
 
     public allocData(size: number): number {
@@ -34,7 +38,8 @@ export class MemoryLayout {
         return result;
     }
 
-    public allocLocal(): number {
+    public allocLocal(type: WType): number {
+        this.localTypes.push(type);
         return this.localPtr++;
     }
 
