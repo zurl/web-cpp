@@ -3,12 +3,11 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant, MemberExpression,
-    ParenthesisExpression, PostfixExpression, SourceLocation, SubscriptExpression, TypeName, UnaryExpression,
+    ParenthesisExpression, PostfixExpression, SubscriptExpression, TypeName, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
-    ArithmeticType, ArrayType, ClassType, extractRealType, FloatingType,
-    FloatType,
+    ArithmeticType, ArrayType, ClassType, FloatingType,
     FunctionType, Int64Type,
     IntegerType,
     LeftReferenceType,
@@ -17,6 +16,7 @@ import {
     Type, UnsignedInt64Type, UnsignedIntegerType,
 } from "../common/type";
 import {CompileContext} from "./context";
+import {doTypeTransfrom} from "./conversion";
 import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
 /**
  *  @file
@@ -68,8 +68,8 @@ function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): Arithmet
 }
 
 BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
-    const left = extractRealType(this.left.deduceType(ctx));
-    const right = extractRealType(this.right.deduceType(ctx));
+    const left = doTypeTransfrom(this.left.deduceType(ctx));
+    const right = doTypeTransfrom(this.right.deduceType(ctx));
     if ("+-*%/".includes(this.operator)) {
         if (left instanceof ArithmeticType && right instanceof ArithmeticType) {
             return arithmeticDeduce(left, right);
@@ -127,7 +127,7 @@ UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
             IntegerConstant.getOne())
             .deduceType(ctx);
     }
-    const itemType = this.operand.deduceType(ctx);
+    const itemType = doTypeTransfrom(this.operand.deduceType(ctx));
     if (this.operator === "*") {
         if (itemType instanceof PointerType || itemType instanceof ArrayType) {
             return itemType.elementType;
@@ -205,8 +205,8 @@ PostfixExpression.prototype.deduceType = function(ctx: CompileContext): Type {
 };
 
 ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type {
-    const leftType = extractRealType(this.consequent.deduceType(ctx));
-    const rightType = extractRealType(this.alternate.deduceType(ctx));
+    const leftType = doTypeTransfrom(this.consequent.deduceType(ctx));
+    const rightType = doTypeTransfrom(this.alternate.deduceType(ctx));
     if (leftType instanceof ArithmeticType && rightType instanceof ArithmeticType) {
         return arithmeticDeduce(leftType, rightType);
     } else if (leftType.equals(rightType)) {

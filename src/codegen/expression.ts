@@ -6,55 +6,38 @@
 import * as Long from "long";
 import {
     AssignmentExpression,
-    BinaryExpression, CastExpression, CharacterConstant, ConditionalExpression,
+    BinaryExpression,
+    CastExpression,
     ExpressionResult,
-    ExpressionResultType,
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    ParenthesisExpression, PostfixExpression, StringLiteral,
-    SubscriptExpression, UnaryExpression,
+    ParenthesisExpression,
+    SubscriptExpression,
+    UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
 import {
-    ArithmeticType,
-    ArrayType, CharType,
-    ClassType,
-    DoubleType,
-    extractRealType,
-    FloatingType,
-    FloatType, getStackStorageType, Int16Type, Int32Type,
-    Int64Type,
-    IntegerType,
-    LeftReferenceType,
+    AddressType,
+    FunctionEntity,
     PointerType,
     PrimitiveTypes,
-    QualifiedType, StackStorageType,
     Type,
-    UnsignedCharType,
-    UnsignedInt16Type,
-    UnsignedInt32Type,
-    UnsignedInt64Type,
-    UnsignedIntegerType, AddressType,
 } from "../common/type";
-import {FunctionEntity} from "../common/type";
+import {I32Unary, WType, WUnaryOperation} from "../wasm";
+import {BinaryOperator, getOpFromStr} from "../wasm/constant";
+import {WBinaryOperation, WConst} from "../wasm/expression";
+import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {
-    convertTypeOnStack,
-    loadAddress,
-    loadIntoStack,
-    loadReference,
-    popFromStack,
-    recycleExpressionResult,
-} from "./stack";
+import {doConversion, doValueTransform} from "./conversion";
+import {recycleExpressionResult} from "./statement";
 
 ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     return this.expression.codegen(ctx);
 };
 
 AssignmentExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
     if (this.operator !== "=") {
         const ope = this.operator.split("=")[0];
         this.operator = "=";
@@ -63,72 +46,39 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
             this.left,
             this.right);
     }
-    // C++ 17 规定RHS优先计算
+
+    // TODO:: 暂时不支持
+    //  对于初始化表达式 支持常量初始化到data段
+    // if (this.isInitExpr
+    //     && this.left instanceof Identifier
+    //     && right.form === ExpressionResultType.CONSTANT
+    //     && (right.type instanceof IntegerType ||
+    //         right.type instanceof FloatingType ||
+    //         right.type.equals(PrimitiveTypes.__ccharptr))) {
+    //     const item = this.left.codegen(ctx);
+    //     if (item.form === ExpressionResultType.LVALUE_MEMORY_DATA) {
+    //         return doVarInit(ctx, item, right);
+    //     }
+    // }
+
+    const left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
 
-    // 对于初始化表达式 支持常量初始化到data段
-    if (this.isInitExpr
-        && this.left instanceof Identifier
-        && right.form === ExpressionResultType.CONSTANT
-        && (right.type instanceof IntegerType ||
-            right.type instanceof FloatingType ||
-            right.type.equals(PrimitiveTypes.__ccharptr))) {
-        const item = this.left.codegen(ctx);
-        if (item.form === ExpressionResultType.LVALUE_MEMORY_DATA) {
-            return doVarInit(ctx, item, right);
-        }
+    if (!left.isLeft || !(left.expr instanceof WAddressHolder)) {
+        throw new SyntaxError(`could not assign to a right value`, this);
     }
 
-    // C 语言 隐式类型转换包括两个部分
-    // 1.隐式转换语法
-    //  1.1 赋值转换
-    //  1.2 通常算术转换
-    // 2.隐式转换语义
-    //  1.1 值变换
-    //  1.2 兼容语义
-
-    // 赋值隐式类型转换
-    const leftRawType = this.left.deduceType(ctx);
-    if ( leftRawType instanceof QualifiedType && leftRawType.isConst ) {
-        throw new SyntaxError(`cannot assign to a const variable`, this);
-    }
-    const leftType = extractRealType(leftRawType);
-    const rightType = extractRealType(right.type);
-    if (rightType instanceof ClassType) {
-        throw new SyntaxError(`unsupport operator overload`, this);
-    }
-    loadIntoStack(ctx, right);
-    // 在赋值运算符中，右运算数的值被转换成左运算数的无限定类型
-    convertTypeOnStack(ctx, leftType, rightType);
-    const left = this.left.codegen(ctx);
-    if (leftType instanceof ClassType) {
-        throw new SyntaxError(`unsupport operator overload`, this);
-    }
-    popFromStack(ctx, left);
-
-    if ( this.parentIsStmt ) {
-        // fake result
-        return {
-            type: PrimitiveTypes.void,
-            form: ExpressionResultType.CONSTANT,
-            value: 0,
-        };
+    if (right.expr instanceof FunctionEntity) {
+        throw new SyntaxError(`could not assign a function name`, this);
     }
 
-    if ( left.form === ExpressionResultType.RVALUE) {
-        // 这时往栈顶pop一次冗余操作
-        return this.left.codegen(ctx);
-    }
+    ctx.submitStatement(left.expr.createStore(ctx, left.type.toWType(),
+        doConversion(left.type, right, this).fold()));
 
-    return {
-        type: leftType,
-        form: left.form,
-        value: left.value,
-    };
+    return left;
 };
 
 IntegerConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
     let type = PrimitiveTypes.int32;
     if (this.suffix) {
         if (this.suffix.toUpperCase().indexOf("U") !== -1) {
@@ -147,43 +97,42 @@ IntegerConstant.prototype.codegen = function(ctx: CompileContext): ExpressionRes
     }
     return {
         type,
-        form: ExpressionResultType.CONSTANT,
-        value: this.value,
+        expr: new WConst(type.toWType(), this.raw, this.location),
+        isLeft: false,
     };
 };
 
 FloatingConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
     let type = PrimitiveTypes.double;
     if (this.suffix && this.suffix.toUpperCase() === "f") {
         type = PrimitiveTypes.float;
     }
     return {
         type,
-        form: ExpressionResultType.CONSTANT,
-        value: this.value,
+        expr: new WConst(type.toWType(), this.raw, this.location),
+        isLeft: false,
     };
 };
 
-StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
-    return {
-        type: PrimitiveTypes.__ccharptr,
-        form: ExpressionResultType.CONSTANT,
-        value: ctx.memory.allocString(this.value),
-    };
-};
-CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
-    return {
-        type: PrimitiveTypes.char,
-        form: ExpressionResultType.CONSTANT,
-        value: Long.fromInt(this.value.charCodeAt(0)),
-    };
-};
+// StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+//     ctx.currentNode = this;
+//     return {
+//         type: PrimitiveTypes.__ccharptr,
+//         form: ExpressionResultType.CONSTANT,
+//         value: ctx.memory.allocString(this.value),
+//     };
+// };
+//
+// CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+//     ctx.currentNode = this;
+//     return {
+//         type: PrimitiveTypes.char,
+//         form: ExpressionResultType.CONSTANT,
+//         value: Long.fromInt(this.value.charCodeAt(0)),
+//     };
+// };
 
 Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
     const item = ctx.currentScope.get(this.name);
     if (item === null) {
         throw new SyntaxError(`Unresolve Name ${this.name}`, this);
@@ -194,295 +143,44 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     if (item instanceof FunctionEntity) {
         return {
             type: item.type,
-            form: ExpressionResultType.RVALUE,
-            value: item,
-            isConst: true,
+            expr: item,
+            isLeft: false,
         };
     }
 
-    let type = item.type, isConst = false;
-    while (type instanceof QualifiedType) {
-        if (type.isConst) {
-            isConst = true;
-        }
-        type = type.elementType;
-    }
-
-    let result: ExpressionResult;
-
-    if (item.addressType === AddressType.STACK) {
-        result = {
-            type,
-            form: ExpressionResultType.LVALUE_STACK,
-            value: item.location,
-            isConst,
-        };
-    } else if (item.addressType === AddressType.MEMORY_DATA) {
-        result = {
-            type,
-            form: ExpressionResultType.LVALUE_MEMORY_DATA,
-            value: item.location,
-            isConst,
-        };
-    } else if (item.addressType === AddressType.MEMORY_BSS) {
-        result = {
-            type,
-            form: ExpressionResultType.LVALUE_MEMORY_BSS,
-            value: item.location,
-            isConst,
-        };
-    } else if (item.addressType === AddressType.MEMORY_EXTERN) {
-        result = {
-            type,
-            form: ExpressionResultType.LVALUE_MEMORY_EXTERN,
-            value: item.location,
-            isConst,
-        };
-    } else if (item.addressType === AddressType.CONSTANT) {
-        result = {
-            type,
-            form: ExpressionResultType.CONSTANT,
-            value: Long.fromInt(item.location as number),
-            isConst,
-        };
-    } else {
-        throw new InternalError(`unknown error at item.storageType`);
-    }
-
-    if ( type instanceof ArrayType) {
-        loadAddress(ctx, result);
-        result = {
-            type,
-            form: ExpressionResultType.RVALUE,
-            value: 0,
-            isConst,
-        };
-    }
-
-    return result;
+    return {
+        type: item.type,
+        expr: new WAddressHolder(item.location, item.addressType, this.location),
+        isLeft: true,
+    };
 };
-
-// Require: left.type and right.type instanceof ArithmeticType
-function doConstantCompute(left: ExpressionResult, right: ExpressionResult, ope: string): ExpressionResult {
-    if (left.type instanceof FloatingType || right.type instanceof FloatingType) {
-        let lhs = left.value, rhs = right.value, type = PrimitiveTypes.float;
-        if (left.type instanceof IntegerType) {
-            lhs = (left.value as Long).toNumber();
-        }
-        if (right.type instanceof IntegerType) {
-            rhs = (right.value as Long).toNumber();
-        }
-        if (left.type instanceof DoubleType || right.type instanceof DoubleType) {
-            type = PrimitiveTypes.double;
-        }
-        return {
-            type,
-            form: ExpressionResultType.CONSTANT,
-            value: eval(`${lhs}${ope}${rhs}`),
-        };
-    } else {
-        const lhs = left.value as Long, rhs = right.value as Long;
-        let type = PrimitiveTypes.int32, result = lhs;
-        if (left.type instanceof UnsignedInt64Type || right.type instanceof UnsignedInt64Type) {
-            type = PrimitiveTypes.uint64;
-        }
-        if (left.type instanceof Int64Type || right.type instanceof Int64Type) {
-            type = PrimitiveTypes.int64;
-        }
-        if (ope === "+") {
-            result = lhs.add(rhs);
-        } else if (ope === "-") {
-            result = lhs.sub(rhs);
-        } else if (ope === "*") {
-            result = lhs.mul(rhs);
-        } else if (ope === "/") {
-            result = lhs.div(rhs);
-        } else if (ope === "%") {
-            result = lhs.mod(rhs);
-        } else if (ope === ">=") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+lhs.greaterThanOrEqual(rhs));
-        } else if (ope === "<=") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+lhs.lessThanOrEqual(rhs));
-        } else if (ope === ">") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+lhs.greaterThan(rhs));
-        } else if (ope === "<") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+lhs.lessThan(rhs));
-        } else if (ope === "==") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+lhs.equals(rhs));
-        } else if (ope === "!=") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+lhs.notEquals(rhs));
-        } else if (ope === "&") {
-            result = lhs.and(rhs);
-        } else if (ope === "|") {
-            result = lhs.or(rhs);
-        } else if (ope === "^") {
-            result = lhs.xor(rhs);
-        } else if (ope === "&&") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+((!lhs.isZero()) && (!rhs.isZero())) );
-        } else if (ope === "||") {
-            type = PrimitiveTypes.bool;
-            result = Long.fromInt(+((!lhs.isZero()) || (!rhs.isZero())) );
-        }
-        return {
-            type,
-            form: ExpressionResultType.CONSTANT,
-            value: result,
-        };
-    }
-}
-
-const BinaryOpTable = new Map<string, OpCode[][]>([
-    ["+",  [[OpCode.ADD], [OpCode.ADDF]]],
-    ["-",  [[OpCode.SUB], [OpCode.SUBF]]],
-    ["*",  [[OpCode.MUL], [OpCode.MULF]]],
-    ["/",  [[OpCode.DIV], [OpCode.DIVF]]],
-    ["%",  [[OpCode.MOD], [OpCode.MODF]]],
-    [">=", [[OpCode.SUB, OpCode.GTE0], [OpCode.SUBF, OpCode.D2I, OpCode.GTE0]]],
-    ["<=", [[OpCode.SUB, OpCode.LTE0], [OpCode.SUBF, OpCode.D2I, OpCode.LTE0]]],
-    [">",  [[OpCode.SUB, OpCode.GT0],  [OpCode.SUBF, OpCode.D2I, OpCode.GT0]]],
-    ["<",  [[OpCode.SUB, OpCode.LT0],  [OpCode.SUBF, OpCode.D2I, OpCode.LT0]]],
-    ["==", [[OpCode.SUB, OpCode.EQ0],  [OpCode.SUBF, OpCode.D2I, OpCode.EQ0]]],
-    ["!=", [[OpCode.SUB, OpCode.NEQ0], [OpCode.SUBF, OpCode.D2I, OpCode.NEQ0]]],
-    ["&",  [[OpCode.AND], [OpCode.NOP]]],
-    ["|",  [[OpCode.OR], [OpCode.NOP]]],
-    ["^",  [[OpCode.XOR], [OpCode.NOP]]],
-    ["&&",  [[OpCode.LAND], [OpCode.LAND]]],
-    ["||",  [[OpCode.LOR], [OpCode.LOR]]],
-]);
-
-const relationOpe = ["==", "!=", ">=", "<=", ">", "<"];
-
-function generateExpressionTypeConversion(ctx: CompileContext,
-                                          src: StackStorageType,
-                                          dst: StackStorageType,
-                                          ope: string) {
-    // 执行运算时类型转换
-    // 算术运算     完全转换
-    // 比较运算     不转换浮点
-    // 位运算       不转换
-    // 逻辑运算     完全转换
-    if (dst === StackStorageType.int32) {
-        if (src === StackStorageType.int32 || src === StackStorageType.uint32) {
-            return;
-        } else if (src === StackStorageType.float32) {
-            if ( !relationOpe.includes(ope)) {
-                ctx.build(OpCode.F2D);
-                ctx.build(OpCode.D2I);
-            }
-            return;
-        } else if (src === StackStorageType.float64) {
-            if ( !relationOpe.includes(ope)) {
-                ctx.build(OpCode.D2I);
-            }
-            return;
-        }
-    } else if (dst === StackStorageType.uint32) {
-        if ( src === StackStorageType.int32 || src === StackStorageType.uint32) {
-            return;
-        } else if ( src === StackStorageType.float32 ) {
-            if ( !relationOpe.includes(ope)) {
-                ctx.build(OpCode.F2D);
-                ctx.build(OpCode.D2U);
-            }
-            return;
-        } else if ( src === StackStorageType.float64 ) {
-            if ( !relationOpe.includes(ope)) {
-                ctx.build(OpCode.D2U);
-            }
-            return;
-        }
-    } else if ( dst === StackStorageType.float64) {
-        if ( src === StackStorageType.float32) {
-            ctx.build(OpCode.F2D);
-            return;
-        } else if ( src === StackStorageType.uint32) {
-            ctx.build(OpCode.U2D);
-            return;
-        } else if ( src === StackStorageType.float64) {
-            return;
-        }
-    }
-    throw new InternalError("generateExpressionTypeConversion()");
-}
 
 BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     // 救救刘人语小姐姐
 
     if ( this.operator === ",") {
-        recycleExpressionResult(ctx, this.left.codegen(ctx));
+        recycleExpressionResult(ctx, this, this.left.codegen(ctx));
         return this.right.codegen(ctx);
     }
 
-    const leftType = extractRealType(this.left.deduceType(ctx));
-    const rightType = extractRealType(this.right.deduceType(ctx));
-    // 计算结果不会出现const, array和引用，因为肯定在栈顶
-    const targetType = this.deduceType(ctx);
-
-    // 指针运算的时候要乘一个size
-    if ( leftType instanceof PointerType &&
-        rightType instanceof IntegerType &&
-        "+-".includes(this.operator)) {
-        this.right = new BinaryExpression(this.location,
-            "*", this.right, IntegerConstant.fromNumber(
-                this.location, leftType.elementType.length,
-            ));
-    }
-
-    if ( rightType instanceof PointerType &&
-        leftType instanceof IntegerType &&
-        "+-".includes(this.operator)) {
-        this.left = new BinaryExpression(this.location,
-            "*", this.left, IntegerConstant.fromNumber(
-                this.location, rightType.elementType.length,
-            ));
-    }
-
-    // targetStorageType must be uint32 / int32 / float64
-    let targetStorageType = getStackStorageType(targetType);
-
-    // hack for relation ope
-    if ( relationOpe.includes(this.operator) && (
-        leftType instanceof FloatingType || rightType instanceof FloatingType)) {
-        targetStorageType = StackStorageType.float64;
-    }
-
     const left = this.left.codegen(ctx);
-    const leftStorageType = getStackStorageType(leftType);
-
-    ctx.currentNode = this;
-
-    loadIntoStack(ctx, left);
-    generateExpressionTypeConversion(ctx, leftStorageType, targetStorageType, this.operator);
-
     const right = this.right.codegen(ctx);
-    const rightStorageType = getStackStorageType(rightType);
+    const dstType = this.deduceType(ctx);
+    const op = getOpFromStr(this.operator, dstType.toWType());
 
-
-    loadIntoStack(ctx, right);
-    generateExpressionTypeConversion(ctx, rightStorageType, targetStorageType, this.operator);
-
-    const insList = BinaryOpTable.get(this.operator)!;
-
-    if (  targetStorageType === StackStorageType.float64 ) {
-        insList[1].map((ins) => ctx.build(ins));
-    } else if ( targetStorageType === StackStorageType.int32
-        || targetStorageType === StackStorageType.uint32) {
-        insList[0].map( (ins) => ctx.build(ins));
-    } else {
-        throw new InternalError(`BinaryExpression.prototype.codegen()`);
+    if ( op === null ) {
+        throw new InternalError(`unsupport op ${this.operator}`);
     }
 
     return {
-        form: ExpressionResultType.RVALUE,
-        type: targetType,
-        value: 0,
+        type: dstType,
+        isLeft: false,
+        expr: new WBinaryOperation(
+            op as BinaryOperator,
+            doConversion(dstType, left, this),
+            doConversion(dstType, right, this),
+            this.location,
+        ),
     };
 };
 
@@ -490,8 +188,11 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
     if ( this.operator === "sizeof") {
         return {
             type: PrimitiveTypes.uint32,
-            form: ExpressionResultType.CONSTANT,
-            value: this.operand.deduceType(ctx).length,
+            expr: new WConst(WType.u32,
+                this.operand.deduceType(ctx).length.toString(),
+                this.location,
+            ),
+            isLeft: false,
         };
     } else if ( this.operator === "++" || this.operator === "--") {
         return new BinaryExpression(this.location,
@@ -501,142 +202,49 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             .codegen(ctx);
     }
     const expr = this.operand.codegen(ctx);
-    ctx.currentNode = this;
     if (this.operator === "*") {
-        if (expr.type instanceof PointerType || expr.type instanceof ArrayType) {
-            //
-            // * lval value表示指针的地址     => LADDR, LM32
-            // * rval 指针在stop             => LM32
-            if (expr.form !== ExpressionResultType.RVALUE) {
-                loadAddress(ctx, expr);
-                ctx.build(OpCode.LM32);
+        const newExpr = doValueTransform(expr, this);
+        if (newExpr.type instanceof PointerType) {
+            if ( newExpr.expr instanceof FunctionEntity) {
+                throw new SyntaxError(`unsupport function name`, this);
             }
             return {
-                form: ExpressionResultType.RVALUE, // pointer的本体在栈顶
-                type: new LeftReferenceType(expr.type.elementType),
-                value: 0,
-            };
-        } else if (expr.type instanceof LeftReferenceType
-            && (expr.type.elementType instanceof PointerType
-                || expr.type.elementType instanceof ArrayType)) {
-            // 这是一个pointer的引用，所以pointer本身的地址在rvalue里
-            //
-            loadReference(ctx, expr);
-            return {
-                form: ExpressionResultType.RVALUE,
-                type: new LeftReferenceType(expr.type.elementType.elementType),
-                value: 0,
+                isLeft: true,
+                type: newExpr.type.elementType,
+                expr: new WAddressHolder(newExpr.expr, AddressType.RVALUE,
+                    this.location),
             };
         } else {
             throw new SyntaxError(`you could not apply * on ${expr.type.toString()} `, this);
         }
     } else if (this.operator === "&") {
-        if (expr.form === ExpressionResultType.RVALUE) {
-            throw new SyntaxError(`you could not get address of a right value `, ctx.currentNode!);
+        if ( !expr.isLeft || !(expr.expr instanceof WAddressHolder) ) {
+            throw new SyntaxError(`you could not get address of a right value `, this);
         }
-        loadAddress(ctx, expr);
         return {
-            // 一个RValue的Pointer，代表Pointer的值在栈顶
-            form: ExpressionResultType.RVALUE,
+            isLeft: false,
             type: new PointerType(expr.type),
-            value: 0,
+            expr: expr.expr.createLoadAddress(ctx),
         };
-    } else if (["+", "-", "!", "~"].includes(this.operator)) {
-        // + - => int, double
-        // ~ => int
-        // ! => int, double, pointer
-        const rawType = extractRealType(expr.type);
-        if ( expr.form === ExpressionResultType.CONSTANT ) {
-            let type: Type, value: Long | number;
-            if ( rawType instanceof IntegerType) {
-                type = rawType;
-                const val = expr.value as Long;
-                if ( this.operator === "-" ) {
-                   value = val.negate();
-                } else  if ( this.operator === "+" ) {
-                    value = val;
-                } else  if ( this.operator === "!" ) {
-                    type = PrimitiveTypes.bool;
-                    value = Long.fromInt(+val.isZero());
-                } else  if ( this.operator === "~" ) {
-                    value = val.not();
-                } else {
-                    throw new InternalError(`UnaryExpression.prototype.codegen`);
-                }
-            } else {
-                type = rawType;
-                const val = expr.value as number;
-                if ( this.operator === "-" ) {
-                    value = - val;
-                } else  if ( this.operator === "+" ) {
-                    value = val;
-                } else  if ( this.operator === "!" ) {
-                    type = PrimitiveTypes.bool;
-                    value = +!val;
-                } else {
-                    throw new InternalError(`UnaryExpression.prototype.codegen`);
-                }
-            }
-            return {
-                type,
-                form: ExpressionResultType.CONSTANT,
-                value,
-            };
-        }
-        loadIntoStack(ctx, expr);
-        if ( rawType instanceof IntegerType) {
-            let retType = PrimitiveTypes.int32;
-            if ( this.operator === "-" ) {
-                ctx.build(OpCode.NEG);
-            } else if ( this.operator === "+" ) {
-                // empty
-            } else if ( this.operator === "~" ) {
-                ctx.build(OpCode.INV);
-            } else if ( this.operator === "!" ) {
-                ctx.build(OpCode.NOT);
-                retType = PrimitiveTypes.bool;
-            } else {
-                throw new SyntaxError(`could not apply ${this.operator} on floating number`, this);
-            }
-            return {
-                type: retType,
-                form: ExpressionResultType.RVALUE,
-                value: 0,
-            };
-        } else if ( rawType instanceof FloatingType) {
-            let retType = PrimitiveTypes.double;
-            if ( rawType instanceof FloatType) {
-                ctx.build(OpCode.F2D);
-            }
-            if ( this.operator === "-" ) {
-                ctx.build(OpCode.NEGF);
-            } else if ( this.operator === "+" ) {
-                // empty
-            } else if ( this.operator === "!" ) {
-                ctx.build(OpCode.D2I);
-                ctx.build(OpCode.NOT);
-                retType = PrimitiveTypes.bool;
-            } else {
-                throw new SyntaxError(`could not apply ${this.operator} on floating number`, this);
-            }
-            return {
-                type: retType,
-                form: ExpressionResultType.RVALUE,
-                value: 0,
-            };
-        } else if ( rawType instanceof PointerType) {
-            if ( this.operator === "!" ) {
-                ctx.build(OpCode.NOT);
-                return {
-                    type: PrimitiveTypes.bool,
-                    form: ExpressionResultType.RVALUE,
-                    value: 0,
-                };
-            } else {
-                throw new SyntaxError(`could not apply ${this.operator} on pointer`, this);
-            }
-        }
-        throw new InternalError(`no_impl at unary ope=${this.operator}`);
+    } else if ( this.operator === "+") {
+        return doValueTransform(this.operand.codegen(ctx), this);
+    } else if ( this.operator === "-") {
+        return new BinaryExpression(this.location, "-",
+            IntegerConstant.getZero(),
+            this.operand,
+        ).codegen(ctx);
+    } else if ( this.operator === "!") {
+        const value = doConversion(PrimitiveTypes.int32, this.operand.codegen(ctx), this);
+        return {
+            type: PrimitiveTypes.int32,
+            isLeft: false,
+            expr: new WUnaryOperation(I32Unary.eqz, value, this.location),
+        };
+    } else if ( this.operator === "~") {
+        return new BinaryExpression(this.location, "^",
+            IntegerConstant.getNegOne(),
+            this.operand,
+        ).codegen(ctx);
     } else {
         throw new InternalError(`no_impl at unary ope=${this.operator}`);
     }
@@ -655,146 +263,106 @@ SubscriptExpression.prototype.codegen = function(ctx: CompileContext): Expressio
     ).codegen(ctx);
 };
 
-export function doVarInit(ctx: CompileContext, left: ExpressionResult,
-                          right: ExpressionResult): ExpressionResult {
-    // charptr, int, double
-    const leftValue = left.value as number;
-    if (right.type.equals(PrimitiveTypes.__ccharptr)) {
-        if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr)) ) {
-            throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, ctx.currentNode!);
-        }
-        ctx.memory.data.setUint32(leftValue, right.value as number);
-    }
-    let rightValue = right.value as number;
-    if (right.type instanceof IntegerType) {
-        rightValue = (right.value as Long).toNumber();
-    }
-    if (left.type instanceof UnsignedCharType) {
-        ctx.memory.data.setUint8(leftValue, rightValue);
-    } else if (left.type instanceof CharType) {
-        ctx.memory.data.setInt8(leftValue, rightValue);
-    } else if (left.type instanceof UnsignedInt16Type) {
-        ctx.memory.data.setUint16(leftValue, rightValue);
-    } else if (left.type instanceof UnsignedInt32Type) {
-        ctx.memory.data.setUint32(leftValue, rightValue);
-    } else if (left.type instanceof UnsignedInt64Type) {
-        if (right.type instanceof IntegerType) {
-            ctx.memory.data.setUint32(leftValue, (right.value as Long).high);
-            ctx.memory.data.setUint32(leftValue + 4, (right.value as Long).low);
-        } else {
-            ctx.memory.data.setUint32(leftValue, rightValue >> 32);
-            ctx.memory.data.setUint32(leftValue + 4, rightValue);
-        }
-    } else if (left.type instanceof Int16Type) {
-        ctx.memory.data.setInt16(leftValue, rightValue);
-    } else if (left.type instanceof Int32Type) {
-        ctx.memory.data.setInt32(leftValue, rightValue);
-    } else if (left.type instanceof Int64Type) {
-        if (right.type instanceof IntegerType) {
-            ctx.memory.data.setInt32(leftValue, (right.value as Long).high);
-            ctx.memory.data.setInt32(leftValue + 4, (right.value as Long).low);
-        } else {
-            ctx.memory.data.setInt32(leftValue, rightValue >> 32);
-            ctx.memory.data.setInt32(leftValue + 4, rightValue);
-        }
-    } else if (left.type instanceof FloatType) {
-        ctx.memory.data.setFloat32(leftValue, rightValue);
-    } else if (left.type instanceof DoubleType) {
-        ctx.memory.data.setFloat64(leftValue, rightValue);
-    } else {
-        throw new InternalError(`unsupport type assignment`);
-    }
-    return left;
-}
+// export function doVarInit(ctx: CompileContext, left: ExpressionResult,
+//                           right: ExpressionResult): ExpressionResult {
+//     // charptr, int, double
+//     const leftValue = left.value as number;
+//     if (right.type.equals(PrimitiveTypes.__ccharptr)) {
+//         if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr)) ) {
+//             throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, ctx.currentNode!);
+//         }
+//         ctx.memory.data.setUint32(leftValue, right.value as number);
+//     }
+//     let rightValue = right.value as number;
+//     if (right.type instanceof IntegerType) {
+//         rightValue = (right.value as Long).toNumber();
+//     }
+//     if (left.type instanceof UnsignedCharType) {
+//         ctx.memory.data.setUint8(leftValue, rightValue);
+//     } else if (left.type instanceof CharType) {
+//         ctx.memory.data.setInt8(leftValue, rightValue);
+//     } else if (left.type instanceof UnsignedInt16Type) {
+//         ctx.memory.data.setUint16(leftValue, rightValue);
+//     } else if (left.type instanceof UnsignedInt32Type) {
+//         ctx.memory.data.setUint32(leftValue, rightValue);
+//     } else if (left.type instanceof UnsignedInt64Type) {
+//         if (right.type instanceof IntegerType) {
+//             ctx.memory.data.setUint32(leftValue, (right.value as Long).high);
+//             ctx.memory.data.setUint32(leftValue + 4, (right.value as Long).low);
+//         } else {
+//             ctx.memory.data.setUint32(leftValue, rightValue >> 32);
+//             ctx.memory.data.setUint32(leftValue + 4, rightValue);
+//         }
+//     } else if (left.type instanceof Int16Type) {
+//         ctx.memory.data.setInt16(leftValue, rightValue);
+//     } else if (left.type instanceof Int32Type) {
+//         ctx.memory.data.setInt32(leftValue, rightValue);
+//     } else if (left.type instanceof Int64Type) {
+//         if (right.type instanceof IntegerType) {
+//             ctx.memory.data.setInt32(leftValue, (right.value as Long).high);
+//             ctx.memory.data.setInt32(leftValue + 4, (right.value as Long).low);
+//         } else {
+//             ctx.memory.data.setInt32(leftValue, rightValue >> 32);
+//             ctx.memory.data.setInt32(leftValue + 4, rightValue);
+//         }
+//     } else if (left.type instanceof FloatType) {
+//         ctx.memory.data.setFloat32(leftValue, rightValue);
+//     } else if (left.type instanceof DoubleType) {
+//         ctx.memory.data.setFloat64(leftValue, rightValue);
+//     } else {
+//         throw new InternalError(`unsupport type assignment`);
+//     }
+//     return left;
+// }
 
 CastExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     const type = this.deduceType(ctx);
     const expr = this.operand.codegen(ctx);
-    const exprType = extractRealType(expr.type);
-    ctx.currentNode = this;
-    if ( (type instanceof PointerType  || type instanceof IntegerType) &&
-        (exprType instanceof PointerType || exprType instanceof IntegerType)
-        ) {
-        return {
-            form: expr.form,
-            type,
-            value: expr.value,
-        };
-    } else if ( exprType.equals(type)) {
-        return expr;
-    } else if ( type instanceof FloatingType && exprType instanceof IntegerType) {
-        loadIntoStack(ctx, expr);
-        if ( exprType instanceof UnsignedIntegerType) {
-            ctx.build(OpCode.U2D);
-        } else {
-            ctx.build(OpCode.I2D);
-        }
-        if ( type instanceof FloatType) {
-            ctx.build(OpCode.D2F);
-        }
-        return {
-            form: ExpressionResultType.RVALUE,
-            type,
-            value: 0,
-        };
-    } else if ( type instanceof IntegerType && exprType instanceof FloatingType) {
-        if ( type instanceof FloatType) {
-            ctx.build(OpCode.F2D);
-        }
-        loadIntoStack(ctx, expr);
-        if ( type instanceof UnsignedIntegerType) {
-            ctx.build(OpCode.D2U);
-        } else {
-            ctx.build(OpCode.D2I);
-        }
-        return {
-            form: ExpressionResultType.RVALUE,
-            type,
-            value: 0,
-        };
-    }
-    throw new SyntaxError(`unsupport cast from ${expr.type} to ${type}`, this);
-    // TODO:: which is hard
-};
-
-PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    const ope = this.operand.codegen(ctx);
-    loadIntoStack(ctx, ope);
-    recycleExpressionResult(ctx, new AssignmentExpression(this.location,
-         "=", this.operand, new BinaryExpression(
-             this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
-        )).codegen(ctx));
     return {
-        form: ExpressionResultType.RVALUE,
-        type: ope.type,
-        value: 0,
+        type,
+        expr: doConversion(type, expr, this, true),
+        isLeft: false,
     };
 };
 
-ConditionalExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    const test = this.test.codegen(ctx);
-    const targetType = extractRealType(this.deduceType(ctx));
-    loadIntoStack(ctx, test);
-    const t0 = ctx.currentBuilder.now;
-    ctx.build(OpCode.JZ, 0);
-    const con = this.consequent.codegen(ctx);
-    loadIntoStack(ctx, con);
-    convertTypeOnStack(ctx, targetType, extractRealType(con.type));
-    const t1 = ctx.currentBuilder.now;
-    ctx.build(OpCode.J, 0);
-    const t2 = ctx.currentBuilder.now;
-    ctx.currentBuilder.codeView.setUint32(t0 + 1, t2 - t0);
-    const alt = this.alternate.codegen(ctx);
-    loadIntoStack(ctx, alt);
-    convertTypeOnStack(ctx, targetType, extractRealType(alt.type));
-    const t3 = ctx.currentBuilder.now;
-    ctx.currentBuilder.codeView.setUint32(t1 + 1, t3 - t1);
-    return {
-        type: targetType,
-        form: ExpressionResultType.RVALUE,
-        value: 0,
-    };
-};
+// PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+//     const ope = this.operand.codegen(ctx);
+//     loadIntoStack(ctx, ope);
+//     recycleExpressionResult(ctx, new AssignmentExpression(this.location,
+//          "=", this.operand, new BinaryExpression(
+//              this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
+//         )).codegen(ctx));
+//     return {
+//         form: ExpressionResultType.RVALUE,
+//         type: ope.type,
+//         value: 0,
+//     };
+// };
+
+// ConditionalExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+//     const test = this.test.codegen(ctx);
+//     const targetType = extractRealType(this.deduceType(ctx));
+//     loadIntoStack(ctx, test);
+//     const t0 = ctx.currentBuilder.now;
+//     ctx.build(OpCode.JZ, 0);
+//     const con = this.consequent.codegen(ctx);
+//     loadIntoStack(ctx, con);
+//     convertTypeOnStack(ctx, targetType, extractRealType(con.type));
+//     const t1 = ctx.currentBuilder.now;
+//     ctx.build(OpCode.J, 0);
+//     const t2 = ctx.currentBuilder.now;
+//     ctx.currentBuilder.codeView.setUint32(t0 + 1, t2 - t0);
+//     const alt = this.alternate.codegen(ctx);
+//     loadIntoStack(ctx, alt);
+//     convertTypeOnStack(ctx, targetType, extractRealType(alt.type));
+//     const t3 = ctx.currentBuilder.now;
+//     ctx.currentBuilder.codeView.setUint32(t1 + 1, t3 - t1);
+//     return {
+//         type: targetType,
+//         form: ExpressionResultType.RVALUE,
+//         value: 0,
+//     };
+// };
 
 /*
  *  规定：

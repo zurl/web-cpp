@@ -7,7 +7,7 @@ import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
 import {Control, F32, F64, I32, I64, WType, WTypeMap} from "./constant";
 import {Emitter} from "./emitter";
-import {getAlign} from "./expression";
+import {getAlign, WMemoryLocation} from "./expression";
 import {getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
 
@@ -56,14 +56,19 @@ export class WStore extends WStatement {
     public address: WExpression;
     public value: WExpression;
     public offset: number;
+    public form: WMemoryLocation;
+    public offsetName: string;
 
     constructor(type: WType,
-                address: WExpression, value: WExpression, location?: SourceLocation) {
+                address: WExpression, value: WExpression,
+                form: WMemoryLocation = WMemoryLocation.RAW, location?: SourceLocation) {
         super(location);
         this.type = type;
         this.address = address;
         this.value = value;
         this.offset = 0;
+        this.form = form;
+        this.offsetName = "";
     }
 
     public emit(e: Emitter): void {
@@ -87,14 +92,26 @@ export class WStore extends WStatement {
             case WType.i64:
             case WType.u64: e.writeByte(I64.store); break;
         }
-        e.writeUint32(getAlign(this.offset));
-        e.writeUint32(this.offset);
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        e.writeUint32(getAlign(offset));
+        e.writeUint32(offset);
     }
 
     public length(e: Emitter): number {
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
         return this.address.length(e) + this.value.length(e) +
-            getLeb128UintLength(getAlign(this.offset)) +
-            getLeb128UintLength(this.offset) + 1;
+            getLeb128UintLength(getAlign(offset)) +
+            getLeb128UintLength(offset) + 1;
     }
 
 }

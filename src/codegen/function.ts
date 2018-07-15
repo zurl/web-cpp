@@ -5,27 +5,30 @@
  */
 import {
     CallExpression,
-    Declarator, ExpressionResult, ExpressionResultType,
+    Declarator, ExpressionResult,
     FunctionDeclarator,
     FunctionDefinition,
     IdentifierDeclarator,
     ParameterList, ReturnStatement,
 } from "../common/ast";
-import {assertType, InternalError, SyntaxError} from "../common/error";
+import {assertType, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
 import {
-    extractRealType, FloatType,
+    AddressType, ArrayType, ClassType,
     FunctionType,
-    PointerType, PrimitiveTypes,
-    QualifiedType,
+    PointerType,
+    PrimitiveTypes,
     Type,
     Variable,
-    AddressType,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
+import {I32Binary, WBinaryOperation, WCall, WConst, WFunction, WLoad, WType} from "../wasm";
+import {WGetGlobal, WGetLocal} from "../wasm/expression";
+import {WExpression, WStatement} from "../wasm/node";
+import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {CompileContext} from "./context";
+import {doConversion} from "./conversion";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
-import {convertTypeOnStack, loadFromMemory, loadIntoStack} from "./stack";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
@@ -44,7 +47,6 @@ function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
 }
 
 ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[], boolean] {
-    ctx.currentNode = this;
     // TODO:: deal with abstract Declarator
     const parameters = this.parameters.map((parameter) =>
         parseDeclarator(ctx, parameter.declarator as Declarator,
@@ -54,17 +56,7 @@ ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string
     return [parameterTypes, parameterNames, this.variableArguments];
 };
 
-/**
- * __cdecl call standard
- *  bp - 4 => local_var 1
- *  bp + 0 => saved_ebp
- *  bp + 4 => return_addr
- *  bp + 8 => arg1
- *  bp + ..=> arg2
- * @param {CompileContext} ctx
- */
 FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
-    ctx.currentNode = this;
     const resultType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
     if (resultType == null) {
         throw new SyntaxError(`illegal return type`, this);
@@ -91,8 +83,12 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         ctx.currentScope.set(functionEntity.name, functionEntity);
     }
     ctx.enterFunction(functionEntity);
+
     // alloc parameters
-    let loc = 8;
+
+    const returnWTypes: WType[] = [];
+    const parameterWTypes: WType[] = [];
+
     for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
@@ -102,90 +98,87 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         if (ctx.currentScope.map.has(name)) {
             throw new SyntaxError(`redefined parameter ${name}`, this);
         }
-        ctx.currentScope.set(name, new Variable(
-            name, ctx.fileName, type, AddressType.STACK, loc,
-        ));
-        loc += type.length;
-    }
-    ctx.currentNode = this;
-    const l0 = ctx.currentBuilder!.now;
-    ctx.build(OpCode.SSP, 0);
-    this.body.body.map((item) => item.codegen(ctx));
-    ctx.currentBuilder.codeView.setInt32(l0 + 1, ctx.memory.stackPtr);
-    ctx.currentFunction!.assertPostions.map((pos) => {
-        ctx.currentBuilder.codeView.setInt32(pos + 1, ctx.memory.stackPtr);
-    });
-    const l1 = ctx.currentBuilder.now;
-    const op = ctx.currentBuilder.codeView.getUint8(l1 - 5);
-    if ( op !== OpCode.RETVARGS && op !== OpCode.RET) {
-        if ( functionEntity.type.returnType.equals(PrimitiveTypes.void)) {
-            new ReturnStatement(this.location, null).codegen(ctx);
+        if ( type instanceof ClassType || type instanceof ArrayType) {
+            ctx.currentScope.set(name, new Variable(
+                name, ctx.fileName, type, AddressType.STACK, ctx.memory.allocStack(type.length),
+            ));
         } else {
-            throw new SyntaxError(`Not of all branch of Function ${functionEntity.fullName} has return`, this);
+            parameterWTypes.push(type.toWType());
+            ctx.currentScope.set(name, new Variable(
+                name, ctx.fileName, type, AddressType.LOCAL, ctx.memory.allocLocal(),
+            ));
         }
     }
+
+    const returnType = functionEntity.type.returnType;
+    if (!returnType.equals(PrimitiveTypes.void)) {
+        if ( returnType instanceof ClassType || returnType instanceof ArrayType) {
+            returnWTypes.push(WType.i32);
+        } else {
+            returnWTypes.push(returnType.toWType());
+        }
+    }
+
+    const bodyStatements: WStatement[] = [];
+    const savedStatements = ctx.getStatementContainer();
+    ctx.setStatementContainer(bodyStatements);
+
+    // register sp & bp
+    // TODO:: could optimize it out
+    functionEntity.$sp = ctx.memory.allocLocal();
+
+    // sp = $sp
+    ctx.submitStatement(
+        new WSetLocal(WType.u32, functionEntity.$sp,
+            new WGetGlobal(WType.u32, "$sp", this.location), this.location));
+
+    // sp = $sp - 0
+    const offsetNode = new WConst(WType.u32, "0", this.location);
+    ctx.submitStatement(
+        new WSetGlobal(WType.u32, "$sp",
+            new WBinaryOperation(I32Binary.sub,
+                new WGetLocal(WType.u32, functionEntity.$sp, this.location),
+                offsetNode, this.location), this.location));
+
+    this.body.body.map((item) => item.codegen(ctx));
+
+    // $sp = sp
+    ctx.submitStatement(
+        new WSetGlobal(WType.u32, "$sp",
+            new WGetLocal(WType.u32, functionEntity.$sp, this.location), this.location));
+
+    ctx.setStatementContainer(savedStatements);
     ctx.exitFunction();
+
+    ctx.submitFunction(new WFunction(
+        functionEntity.fullName,
+        returnWTypes,
+        parameterWTypes,
+        [], //TODO:: add local
+        bodyStatements,
+        this.location,
+    ));
 };
 
 CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    ctx.currentNode = this;
     const callee = this.callee.codegen(ctx);
     if (callee.type instanceof PointerType) {
         callee.type = callee.type.elementType;
     }
-    if (!(callee.type instanceof FunctionType)) {
+    const entity = callee.expr;
+    if ( !(callee.type instanceof FunctionType) || !(entity instanceof FunctionEntity)) {
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
     }
-    // TODO:: call function pointer
-    const entity = callee.value as FunctionEntity;
-    if ((entity.type.variableArguments && this.arguments.length < callee.type.parameterTypes.length) ||
-        (!entity.type.variableArguments && this.arguments.length !== callee.type.parameterTypes.length)) {
-        throw new SyntaxError(`expected ${callee.type.parameterTypes.length} parameters,`
-            + `actual is ${this.arguments.length}`, this);
-    }
-    if (entity.type.variableArguments) {
-        let varLength = 0;
-        for (let i = this.arguments.length - 1; i >= callee.type.parameterTypes.length; i--) {
-            const val = this.arguments[i].codegen(ctx);
-            ctx.currentNode = this;
-            const rawType = extractRealType(val.type);
-            loadIntoStack(ctx, val);
-            if (entity.type.variableArguments && rawType instanceof FloatType) {
-                ctx.build(OpCode.F2D);
-                varLength += 4;
-            }
-            if (rawType.length > 4) {
-                varLength += rawType.length;
-            } else {
-                varLength += 4;
-            }
-        }
-        ctx.build(OpCode.PUI32, varLength);
-    }
+    const argus: WExpression[] = [];
     for (let i = callee.type.parameterTypes.length - 1; i >= 0; i--) {
-        const val = this.arguments[i].codegen(ctx);
-        const leftType = extractRealType(callee.type.parameterTypes[i]);
-        const rightType = extractRealType(val.type);
-
-        // 这里应用 赋值隐式类型转换
-        ctx.currentNode = this;
-        loadIntoStack(ctx, val);
-        convertTypeOnStack(ctx, leftType, rightType);
-    }
-    // TODO:: mangled name
-    ctx.unresolve(entity.fullName);
-    if (entity.isLibCall) {
-        ctx.build(OpCode.LIBCALL, 0);
-    } else {
-        ctx.build(OpCode.CALL, 0);
-        if (!entity.type.returnType.equals(PrimitiveTypes.void)) {
-            loadFromMemory(ctx, entity.type.returnType);
-        }
+        const src = this.arguments[i].codegen(ctx);
+        const dstType = callee.type.parameterTypes[i];
+        argus.push(doConversion(dstType, src, this));
     }
     return {
-        form: ExpressionResultType.RVALUE,
         type: callee.type.returnType,
-        value: 0,
+        expr: new WCall(entity.fullName, argus, this.location),
+        isLeft: false,
     };
 };
 

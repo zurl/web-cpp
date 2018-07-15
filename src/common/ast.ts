@@ -1,5 +1,5 @@
 import * as Long from "long";
-import {CompileContext} from "../ng_codegen/context";
+import {CompileContext} from "../codegen/context";
 import {WExpression} from "../wasm/node";
 import {InternalError} from "./error";
 import {FunctionEntity, Type} from "./type";

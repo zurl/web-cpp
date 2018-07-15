@@ -186,16 +186,27 @@ export class WBinaryOperation extends WExpression {
     }
 }
 
+export enum WMemoryLocation {
+    RAW,
+    DATA,
+    EXTERN,
+}
+
 export class WLoad extends WExpression {
     public type: WType;
     public address: WExpression;
     public offset: number;
+    public offsetName: string;
+    public form: WMemoryLocation;
 
-    constructor(type: WType, address: WExpression, location?: SourceLocation) {
+    constructor(type: WType, address: WExpression,
+                form: WMemoryLocation = WMemoryLocation.RAW, location?: SourceLocation) {
         super(location);
         this.type = type;
         this.address = address;
+        this.form = form;
         this.offset = 0;
+        this.offsetName = "";
     }
 
     public emit(e: Emitter): void {
@@ -212,13 +223,25 @@ export class WLoad extends WExpression {
             case WType.i64:
             case WType.u64: e.writeByte(I64.load); break;
         }
-        e.writeUint32(getAlign(this.offset));
-        e.writeUint32(this.offset);
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        e.writeUint32(getAlign(offset));
+        e.writeUint32(offset);
     }
 
     public length(e: Emitter): number {
-        return this.address.length(e) + getLeb128UintLength(getAlign(this.offset)) +
-            getLeb128UintLength(this.offset) + 1;
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        return this.address.length(e) + getLeb128UintLength(getAlign(offset)) +
+            getLeb128UintLength(offset) + 1;
     }
 
     public deduceType(e: Emitter): WType {
@@ -403,5 +426,53 @@ export class WCovertOperation extends WExpression {
 
     public isPure(): boolean {
         return this.operand.isPure();
+    }
+}
+
+export class WGetAddress extends WExpression {
+    public form: WMemoryLocation;
+    public offset: number;
+    public offsetName: string;
+
+    constructor(form: WMemoryLocation, location?: SourceLocation) {
+        super(location);
+        this.form = form;
+        this.offset = 0;
+        this.offsetName = "";
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(I32.const);
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        e.writeUint32(getAlign(offset));
+        e.writeUint32(offset);
+    }
+
+    public length(e: Emitter): number {
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        return getLeb128UintLength(getAlign(offset)) +
+            getLeb128UintLength(offset) + 1;
+    }
+
+    public deduceType(e: Emitter): WType {
+        return WType.i32;
+    }
+
+    public fold(): WExpression {
+        return this;
+    }
+
+    public isPure(): boolean {
+        return true;
     }
 }

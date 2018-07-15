@@ -7,32 +7,35 @@ export class MemoryLayout {
 
     public stackScope: number[];
     public dataPtr: number;
-    public bssPtr: number;
     public stackPtr: number;
+    public localPtr: number;
     public data: DataView;
     public dataBuffer: ArrayBuffer;
     public stringMap: Map<string, number>;
 
+    public MEMORY_$SP: number;
+    public MEMORY_$BP: number;
+
     constructor(dataSize: number) {
         this.dataPtr = 0;
-        this.bssPtr = 0;
         this.stackPtr = 0;
+        this.localPtr = 0;
         this.stackScope = [];
         this.dataBuffer = new ArrayBuffer(dataSize);
         this.data = new DataView(this.dataBuffer);
         this.stringMap = new Map<string, number>();
-    }
-
-    public allocBSS(size: number): number {
-        const result = this.bssPtr;
-        this.bssPtr += size;
-        return result;
+        this.MEMORY_$BP = 0;
+        this.MEMORY_$SP = 0;
     }
 
     public allocData(size: number): number {
         const result = this.dataPtr;
         this.dataPtr += size;
         return result;
+    }
+
+    public allocLocal(): number {
+        return this.localPtr++;
     }
 
     public allocStack(size: number): number {
@@ -61,6 +64,7 @@ export class MemoryLayout {
 
     public enterFunction() {
         this.stackPtr = 0;
+        this.localPtr = 0;
         this.stackScope = [];
     }
 

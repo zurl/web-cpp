@@ -17,6 +17,11 @@ export class WFunction extends WNode {
     public body: WStatement[];
     public signatureId: number;
 
+    // fill in linking
+    public dataStart: number;
+    public bssStart: number;
+    public fileName: string;
+
     constructor(name: string, returnType: WType[], parameters: WType[],
                 local: WType[], body: WStatement[], location?: SourceLocation) {
         super(location);
@@ -25,6 +30,11 @@ export class WFunction extends WNode {
         this.local = local;
         this.body = body;
         this.signatureId = 0;
+
+        // fill in linking
+        this.dataStart = 0;
+        this.bssStart = 0;
+        this.fileName = "";
     }
 
     public emit(e: Emitter): void {

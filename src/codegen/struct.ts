@@ -5,17 +5,15 @@
  */
 import {
     ExpressionResult,
-    ExpressionResultType,
     MemberExpression,
     StructOrUnionSpecifier,
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
-import {OpCode} from "../common/instruction";
-import {ClassField, ClassType, LeftReferenceType, ReferenceType, Type} from "../common/type";
+import {ClassType, LeftReferenceType, Type} from "../common/type";
+import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
-import {loadReference} from "./stack";
 
 StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     if (this.union) {
@@ -100,50 +98,15 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     if ( !field ) {
         throw new SyntaxError(`property ${this.member.name} does not appear on ${rawType.name}`, this);
     }
-    ctx.currentNode = this;
-    if ( left.type instanceof LeftReferenceType ) {
-        if (left.form === ExpressionResultType.RVALUE){
-            // 现在stacktop是结构体指针
-            // 偏移一下
-            if (!rawType.isUnion) {
-                ctx.build(OpCode.PUI32, field.startOffset);
-                ctx.build(OpCode.ADD);
-            }
-            return {
-                type: new LeftReferenceType(field.type),
-                form: ExpressionResultType.RVALUE,
-                value: 0,
-            };
-        } else {
-            return {
-                type: new LeftReferenceType(field.type),
-                form: left.form,
-                value: left.value as number + field.startOffset,
-            };
-        }
+
+    if ( left.isLeft && left.expr instanceof WAddressHolder) {
+        return {
+            isLeft: true,
+            type: field.type,
+            expr: left.expr.makeOffset(field.startOffset),
+        };
     } else {
-        if ( left.form === ExpressionResultType.LVALUE_MEMORY_EXTERN) {
-            return {
-                type: field.type,
-                value: left.value,
-                form: left.form,
-                // TODO:: here extern offset
-                offset: field.startOffset,
-            };
-        } else if ( left.form === ExpressionResultType.LVALUE_MEMORY_DATA
-        || left.form === ExpressionResultType.LVALUE_STACK
-        || left.form === ExpressionResultType.LVALUE_MEMORY_BSS) {
-            return {
-                type: field.type,
-                value: left.value as number + field.startOffset,
-                form: left.form,
-            };
-        } else if ( left.form === ExpressionResultType.RVALUE) {
-            // ??? why rvalue fuck exist
-            throw new SyntaxError(`unsupport form rvalue`, this);
-        } else {
-            throw new InternalError(`unsupport form`);
-        }
+        throw new InternalError(`unsupport rvalue of member expression`);
     }
 };
 

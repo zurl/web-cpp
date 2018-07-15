@@ -462,10 +462,10 @@ export function getStackStorageType(rawType: Type): StackStorageType {
 }
 
 export enum AddressType {
+    GLOBAL,
     LOCAL,
     STACK,
     MEMORY_DATA,
-    MEMORY_BSS,
     MEMORY_EXTERN,
     RVALUE,
     CONSTANT,

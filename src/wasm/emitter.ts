@@ -45,6 +45,8 @@ export interface Emitter {
     getGlobalIdx(name: string): number;
 
     setGlobalIdx(name: string, type: WType): void;
+
+    getExternLocation(name: string): number;
 }
 
 export class WASMEmitter implements Emitter {
@@ -56,6 +58,7 @@ export class WASMEmitter implements Emitter {
     public globalIdx: Map<string, [number, WType]>;
     public globalIdxCount: number;
     public currentFunc?: WFunction;
+    public externMap: Map<string, number>;
 
     constructor() {
         this.buffer = new ArrayBuffer(1000);
@@ -65,6 +68,7 @@ export class WASMEmitter implements Emitter {
         this.funcIdxCount = 0;
         this.globalIdx = new Map<string, [number, WType]>();
         this.globalIdxCount = 0;
+        this.externMap = new Map<string, number>();
     }
 
     public writeByte(byte: number): void {
@@ -160,6 +164,14 @@ export class WASMEmitter implements Emitter {
             throw new EmitError(`not in func`);
         }
         return this.currentFunc;
+    }
+
+    public getExternLocation(name: string): number {
+        const item = this.externMap.get(name);
+        if (!item) {
+            throw new EmitError(`unresolve symbol ${name}`);
+        }
+        return item;
     }
 
 }

@@ -12,7 +12,6 @@ import {
     Declaration,
     Declarator,
     EnumSpecifier,
-    ExpressionResultType,
     FunctionDeclarator,
     Identifier,
     IdentifierDeclarator,
@@ -29,17 +28,17 @@ import {
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {
+    AddressType,
     ArrayType,
     ClassType,
-    extractRealType,
     FunctionType,
-    IntegerType,
-    PointerType, PrimitiveTypes,
-    QualifiedType,
-    Type, Variable, AddressType,
+    IntegerType, PointerType,
+    PrimitiveTypes, Type, Variable,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
+import {WConst} from "../wasm";
+import {WExpression} from "../wasm/node";
 import {CompileContext} from "./context";
 
 export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: SpecifierType[], nodeForError: Node): Type {
@@ -70,11 +69,8 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
     if (resultType == null) {
         throw new SyntaxError("Illegal Return Type", nodeForError);
     }
-    const qualifiers = stringNodes.filter(isTypeQualifier).sort();
-    if (qualifiers.length !== 0) {
-        resultType = new QualifiedType(resultType,
-            qualifiers.indexOf("const") !== -1,
-            qualifiers.indexOf("volatile") !== -1);
+    if (stringNodes.indexOf("const") !== -1) {
+        resultType.isConst = true;
     }
     if (stringNodes.indexOf("extern") !== -1) {
         resultType.isExtern = true;
@@ -115,7 +111,11 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
         return result;
     } else if (declarator instanceof ArrayDeclarator || declarator instanceof AbstractArrayDeclarator) {
         const length = declarator.length.codegen(ctx);
-        if (length.form !== ExpressionResultType.CONSTANT) {
+        if (!(length.expr instanceof WExpression)) {
+            throw new SyntaxError("illegal length type", declarator);
+        }
+        length.expr = length.expr.fold();
+        if (!(length.expr instanceof WConst)) {
             throw new SyntaxError("var length array is not support currently", declarator);
         }
         if (!(length.type instanceof IntegerType)) {
@@ -124,7 +124,7 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
         if (declarator.qualifiers.length !== 0) {
             ctx.raiseWarning("unsupport array qualifier");
         }
-        return new ArrayType(type, (length.value as Long).toNumber());
+        return new ArrayType(type, parseInt(length.expr.constant));
     } else {
         throw new SyntaxError("UnsupportDeclaratorType:" + declarator.constructor.name,
             declarator);
@@ -132,12 +132,10 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
 }
 
 TranslationUnit.prototype.codegen = function(ctx: CompileContext) {
-    ctx.currentNode = this;
     this.body.map((item) => item.codegen(ctx));
 };
 
 Declaration.prototype.codegen = function(ctx: CompileContext) {
-    ctx.currentNode = this;
     const baseType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
     const isTypedef = this.specifiers.includes("typedef");
     for (const declarator of this.initDeclarators) {
@@ -182,12 +180,9 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             } else if (declarator.initializer !== null) {
                 storageType = AddressType.MEMORY_DATA;
                 location = ctx.memory.allocData(type.length);
-            } else {
-                storageType = AddressType.MEMORY_BSS;
-                location = ctx.memory.allocBSS(type.length);
             }
         } else {
-            if (type instanceof QualifiedType && type.isExtern) {
+            if (type.isExtern) {
                 throw new SyntaxError("local variable could not be extern:  " + name, this);
             }
             // TODO:: support static function variable;
@@ -249,11 +244,15 @@ EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
                 val = now;
             } else {
                 const expr = enumerator.value.codegen(ctx);
-                if ( expr.form !== ExpressionResultType.CONSTANT ||
+                if (!(expr.expr instanceof WExpression)) {
+                    throw new SyntaxError("illegal enumrator type", this);
+                }
+                expr.expr = expr.expr.fold();
+                if ( !(expr.expr instanceof WConst) ||
                     !(expr.type instanceof IntegerType) ) {
                     throw new SyntaxError(`enum value must be integer`, this);
                 }
-                val = (expr.value as Long).toNumber();
+                val = parseInt(expr.expr.constant);
             }
             ctx.currentScope.set(this.identifier.name, new Variable(
                 this.identifier.name, ctx.fileName, PrimitiveTypes.int32,
