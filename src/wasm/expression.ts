@@ -10,7 +10,7 @@ import {
     BinaryOperator,
     Control, ConvertOperator,
     F32, F32Convert,
-    F64, F64Convert, getTypeConvertOpe,
+    F64, F64Convert, getNativeType, getOperationType, getTypeConvertOpe,
     I32, I32Convert,
     I64, I64Convert,
     OpTypeMap, UnaryOperator,
@@ -200,7 +200,18 @@ export class WLoad extends WExpression {
 
     public emit(e: Emitter): void {
         this.address.emit(e);
-        e.writeByte((WTypeMap.get(this.type) as any)["load"]);
+        switch (this.type) {
+            case WType.u8: e.writeByte(I32.load8_u); break;
+            case WType.u16: e.writeByte(I32.load16_u); break;
+            case WType.i8: e.writeByte(I32.load8_s); break;
+            case WType.i16: e.writeByte(I32.load16_s); break;
+            case WType.i32:
+            case WType.u32: e.writeByte(I32.load); break;
+            case WType.f32: e.writeByte(F32.load); break;
+            case WType.f64: e.writeByte(F64.load); break;
+            case WType.i64:
+            case WType.u64: e.writeByte(I64.load); break;
+        }
         e.writeUint32(getAlign(this.offset));
         e.writeUint32(this.offset);
     }
@@ -221,6 +232,41 @@ export class WLoad extends WExpression {
 
     public isPure(): boolean {
         return this.address.isPure();
+    }
+}
+
+export class WGetGlobal extends WExpression {
+    public type: WType;
+    public name: string;
+
+    constructor(type: WType, name: string, location?: SourceLocation) {
+        super(location);
+        this.type = type;
+        this.name = name;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(Control.get_global);
+        e.writeUint32(e.getGlobalIdx(this.name));
+    }
+
+    public length(e: Emitter): number {
+        return 1 + getLeb128UintLength(e.getGlobalIdx(this.name));
+    }
+
+    public deduceType(e: Emitter): WType {
+        if ( this.type !== e.getGlobalType(this.name)) {
+            throw new EmitError(`type mismatch at getglobal`);
+        }
+        return this.type;
+    }
+
+    public fold(): WExpression {
+        return this;
+    }
+
+    public isPure(): boolean {
+        return true;
     }
 }
 
@@ -267,7 +313,7 @@ export class WConst extends WExpression {
     }
 
     public emit(e: Emitter): void {
-        switch (this.type) {
+        switch (getNativeType(this.type)) {
             case WType.i32:
                 e.writeByte(I32.const);
                 e.writeInt32(parseInt(this.constant));
@@ -292,7 +338,7 @@ export class WConst extends WExpression {
     }
 
     public length(e: Emitter): number {
-        switch (this.type) {
+        switch (getNativeType(this.type)) {
             case WType.i32:
                 return 1 + getLeb128IntLength(parseInt(this.constant));
             case WType.u32:

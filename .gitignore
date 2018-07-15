@@ -17,3 +17,4 @@ ast.map
 coverage/
 *.wasm
 *.wast
+*.wat

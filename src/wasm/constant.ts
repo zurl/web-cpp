@@ -494,3 +494,35 @@ export function getOpFromStr(op: string, type: WType): BinaryOperator| UnaryOper
     }
     return null;
 }
+
+export function getOperationType(type: WType): WType {
+    switch (type) {
+        case WType.u8:
+        case WType.u16:
+        case WType.u32: return WType.u32;
+        case WType.i8:
+        case WType.i16:
+        case WType.i32: return WType.i32;
+        case WType.f32: return WType.f32;
+        case WType.f64: return WType.f64;
+        case WType.i64: return WType.i64;
+        case WType.u64: return WType.u64;
+    }
+    return WType.none;
+}
+
+export function getNativeType(type: WType): WType {
+    switch (type) {
+        case WType.u8:
+        case WType.u16:
+        case WType.u32:
+        case WType.i8:
+        case WType.i16:
+        case WType.i32: return WType.i32;
+        case WType.f32: return WType.f32;
+        case WType.f64: return WType.f64;
+        case WType.i64:
+        case WType.u64: return WType.i64;
+    }
+    return WType.none;
+}

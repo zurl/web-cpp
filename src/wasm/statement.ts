@@ -5,7 +5,7 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
-import {Control, WType, WTypeMap} from "./constant";
+import {Control, F32, F64, I32, I64, WType, WTypeMap} from "./constant";
 import {Emitter} from "./emitter";
 import {getAlign} from "./expression";
 import {getLeb128UintLength} from "./leb128";
@@ -75,7 +75,18 @@ export class WStore extends WStatement {
         }
         this.address.emit(e);
         this.value.emit(e);
-        e.writeByte((WTypeMap.get(this.type) as any)["store"]);
+        switch (this.type) {
+            case WType.u8:
+            case WType.i8: e.writeByte(I32.store8); break;
+            case WType.i16:
+            case WType.u16: e.writeByte(I32.store16); break;
+            case WType.i32:
+            case WType.u32: e.writeByte(I32.store); break;
+            case WType.f32: e.writeByte(F32.store); break;
+            case WType.f64: e.writeByte(F64.store); break;
+            case WType.i64:
+            case WType.u64: e.writeByte(I64.store); break;
+        }
         e.writeUint32(getAlign(this.offset));
         e.writeUint32(this.offset);
     }
@@ -108,7 +119,32 @@ export class WSetLocal extends WStatement {
     public length(e: Emitter): number {
         return this.value.length(e) + 1 + getLeb128UintLength(this.offset);
     }
+}
 
+export class WSetGlobal extends WStatement {
+    public type: WType;
+    public name: string;
+    public value: WExpression;
+
+    constructor(type: WType, name: string, value: WExpression, location?: SourceLocation) {
+        super(location);
+        this.type = type;
+        this.name = name;
+        this.value = value;
+    }
+
+    public emit(e: Emitter): void {
+        if (e.getGlobalType(this.name) !== this.type) {
+            throw new EmitError(`type mismatch at set_global`);
+        }
+        this.value.emit(e);
+        e.writeByte(Control.set_global);
+        e.writeUint32(e.getGlobalType(this.name));
+    }
+
+    public length(e: Emitter): number {
+        return this.value.length(e) + 1 + getLeb128UintLength(e.getGlobalType(this.name));
+    }
 }
 
 export class WDrop extends WStatement {
@@ -130,7 +166,7 @@ export class WDrop extends WStatement {
 
 }
 
-export class WBr extends WStatement{
+export class WBr extends WStatement {
     public labelIdx: number;
 
     constructor(labelIdx: number, location?: SourceLocation) {
@@ -148,7 +184,7 @@ export class WBr extends WStatement{
     }
 }
 
-export class WBrIf extends WStatement{
+export class WBrIf extends WStatement {
     public labelIdx: number;
     public expression: WExpression;
 

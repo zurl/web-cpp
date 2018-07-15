@@ -4,6 +4,7 @@
  *  Created at 14/07/2018
  */
 import {EmitError} from "../common/error";
+import {WType} from "./constant";
 import {writeLeb128Int, writeLeb128Uint} from "./leb128";
 import {WFunction, WFunctionType} from "./section";
 import {writeUtf8String} from "./utf8";
@@ -38,6 +39,12 @@ export interface Emitter {
     setCurrentFunc(func?: WFunction): void;
 
     getCurrentFunc(): WFunction;
+
+    getGlobalType(name: string): WType;
+
+    getGlobalIdx(name: string): number;
+
+    setGlobalIdx(name: string, type: WType): void;
 }
 
 export class WASMEmitter implements Emitter {
@@ -46,6 +53,8 @@ export class WASMEmitter implements Emitter {
     public now: number;
     public funcIdx: Map<string, [number, WFunctionType]>;
     public funcIdxCount: number;
+    public globalIdx: Map<string, [number, WType]>;
+    public globalIdxCount: number;
     public currentFunc?: WFunction;
 
     constructor() {
@@ -54,6 +63,8 @@ export class WASMEmitter implements Emitter {
         this.now = 0;
         this.funcIdx = new Map<string, [number, WFunctionType]>();
         this.funcIdxCount = 0;
+        this.globalIdx = new Map<string, [number, WType]>();
+        this.globalIdxCount = 0;
     }
 
     public writeByte(byte: number): void {
@@ -116,6 +127,28 @@ export class WASMEmitter implements Emitter {
         }
         this.funcIdx.set(name, [this.funcIdxCount, type]);
         return this.funcIdxCount++;
+    }
+
+    public getGlobalType(name: string): WType {
+        if (!this.globalIdx.has(name)) {
+            throw new EmitError(`undefined name ${name}`);
+        }
+        return this.globalIdx.get(name)![1];
+    }
+
+    public getGlobalIdx(name: string): number {
+        if (!this.globalIdx.has(name)) {
+            throw new EmitError(`undefined name ${name}`);
+        }
+        return this.globalIdx.get(name)![0];
+    }
+
+    public setGlobalIdx(name: string, type: WType): number {
+        if (this.globalIdx.has(name)) {
+            throw new EmitError(`duplicated name ${name}`);
+        }
+        this.globalIdx.set(name, [this.globalIdxCount, type]);
+        return this.globalIdxCount++;
     }
 
     public setCurrentFunc(func?: WFunction) {

@@ -2,7 +2,7 @@ const {
     WCodeSection, WFunction, WModule, WLoad,
     F32Binary, F32Const, WReturn, WImportFunction,
     F32Unary,
-    F64Binary, F64Const, WCall,
+    F64Binary, F64Const, WCall, WGlobalVariable,
     F64Unary,
     I32Binary, I32Const,
     I32Unary,
@@ -35,7 +35,11 @@ describe('wasm', function () {
             imports: [
                 new WImportFunction("js", "print", [], [i32])
             ],
-            exports: ["main"]
+            exports: ["main"],
+            globals: [
+                new WGlobalVariable("$sp", i32, new WConst(i32, '0')),
+                new WGlobalVariable("$bp", i32, new WConst(i32, '0')),
+            ]
         });
         const emitter = new WASMEmitter();
         mod.emit(emitter);

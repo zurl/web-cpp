@@ -7,7 +7,7 @@ import {SourceLocation} from "../common/ast";
 import {Control, SectionCode, WType} from "./constant";
 import {Emitter} from "./emitter";
 import {getLeb128UintLength} from "./leb128";
-import {getArrayLength, WNode, WSection, WStatement} from "./node";
+import {getArrayLength, WExpression, WNode, WSection, WStatement} from "./node";
 import {getUtf8StringLength} from "./utf8";
 
 export class WFunction extends WNode {
@@ -314,22 +314,77 @@ export class WExportSection extends WSection {
     }
 }
 
+export class WGlobalVariable extends WNode {
+    public name: string;
+    public type: WType;
+    public init: WExpression;
+
+    constructor(name: string, type: WType, init: WExpression, location?: SourceLocation) {
+        super(location);
+        this.name = name;
+        this.type = type;
+        this.init = init;
+    }
+
+    public emit(e: Emitter): void {
+        e.setGlobalIdx(this.name, this.type);
+        e.writeByte(this.type);
+        e.writeByte(0x00); // mutable
+        this.init.emit(e);
+        e.writeByte(Control.end);
+    }
+
+    public length(e: Emitter): number {
+        return 3 + this.init.length(e);
+    }
+
+}
+
+export class WGlobalSection extends WSection {
+    public globals: WGlobalVariable[];
+
+    constructor(functions: WGlobalVariable[], location?: SourceLocation) {
+        super(location);
+        this.globals = functions;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(SectionCode.global);
+        e.writeUint32(this.getBodyLength(e));
+        e.writeUint32(this.globals.length);
+        this.globals.map((x) => x.emit(e));
+    }
+
+    public getBodyLength(e: Emitter): number {
+        return getLeb128UintLength(this.globals.length) +
+            getArrayLength(this.globals, (x) => x.length(e));
+    }
+
+    public length(e: Emitter): number {
+        return getLeb128UintLength(this.getBodyLength(e)) +
+            this.getBodyLength(e) + 1;
+    }
+}
+
 export interface WModuleConfig {
     functions: WFunction[];
     imports: WImportFunction[];
     exports: string[];
+    globals: WGlobalVariable[];
 }
 
 export class WModule extends WNode {
     public functions: WFunction[];
     public imports: WImportFunction[];
     public exports: string[];
+    public globals: WGlobalVariable[];
 
     constructor(config: WModuleConfig, location?: SourceLocation) {
         super(location);
         this.functions = config.functions;
         this.imports = config.imports;
         this.exports = config.exports;
+        this.globals = config.globals;
     }
 
     public emit(e: Emitter): void {
@@ -340,6 +395,7 @@ export class WModule extends WNode {
             importSection,
             functionSection,
             memorySection,
+            globalSection,
             exportSection,
             codeSection,
         } = this.generateSections();
@@ -347,6 +403,7 @@ export class WModule extends WNode {
         importSection.emit(e);
         functionSection.emit(e);
         memorySection.emit(e);
+        globalSection.emit(e);
         exportSection.emit(e);
         codeSection.emit(e);
     }
@@ -364,6 +421,7 @@ export class WModule extends WNode {
 
         const exports = this.exports.map((x) => new WExportFunction(x, this.location));
 
+        const globalSection = new WGlobalSection(this.globals, this.location);
         const importSection = new WImportSection(this.imports, this.location);
         const memorySection = new WMemorySection([[2, null]], this.location);
         const functionSection = new WFunctionSection(this.functions, this.location);
@@ -376,6 +434,7 @@ export class WModule extends WNode {
             importSection,
             functionSection,
             memorySection,
+            globalSection,
             exportSection,
             codeSection,
         };

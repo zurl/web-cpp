@@ -14,19 +14,21 @@ import {
 import {assertType, SyntaxError} from "../common/error";
 import {OpCode} from "../common/instruction";
 import {
+    AddressType,
     FunctionType,
     PointerType,
     PrimitiveTypes,
     Type,
     Variable,
-    AddressType,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
-import {WCall} from "../wasm";
-import {WExpression} from "../wasm/node";
+import {I32Binary, WBinaryOperation, WCall, WConst, WLoad, WType} from "../wasm";
+import {WGetGlobal, WGetLocal} from "../wasm/expression";
+import {WExpression, WStatement} from "../wasm/node";
+import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {CompileContext} from "./context";
-import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {doConversion} from "./conversion";
+import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
@@ -54,15 +56,6 @@ ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string
     return [parameterTypes, parameterNames, this.variableArguments];
 };
 
-/**
- * __cdecl call standard
- *  bp - 4 => local_var 1
- *  bp + 0 => saved_ebp
- *  bp + 4 => return_addr
- *  bp + 8 => arg1
- *  bp + ..=> arg2
- * @param {CompileContext} ctx
- */
 FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     const resultType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
     if (resultType == null) {
@@ -91,7 +84,6 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     }
     ctx.enterFunction(functionEntity);
     // alloc parameters
-    let loc = 8;
     for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
@@ -102,27 +94,39 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
             throw new SyntaxError(`redefined parameter ${name}`, this);
         }
         ctx.currentScope.set(name, new Variable(
-            name, ctx.fileName, type, AddressType.STACK, loc,
+            name, ctx.fileName, type, AddressType.LOCAL, ctx.memory.allocLocal(),
         ));
-        loc += type.length;
     }
-    ctx.currentNode = this;
-    const l0 = ctx.currentBuilder!.now;
-    ctx.build(OpCode.SSP, 0);
+
+    const bodyStatements: WStatement[] = [];
+    const savedStatements = ctx.getStatementContainer();
+    ctx.setStatementContainer(bodyStatements);
+
+    // register sp & bp
+    // TODO:: could optimize it out
+    functionEntity.$sp = ctx.memory.allocLocal();
+
+    // sp = $sp
+    ctx.submitStatement(
+        new WSetLocal(WType.u32, functionEntity.$sp,
+            new WGetGlobal(WType.u32, "$sp", this.location), this.location));
+
+    // sp = $sp - 0
+    const offsetNode = new WConst(WType.u32, "0", this.location);
+    ctx.submitStatement(
+        new WSetGlobal(WType.u32, "$sp",
+            new WBinaryOperation(I32Binary.sub,
+                new WGetLocal(WType.u32, functionEntity.$sp, this.location),
+                offsetNode, this.location), this.location));
+
     this.body.body.map((item) => item.codegen(ctx));
-    ctx.currentBuilder.codeView.setInt32(l0 + 1, ctx.memory.stackPtr);
-    ctx.currentFunction!.assertPostions.map((pos) => {
-        ctx.currentBuilder.codeView.setInt32(pos + 1, ctx.memory.stackPtr);
-    });
-    const l1 = ctx.currentBuilder.now;
-    const op = ctx.currentBuilder.codeView.getUint8(l1 - 5);
-    if ( op !== OpCode.RETVARGS && op !== OpCode.RET) {
-        if ( functionEntity.type.returnType.equals(PrimitiveTypes.void)) {
-            new ReturnStatement(this.location, null).codegen(ctx);
-        } else {
-            throw new SyntaxError(`Not of all branch of Function ${functionEntity.fullName} has return`, this);
-        }
-    }
+
+    // $sp = sp
+    ctx.submitStatement(
+        new WSetGlobal(WType.u32, "$sp",
+            new WGetLocal(WType.u32, functionEntity.$sp, this.location), this.location));
+
+    ctx.setStatementContainer(savedStatements);
     ctx.exitFunction();
 };
 

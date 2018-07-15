@@ -5,8 +5,7 @@
  */
 
 import {InternalError, LinkerError} from "../common/error";
-import {FunctionEntity, Type, Variable, AddressType} from "../common/type";
-import {getIndent} from "../common/utils";
+import {AddressType, FunctionEntity, Type, Variable} from "../common/type";
 
 export class Scope {
     public name: string;

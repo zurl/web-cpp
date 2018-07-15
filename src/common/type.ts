@@ -122,20 +122,20 @@ export abstract class FloatingType extends ArithmeticType {
 }
 
 export abstract class SignedIntegerType extends IntegerType {
-    public toWType() {
-        return WType.i32;
-    }
+
 }
 
 export abstract class UnsignedIntegerType extends IntegerType {
-    public toWType() {
-        return WType.u32;
-    }
+
 }
 
 export class BoolType extends UnsignedIntegerType {
     get length(): number {
         return 1;
+    }
+
+    public toWType() {
+        return WType.i8;
     }
 }
 
@@ -144,17 +144,29 @@ export class CharType extends SignedIntegerType {
     get length(): number {
         return 1;
     }
+
+    public toWType() {
+        return WType.i8;
+    }
 }
 
 export class Int16Type extends SignedIntegerType {
     get length(): number {
         return 2;
     }
+
+    public toWType() {
+        return WType.i16;
+    }
 }
 
 export class Int32Type extends SignedIntegerType {
     get length(): number {
         return 4;
+    }
+
+    public toWType() {
+        return WType.i32;
     }
 }
 
@@ -172,17 +184,29 @@ export class UnsignedCharType extends UnsignedIntegerType {
     get length(): number {
         return 1;
     }
+
+    public toWType() {
+        return WType.u8;
+    }
 }
 
 export class UnsignedInt16Type extends UnsignedIntegerType {
     get length(): number {
         return 2;
     }
+
+    public toWType() {
+        return WType.u16;
+    }
 }
 
 export class UnsignedInt32Type extends UnsignedIntegerType {
     get length(): number {
         return 4;
+    }
+
+    public toWType() {
+        return WType.u32;
     }
 }
 
@@ -477,7 +501,7 @@ export class FunctionEntity {
     public fullName: string;
     public isLibCall: boolean;
     public parametersSize: number;
-    public assertPostions: number[];
+    public $sp: number;
 
     constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
         this.name = name;
@@ -487,7 +511,7 @@ export class FunctionEntity {
         this.location = -1;
         this.fullName = fullName;
         this.isLibCall = false;
-        this.assertPostions = [];
+        this.$sp = 0;
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
             .reduce((x, y) => x + y, 0);

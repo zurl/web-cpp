@@ -31,9 +31,10 @@ export {
 
 export {
     WModule,
-    WModuleConfig,
     WFunction,
+    WModuleConfig,
     WImportFunction,
+    WGlobalVariable,
 } from "./section";
 
 export {
