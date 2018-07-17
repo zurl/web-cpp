@@ -67,6 +67,7 @@ local var:  @foo@var1
 - [ ] #line __line__ __file__
 - [ ] & array
 - [ ] constant fold on tree
+- [ ] init instructions
 ## C++ Language
 - [ ] 异常处理
 - [ ] 左值引用

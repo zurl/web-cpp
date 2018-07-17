@@ -110,15 +110,11 @@ function printAST(node, indent = 0, nameIndent = 0) {
 // }
 
 module.exports = {
-    generateAsm,
-    testCode,
-    testFullCode,
     components:{
         preprocess,
         CParser,
         codegen,
         CompileContext,
-        InstructionBuilder,
         Linker
     },
     compile,
@@ -126,7 +122,5 @@ module.exports = {
     JsAPIMap,
     Headers,
     mergeScopeMap,
-    showASM,
-    dumpScopeMap,
-    LibraryObjects
+    dumpScopeMap
 };

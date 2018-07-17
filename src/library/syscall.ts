@@ -4,46 +4,37 @@
  *  Created at 08/07/2018
  */
 import {RuntimeError} from "../common/error";
-import {VirtualMachine} from "../vm";
+import {Runtime} from "../runtime/runtime";
 
-export function write(vm: VirtualMachine): void {
-    const fd = vm.popUint32();
-    const ptr = vm.popUint32();
-    const size = vm.popUint32();
-    if (fd >= vm.files.length) {
-        vm.pushInt32(-1);
-        return;
+export function write(this: Runtime, fd: number, ptr: number, size: number): number {
+    if (fd >= this.files.length) {
+        return -1;
     }
-    const file = vm.files[fd];
-    const cnt = file.write(vm.memory.buffer.slice(ptr, ptr + size));
-    vm.pushInt32(cnt);
+    const file = this.files[fd];
+    return file.write(this.memory.buffer.slice(ptr, ptr + size));
 }
 
-export function read(vm: VirtualMachine): void {
-    const fd = vm.popUint32();
-    const ptr = vm.popUint32();
-    const size = vm.popUint32();
-    if (fd >= vm.files.length) {
-        vm.pushInt32(-1);
-        return;
+export function read(this: Runtime, fd: number, ptr: number, size: number): number {
+    if (fd >= this.files.length) {
+        return -1;
     }
-    const file = vm.files[fd];
-    const cnt = file.read(vm.memory.buffer, ptr, size);
-    vm.pushInt32(cnt);
+    const file = this.files[fd];
+    return file.read(this.memory.buffer, ptr, size);
 }
 
 const printfBuffer = new ArrayBuffer(1000);
 const printfView = new DataView(printfBuffer);
 
-export function printf(vm: VirtualMachine): void {
-    let formatptr = vm.popUint32();
-    let argleft = vm.popUint32();
-    let chr = vm.memory.getUint8(formatptr);
+export function printf(this: Runtime): number {
+    let sp = this.sp;
+    let formatptr = this.memory.getUint32(sp, true);
+    sp += 4;
+    let chr = this.memory.getUint8(formatptr);
     let size = 0;
     while ( chr !== 0) {
         if ( chr === "%".charCodeAt(0)) {
             formatptr ++;
-            let chr2 = String.fromCharCode(vm.memory.getUint8(formatptr));
+            let chr2 = String.fromCharCode(this.memory.getUint8(formatptr));
             let intPart = 0, floatPart = 0, isFloat = false;
             if ( chr2 === "." || (
                 chr2.charCodeAt(0) >= "0".charCodeAt(0) &&
@@ -59,30 +50,43 @@ export function printf(vm: VirtualMachine): void {
                         intPart = intPart * 10 + (+chr2);
                     }
                     formatptr ++;
-                    chr2 = String.fromCharCode(vm.memory.getUint8(formatptr));
+                    chr2 = String.fromCharCode(this.memory.getUint8(formatptr));
                 }
+            }
+            let isLong = false;
+            if ( chr2 === "l") {
+                isLong = true;
+                formatptr++;
+                chr2 = String.fromCharCode(this.memory.getUint8(formatptr));
             }
             if (chr2 === "%") {
                 printfView.setUint8(size, "%".charCodeAt(0));
             } else if (chr2 === "d") {
-                const str = vm.popInt32().toString();
+                const str = this.memory.getInt32(sp, true).toString();
+                sp += 4;
                 for (let j = 0; j < str.length; j++) {
                     printfView.setUint8(size, str.charCodeAt(j));
                     size++;
                 }
-                argleft -= 4;
             } else if (chr2 === "s") {
-                let strptr = vm.popUint32();
-                let strchr = vm.memory.getUint8(strptr);
+                let strptr = this.memory.getInt32(sp, true);
+                sp += 4;
+                let strchr = this.memory.getUint8(strptr);
                 while (strchr !== 0) {
-                    vm.memory.setUint8(size, strchr);
+                    printfView.setUint8(size, strchr);
                     size ++;
                     strptr++;
-                    strchr = vm.memory.getUint8(strptr);
+                    strchr = this.memory.getUint8(strptr);
                 }
-                argleft -= 4;
             } else if (chr2 === "f") {
-                let str = vm.popFloat64().toString();
+                let str: string;
+                if (!isLong) {
+                    str = this.memory.getFloat32(sp, true).toString();
+                    sp += 4;
+                } else {
+                    str = this.memory.getFloat64(sp, true).toString();
+                    sp += 8;
+                }
                 if ( floatPart !== 0) {
                     const tokens = str.split(".");
                     if (tokens.length >= 2) {
@@ -94,7 +98,6 @@ export function printf(vm: VirtualMachine): void {
                     printfView.setUint8(size, str.charCodeAt(j));
                     size++;
                 }
-                argleft -= 8;
             } else {
                 printfView.setUint8(size, "%".charCodeAt(0));
                 size++;
@@ -106,12 +109,9 @@ export function printf(vm: VirtualMachine): void {
             size ++;
         }
         formatptr ++;
-        chr = vm.memory.getUint8(formatptr);
+        chr = this.memory.getUint8(formatptr);
     }
-    const file = vm.files[1];
-    const cnt = file.write(printfBuffer.slice(0, size));
-    if ( argleft !== 0 && vm.strictMode) {
-        throw new RuntimeError(`printf arg is not correct`);
-    }
-    vm.pushInt32(cnt);
+    const file = this.files[1];
+    console.log("$sp:" + this.sp);
+    return file.write(printfBuffer.slice(0, size));
 }

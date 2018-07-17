@@ -98,12 +98,12 @@ export class WASMEmitter implements Emitter {
     }
 
     public writeFloat32(float: number): void {
-        this.view.setFloat32(this.now, float);
+        this.view.setFloat32(this.now, float, true);
         this.now += 4;
     }
 
     public writeFloat64(float: number): void {
-        this.view.setFloat64(this.now, float);
+        this.view.setFloat64(this.now, float, true);
         this.now += 8;
     }
 

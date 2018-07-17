@@ -18,7 +18,7 @@ import {
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
 import {
-    AddressType, CharType, DoubleType, FloatingType, FloatType,
+    AddressType, ArrayType, CharType, ClassType, DoubleType, FloatingType, FloatType,
     FunctionEntity, Int16Type, Int32Type, Int64Type, IntegerType,
     PointerType,
     PrimitiveTypes,
@@ -31,6 +31,7 @@ import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
 import {recycleExpressionResult} from "./statement";
+import {WExpression} from "../wasm/node";
 
 ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     return this.expression.codegen(ctx);
@@ -57,20 +58,33 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         throw new SyntaxError(`could not assign a function name`, this);
     }
 
+    if ( left.type instanceof ArrayType || left.type instanceof ClassType) {
+        throw new SyntaxError(`currently unsupport`, this);
+    }
+
     // 对于初始化表达式 支持常量初始化到data段
-    if (this.isInitExpr && this.left instanceof Identifier
-        && right.expr instanceof WConst
-        && (right.type instanceof IntegerType ||
-            right.type instanceof FloatingType ||
-            right.type.equals(PrimitiveTypes.__ccharptr))) {
-        if (left.expr.type === AddressType.MEMORY_DATA) {
+    if (this.isInitExpr && this.left instanceof Identifier &&
+        left.expr.type === AddressType.MEMORY_DATA) {
+        // int & float
+        if ( right.expr instanceof WConst &&
+            (right.type instanceof IntegerType || right.type instanceof FloatingType)) {
             doVarInit(ctx, left.type, right.type, left.expr.place as number,
                 right.expr.constant, this);
             return left;
         }
+        // const char
+        if (right.expr instanceof WGetAddress &&
+            right.expr.form === WMemoryLocation.DATA &&
+            right.type.equals(PrimitiveTypes.__ccharptr)) {
+            if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr)) ) {
+                throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, this);
+            }
+            ctx.memory.data.setUint32(left.expr.place as number, right.expr.offset, true);
+            return left;
+        }
     }
 
-    ctx.submitStatement(left.expr.createStore(ctx, left.type.toWType(),
+    ctx.submitStatement(left.expr.createStore(ctx, left.type,
         doConversion(ctx, left.type, right, this).fold()));
 
     return left;
@@ -166,6 +180,8 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     const dstType = this.deduceType(ctx);
     const op = getOpFromStr(this.operator, dstType.toWType());
 
+
+
     if ( op === null ) {
         throw new InternalError(`unsupport op ${this.operator}`);
     }
@@ -188,13 +204,23 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         }
     }
 
+    let leftExpr = doConversion(ctx, dstType, left, this);
+    let rightExpr = doConversion(ctx, dstType, right, this);
+
+    if( this.operator === "&&" || this.operator === "||"){
+        leftExpr = new WBinaryOperation(I32Binary.ne, leftExpr,
+            new WConst(WType.i32, "0", this.location), this.location);
+        rightExpr = new WBinaryOperation(I32Binary.ne, rightExpr,
+            new WConst(WType.i32, "0", this.location), this.location);
+    }
+
     return {
         type: dstType,
         isLeft: false,
         expr: new WBinaryOperation(
             op as BinaryOperator,
-            doConversion(ctx, dstType, left, this),
-            doConversion(ctx, dstType, right, this),
+            leftExpr,
+            rightExpr,
             this.location,
         ),
     };
@@ -282,34 +308,29 @@ SubscriptExpression.prototype.codegen = function(ctx: CompileContext): Expressio
 export function doVarInit(ctx: CompileContext, leftType: Type, rightType: Type,
                           leftValue: number, rightValue: string, node: Node) {
     // charptr, int, double
-    if (rightType.equals(PrimitiveTypes.__ccharptr)) {
-        if (!(leftType.equals(PrimitiveTypes.__charptr)) && !(leftType.equals(PrimitiveTypes.__ccharptr)) ) {
-            throw new SyntaxError(`unsupport init from ${leftType} to ${rightType}`, node);
-        }
-        ctx.memory.data.setUint32(leftValue, parseInt(rightValue));
-    }
+    // arraybuffer is small endian, exchange required
     if (leftType instanceof UnsignedCharType) {
         ctx.memory.data.setUint8(leftValue, parseInt(rightValue));
     } else if (leftType instanceof CharType) {
         ctx.memory.data.setInt8(leftValue, parseInt(rightValue));
     } else if (leftType instanceof UnsignedInt16Type) {
-        ctx.memory.data.setUint16(leftValue, parseInt(rightValue));
+        ctx.memory.data.setUint16(leftValue, parseInt(rightValue), true);
     } else if (leftType instanceof UnsignedInt32Type) {
-        ctx.memory.data.setUint32(leftValue, parseInt(rightValue));
+        ctx.memory.data.setUint32(leftValue, parseInt(rightValue), true);
     } else if (leftType instanceof UnsignedInt64Type) {
-        ctx.memory.data.setUint32(leftValue, Long.fromString(rightValue).high);
-        ctx.memory.data.setUint32(leftValue + 4, Long.fromString(rightValue).low);
+        ctx.memory.data.setUint32(leftValue, Long.fromString(rightValue).low, true);
+        ctx.memory.data.setUint32(leftValue + 4, Long.fromString(rightValue).low, true);
     } else if (leftType instanceof Int16Type) {
-        ctx.memory.data.setInt16(leftValue, parseInt(rightValue));
+        ctx.memory.data.setInt16(leftValue, parseInt(rightValue), true);
     } else if (leftType instanceof Int32Type) {
-        ctx.memory.data.setInt32(leftValue, parseInt(rightValue));
+        ctx.memory.data.setInt32(leftValue, parseInt(rightValue), true);
     } else if (leftType instanceof Int64Type) {
-        ctx.memory.data.setInt32(leftValue, Long.fromString(rightValue).high);
-        ctx.memory.data.setInt32(leftValue + 4, Long.fromString(rightValue).low);
+        ctx.memory.data.setInt32(leftValue, Long.fromString(rightValue).low);
+        ctx.memory.data.setInt32(leftValue + 4, Long.fromString(rightValue).high, true);
     } else if (leftType instanceof FloatType) {
-        ctx.memory.data.setFloat32(leftValue, parseFloat(rightValue));
+        ctx.memory.data.setFloat32(leftValue, parseFloat(rightValue), true);
     } else if (leftType instanceof DoubleType) {
-        ctx.memory.data.setFloat64(leftValue, parseFloat(rightValue));
+        ctx.memory.data.setFloat64(leftValue, parseFloat(rightValue), true);
     } else {
         throw new InternalError(`unsupport type assignment`);
     }

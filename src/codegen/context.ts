@@ -26,11 +26,11 @@ export class CompileContext {
     public options: CompileOptions;
     public scopeMap: Map<string, Scope>;
     public memory: MemoryLayout;
-    public loopLevel: number;
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
     public currentScope: Scope;
     public statementContainer: WStatement[];
+    public loopStack: [number, number][];
 
     // result
     public functions: WFunction[];
@@ -55,9 +55,9 @@ export class CompileContext {
         this.source = source;
         this.options.detectStackPollution = true;
         this.statementContainer = [];
-        this.loopLevel = 0;
         this.functions = [];
         this.imports = [];
+        this.loopStack = [];
     }
 
     public isCpp(): boolean {
@@ -128,6 +128,7 @@ export class CompileContext {
             imports: this.imports,
             exports: [], // TODO:: exports
             data: this.memory.dataBuffer,
+            globalStatements: this.statementContainer,
         };
     }
 }

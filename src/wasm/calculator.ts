@@ -21,8 +21,10 @@ export function doUnaryCompute(ope: UnaryOperator, value: number): number {
             return Math.abs(value);
         case F32Unary.ceil:
             return Math.ceil(value);
+        case I32Unary.eqz:
+            return +(value === 0);
     }
-    throw new RuntimeError(`unsupport operator`);
+    throw new RuntimeError(`unsupport operator ${ope}`);
 }
 
 export function doBinaryCompute(ope: BinaryOperator, lhs: number, rhs: number): number {
@@ -54,6 +56,52 @@ export function doBinaryCompute(ope: BinaryOperator, lhs: number, rhs: number): 
         case I32Binary.rem_u:
         case I64Binary.rem_u:
             return lhs % rhs;
+        case I32Binary.ge_s:
+        case I64Binary.ge_s:
+        case I32Binary.ge_u:
+        case I64Binary.ge_u:
+            return +(lhs >= rhs);
+        case I32Binary.gt_s:
+        case I64Binary.gt_s:
+        case I32Binary.gt_u:
+        case I64Binary.gt_u:
+        case F32Binary.gt:
+        case F64Binary.gt:
+            return +(lhs > rhs);
+        case I32Binary.le_s:
+        case I64Binary.le_s:
+        case I32Binary.le_u:
+        case I64Binary.le_u:
+        case F32Binary.le:
+        case F64Binary.le:
+            return +(lhs <= rhs);
+        case I32Binary.lt_s:
+        case I64Binary.lt_s:
+        case I32Binary.lt_u:
+        case I64Binary.lt_u:
+        case F32Binary.lt:
+        case F64Binary.lt:
+            return +(lhs < rhs);
+        case I32Binary.eq:
+        case I64Binary.eq:
+        case F32Binary.eq:
+        case F64Binary.eq:
+            return +(lhs === rhs);
+        case I32Binary.ne:
+        case I64Binary.ne:
+        case F32Binary.ne:
+        case F64Binary.ne:
+            return +(lhs !== rhs);
+        case I32Binary.and:
+        case I64Binary.and:
+            return +(lhs & rhs);
+        case I32Binary.or:
+        case I64Binary.or:
+            return +(lhs | rhs);
+        case I32Binary.xor:
+        case I64Binary.xor:
+            return +(lhs ^ rhs);
+
     }
-    throw new RuntimeError(`unsupport operator`);
+    throw new RuntimeError(`unsupport operator ${ope}`);
 }

@@ -3,11 +3,24 @@
 import {LinkerError} from "../common/error";
 import {BinaryObject, CompiledObject} from "../common/object";
 import {ImportObject} from "../runtime/runtime";
-import {i32, u32, WASMEmitter, WConst, WFunction, WGlobalVariable, WImportFunction, WModule} from "../wasm";
+import {
+    i32,
+    u32,
+    WASMEmitter,
+    WCall,
+    WConst,
+    WFunction,
+    WGlobalVariable,
+    WImportFunction,
+    WModule, WReturn,
+    WType,
+} from "../wasm";
 import {printWNode} from "../wasm/tools";
 
 import * as fs from "fs";
-import {WDataSegment} from "../wasm/section";
+import {WGetGlobal, WGetLocal} from "../wasm/expression";
+import {WDataSegment, WImportItem, WImportMemory} from "../wasm/section";
+import {WSetGlobal} from "../wasm/statement";
 
 /**
  *  @file
@@ -22,9 +35,10 @@ export interface LinkOptions {
 export function link(fileName: string, objects: CompiledObject[], option: LinkOptions): BinaryObject {
 
     const importObjects: string[] = [];
-    const imports: WImportFunction[] = [];
+    const imports: WImportItem[] = [];
     const functions: WFunction[] = [];
     const data: WDataSegment[] = [];
+    const initFuncNames: string[] = [];
     const externVarMap: Map<string, number> = new Map<string, number>();
 
     // 1. set function dataStart && bssStart
@@ -32,8 +46,15 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     for (const object of objects) {
         for (const func of object.functions) {
             func.dataStart = dataNow;
+            functions.push(func);
         }
         data.push(new WDataSegment(dataNow, object.data.slice(0, object.dataSize)));
+        const initFuncName = `$init$${object.fileName}`;
+        const initFunc = new WFunction(initFuncName,
+            [], [], [], object.globalStatements);
+        initFunc.dataStart = dataNow;
+        functions.push(initFunc);
+        initFuncNames.push(initFuncName);
         dataNow += object.dataSize;
     }
 
@@ -41,11 +62,13 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     for (const object of objects) {
         for (const func of object.functions) {
             func.bssStart = bssNow;
-            functions.push(func);
         }
         bssNow += object.dataSize;
     }
 
+    const startFunc = new WFunction("$start", [], [], [],
+        initFuncNames.map((name) => new WCall(name, [], [])));
+    functions.push(startFunc);
     // 2. build extern map
 
     for (const object of objects) {
@@ -63,7 +86,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         for (const item of object.imports) {
             if ( !importObjects.includes(item.name)) {
                 importObjects.push(item.name);
-                imports.push(new WImportFunction("js", item.name,
+                imports.push(new WImportFunction("system", item.name,
                     item.type.returnTypes, item.type.parameters));
             }
         }
@@ -73,15 +96,28 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
 
     // TODO::
 
-    // 5. generate target code
+    // 5. add import memory
+
+    imports.push(new WImportMemory("system", "memory", 1, 10));
+
+    functions.push(new WFunction("$get_sp", [WType.u32], [], [], [
+        new WReturn(new WGetGlobal(WType.u32,  "$sp")),
+    ]));
+
+    functions.push(new WFunction("$set_sp", [], [WType.u32], [], [
+        new WSetGlobal(WType.u32,  "$sp", new WGetLocal(WType.u32, 0)),
+    ]));
+
+    // 6. generate target code
     const mod = new WModule({
         functions,
         imports,
-        exports: ["@main"],
+        exports: ["$start", "@main", "$get_sp", "$set_sp"],
         globals: [
-            new WGlobalVariable("$sp", u32, new WConst(u32, "1024")),
+            new WGlobalVariable("$sp", u32, new WConst(u32, "1000")),
         ],
         data,
+        generateMemory: false,
     });
 
     fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");

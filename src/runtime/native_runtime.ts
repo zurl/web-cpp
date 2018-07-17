@@ -5,22 +5,60 @@
  */
 import {RuntimeError} from "../common/error";
 import {ImportObject, Runtime} from "./runtime";
+import {VMFile} from "./vmfile";
 
-export class NativeRuntime implements Runtime {
-    public buffer: ArrayBuffer;
-    public importObjects: ImportObject;
+export class NativeRuntime extends Runtime {
 
-    constructor(buffer: ArrayBuffer, importObjects: ImportObject) {
-        this.buffer = buffer;
-        this.importObjects = importObjects;
-    }
+    public wasmMemory: WebAssembly.Memory;
+    public instance: WebAssembly.Instance | null;
 
-    public async run() {
-        const asm = await WebAssembly.instantiate(this.buffer, this.importObjects);
-        const exports = asm.instance.exports;
-        if ( !exports.hasOwnProperty("main") ) {
-            throw new RuntimeError(`No main function found`);
+    constructor(code: ArrayBuffer,
+                memorySize: number,
+                importObjects?: ImportObject,
+                files?: VMFile[]) {
+        super(code, importObjects, 0, files);
+        const that = this;
+
+        // wrap importObject
+        for (const moduleName of Object.keys(this.importObjects)) {
+            const module = this.importObjects[moduleName];
+            for (const funcName of Object.keys(module)) {
+                const func = module[funcName] as Function;
+                module[funcName] = function() {
+                    func.apply(that, Array.from(arguments));
+                };
+            }
         }
-        exports.main();
+
+        this.wasmMemory = new WebAssembly.Memory(
+            {
+                initial: 1,
+                maximum: memorySize,
+            });
+        if (!this.importObjects.hasOwnProperty("system")) {
+            this.importObjects["system"] = {};
+        }
+        this.importObjects["system"]["memory"] = this.wasmMemory;
+        this.memoryBuffer = this.wasmMemory.buffer;
+        this.memory = new DataView(this.memoryBuffer);
+        this.instance = null;
     }
+
+    public async run(): Promise<void> {
+        const asm = await WebAssembly.instantiate(this.code, this.importObjects);
+        this.instance = asm.instance;
+        asm.instance.exports["$start"]();
+        asm.instance.exports["@main"]("main");
+        this.instance = null;
+        this.files.map((file) => file.flush());
+    }
+
+    public get sp(): number {
+        return this.instance!.exports.$get_sp();
+    }
+
+    public set sp(value: number) {
+        this.instance!.exports.$set_sp(value);
+    }
+
 }

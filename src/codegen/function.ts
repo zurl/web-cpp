@@ -21,12 +21,13 @@ import {
     Variable,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
-import {I32Binary, WBinaryOperation, WCall, WConst, WFunction, WLoad, WType} from "../wasm";
-import {WGetGlobal, WGetLocal} from "../wasm/expression";
+import {I32Binary, WBinaryOperation, WCall, WConst, WFunction, WType} from "../wasm";
+import {WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
+import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {doConversion} from "./conversion";
+import {doConversion, getInStackSize} from "./conversion";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
@@ -88,6 +89,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     const returnWTypes: WType[] = [];
     const parameterWTypes: WType[] = [];
 
+    let stackParameterNow = 0;
     for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
@@ -97,10 +99,13 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         if (ctx.currentScope.map.has(name)) {
             throw new SyntaxError(`redefined parameter ${name}`, this);
         }
-        if ( type instanceof ClassType || type instanceof ArrayType) {
+        if ( type instanceof ClassType || type instanceof ArrayType ||
+            (functionEntity.type.variableArguments
+                && i === functionEntity.type.parameterTypes.length - 1)) {
             ctx.currentScope.set(name, new Variable(
-                name, ctx.fileName, type, AddressType.STACK, ctx.memory.allocStack(type.length),
+                name, ctx.fileName, type, AddressType.STACK, stackParameterNow,
             ));
+            stackParameterNow += getInStackSize(type.length);
         } else {
             parameterWTypes.push(type.toWType());
             ctx.currentScope.set(name, new Variable(
@@ -126,21 +131,27 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     // TODO:: could optimize it out
     functionEntity.$sp = ctx.memory.allocLocal(WType.u32);
 
-    // sp = $sp
+    // bp = $sp
     ctx.submitStatement(
         new WSetLocal(WType.u32, functionEntity.$sp,
             new WGetGlobal(WType.u32, "$sp", this.location), this.location));
 
-    // sp = $sp - 0
-    const offsetNode = new WConst(WType.u32, "0", this.location);
+
+    // $sp = $sp - 0
+    const offsetNode = new WConst(WType.i32, "0", this.location);
     ctx.submitStatement(
         new WSetGlobal(WType.u32, "$sp",
-            new WBinaryOperation(I32Binary.sub,
+            new WBinaryOperation(I32Binary.add,
                 new WGetLocal(WType.u32, functionEntity.$sp, this.location),
                 offsetNode, this.location), this.location));
 
+    // ctx.submitStatement(new WCall("@putInt",
+    //     [new WGetGlobal(WType.u32, "$sp", this.location)],
+    //     []);
+
     this.body.body.map((item) => item.codegen(ctx));
 
+    offsetNode.constant = ctx.memory.stackPtr.toString();
     ctx.setStatementContainer(savedStatements);
     ctx.exitFunction();
 
@@ -163,15 +174,68 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     if ( !(callee.type instanceof FunctionType) || !(entity instanceof FunctionEntity)) {
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
     }
-    const argus: WExpression[] = [];
-    for (let i = callee.type.parameterTypes.length - 1; i >= 0; i--) {
-        const src = this.arguments[i].codegen(ctx);
-        const dstType = callee.type.parameterTypes[i];
-        argus.push(doConversion(ctx, dstType, src, this));
+
+    if ( callee.type.parameterTypes.length > this.arguments.length ) {
+        throw new SyntaxError(`function call parameters number mismatch`, this);
     }
+
+    const argus: WExpression[] = [];
+    let stackOffset = 0;
+
+    if (callee.type.variableArguments) {
+        for (let i = this.arguments.length - 1;
+                i > callee.type.parameterTypes.length - 1; i--) {
+            const src = this.arguments[i].codegen(ctx);
+            const srcExpr = doConversion(ctx, src.type, src, this).fold();
+            stackOffset -= getInStackSize(src.type.length);
+            argus.push(new WFakeExpression(
+                new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
+                    .createStore(ctx, src.type, srcExpr, true)
+                , this.location));
+        }
+        argus.push(new WConst(WType.u32, this.arguments.length.toString()));
+    } else {
+        if ( callee.type.parameterTypes.length < this.arguments.length ) {
+            throw new SyntaxError(`function call parameters number mismatch`, this);
+        }
+    }
+
+    for (let i = callee.type.parameterTypes.length - 1; i >= 0; i--) {
+        const dstType = callee.type.parameterTypes[i];
+        const src = this.arguments[i].codegen(ctx);
+        const srcExpr = doConversion(ctx, dstType, src, this).fold();
+        if ( dstType instanceof ClassType || dstType instanceof ArrayType ||
+            (callee.type.variableArguments
+                && i === callee.type.parameterTypes.length - 1)) {
+            stackOffset -= getInStackSize(src.type.length);
+            argus.push(new WFakeExpression(
+                new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
+                    .createStore(ctx, src.type, srcExpr, true)
+                , this.location));
+        } else {
+            argus.push(srcExpr);
+        }
+    }
+
+    const afterStatements: WStatement[] = [];
+
+    if ( stackOffset !== 0 ) {
+        argus.push(new WFakeExpression(new WSetGlobal(WType.u32, "$sp",
+            new WBinaryOperation(I32Binary.add,
+                new WGetGlobal(WType.u32, "$sp", this.location),
+                new WConst(WType.i32, stackOffset.toString()),
+                this.location)), this.location));
+        afterStatements.push(new WFakeExpression(new WSetGlobal(WType.u32, "$sp",
+            new WBinaryOperation(I32Binary.sub,
+                new WGetGlobal(WType.u32, "$sp", this.location),
+                new WConst(WType.i32, stackOffset.toString()),
+                this.location)), this.location));
+
+    }
+
     return {
         type: callee.type.returnType,
-        expr: new WCall(entity.fullName, argus, this.location),
+        expr: new WCall(entity.fullName, argus, afterStatements, this.location),
         isLeft: false,
     };
 };

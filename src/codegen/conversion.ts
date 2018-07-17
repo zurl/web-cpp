@@ -43,7 +43,7 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, no
             throw new InternalError(`if( !(expr.expr instanceof WAddressHolder)) {`);
         }
 
-        expr.expr = expr.expr.createLoad(ctx, expr.type.toWType());
+        expr.expr = expr.expr.createLoad(ctx, expr.type);
 
     }
 
@@ -112,4 +112,9 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
     }
 
     throw new TypeError(`unsupport convert from ${src.type} to ${dstType}`, node);
+}
+
+export function getInStackSize(size: number): number {
+    if ( size % 4 === 0) { return size; }
+    return size + 4 - (size % 4);
 }

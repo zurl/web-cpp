@@ -1,6 +1,6 @@
 const TestBase = require('./testbase');
 describe('instruction integration test', function () {
-    it('switch case',function() {
+    it('switch case',async function() {
         const testCode = `
         int a = 1;
         switch(a){
@@ -24,9 +24,9 @@ describe('instruction integration test', function () {
         }
         `;
         const expectOutput = `1234234`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('if else elseif',function() {
+    it('if else elseif',async function() {
         const testCode = `
         int a = 1;
         int b = 2;
@@ -51,9 +51,9 @@ describe('instruction integration test', function () {
         printf("%d",c);
         `;
         const expectOutput = `142`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('while',function() {
+    it('while',async function() {
         const testCode = `
         int i = 1;
         while( i < 10 ){
@@ -62,17 +62,17 @@ describe('instruction integration test', function () {
         }
         `;
         const expectOutput = `123456789`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('for',function() {
+    it('for', async function() {
         const testCode = `
         for(;;){ printf("0"); break; }
         for(int i = 0; i < 5; i++){ printf("%d", i); continue; }
         `;
         const expectOutput = `001234`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('goto',function() {
+    it('goto', async function() {
         const testCode = `
         int a = 1;
         label1:
@@ -88,9 +88,9 @@ describe('instruction integration test', function () {
          printf("4");
         `;
         const expectOutput = `1124`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('do-while',function() {
+    it('do-while', async function() {
         const testCode = `
         int i = 10;
          do{
@@ -99,35 +99,35 @@ describe('instruction integration test', function () {
         } while( i > 0 );
         `;
         const expectOutput = `10987654321`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('constant compute',function() {
+    it('constant compute', async function() {
 
         const testCode = `
         printf("%d,", 1+2-3*4);
-        printf("%.3f,", 1.0+2.0-3.0*4.0/5.0);
+        printf("%.3lf,", 1.0+2.0-3.0*4.0/5.0);
         printf("%d,", 22&33|44^55);
-        printf("%.3f,", 1+4.0*8);
+        printf("%.3lf,", 1+4.0*8);
         printf("%d,", 2<=3>=4<5>6==7!=8&&1||1);
         printf("%d,", 6%2);
         `;
         const expectOutput = `-9,0.600,27,33,1,0,`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('unary ope',function() {
+    it('unary ope', async function() {
 
         const testCode = `
         int a = 10;
         double d = 7.0;
         printf("%d,%d,%d,%d,", !a, !d, !1, !0.7);
-        printf("%d,%.3f,", +a, +d);
-        printf("%d,%.3f,", -a, -d);
+        printf("%d,%.3lf,", +a, +d);
+        printf("%d,%.3lf,", -a, -d);
         printf("%d,", ~a);
         `;
-        const expectOutput = `0,0,0,0,10,7,-10,-7,-11,`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        const expectOutput = `0,0,0,1,10,7,-10,-7,-11,`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('var init',function() {
+    it('var init', async function() {
 
         const testCode = `
         char a0 = 1;
@@ -138,10 +138,10 @@ describe('instruction integration test', function () {
         unsigned int a5 = 1;
         float a6 = 1;
         double a7 = 1;
-        printf("%d%d%d%d%d%d%.3f,",a0,a1,a2,a3,a4,a5,a7);
+        printf("%d%d%d%d%d%d%.3lf,",a0,a1,a2,a3,a4,a5,a7);
         printf("%.3f", a6);
         `;
         const expectOutput = `1111111,1`;
-        TestBase.testRunCompareResult(testCode, expectOutput);
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
 });

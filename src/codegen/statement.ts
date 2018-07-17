@@ -13,12 +13,12 @@ import {
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
 import {FunctionEntity, IntegerType, PointerType, PrimitiveTypes} from "../common/type";
+import {WConst, WType} from "../wasm";
+import {WGetLocal} from "../wasm/expression";
 import {WStatement} from "../wasm/node";
 import {WBlock, WBr, WBrIf, WDrop, WExprStatement, WIfElseBlock, WLoop, WReturn, WSetGlobal} from "../wasm/statement";
 import {CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
-import {WGetLocal} from "../wasm/expression";
-import {WType} from "../wasm";
 
 export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: ExpressionResult) {
     if ( expr.expr instanceof FunctionEntity) {
@@ -28,9 +28,9 @@ export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: E
         return;
     }
     if (expr.type.equals(PrimitiveTypes.void)) {
-        ctx.submitStatement(new WExprStatement(expr.expr, node.location));
+        ctx.submitStatement(new WExprStatement(expr.expr.fold(), node.location));
     } else {
-        ctx.submitStatement(new WDrop(expr.expr, node.location));
+        ctx.submitStatement(new WDrop(expr.expr.fold(), node.location));
     }
 }
 
@@ -170,7 +170,7 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
         }
         const expr = this.argument.codegen(ctx);
         expr.expr = doConversion(ctx, ctx.currentFunction.type.returnType, expr, this);
-        ctx.submitStatement(new WReturn(expr.expr, this.location));
+        ctx.submitStatement(new WReturn(expr.expr.fold(), this.location));
     } else {
         if (!ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
             throw new SyntaxError(`return type mismatch`, this);
@@ -197,58 +197,106 @@ IfStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.setStatementContainer(savedContainer);
 
     if ( this.alternate !== null) {
-        ctx.submitStatement(new WIfElseBlock(condition.expr, thenStatements,
+        ctx.submitStatement(new WIfElseBlock(condition.expr.fold(), thenStatements,
             elseStatements, this.location));
     } else {
-        ctx.submitStatement(new WIfElseBlock(condition.expr, thenStatements,
+        ctx.submitStatement(new WIfElseBlock(condition.expr.fold(), thenStatements,
             null, this.location));
     }
 };
 
+/*
+block{
+    loop{
+        int cond = !getcond();
+        br_if 0
+        ...content
+        continue => br_0
+        break => br_1
+        br 0
+    }
+}
+ */
 WhileStatement.prototype.codegen = function(ctx: CompileContext) {
-    const whileStatements: WStatement[] = [];
-    const thenStatements: WStatement[] = [];
+    const whileBlock: WStatement[] = [];
+    const whileLoop: WStatement[] = [];
     const savedContainer = ctx.getStatementContainer();
 
     // <-- loop -->
-    ctx.setStatementContainer(thenStatements);
+    ctx.setStatementContainer(whileLoop);
     const condition = new UnaryExpression(this.location,
         "!", this.test).codegen(ctx);
     condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
-    ctx.submitStatement(new WBrIf(1, condition.expr, this.location));
-    ctx.loopLevel ++;
+    ctx.submitStatement(new WBrIf(1, condition.expr.fold(), this.location));
+    ctx.loopStack.push([0, 1]);
     this.body.codegen(ctx);
-    ctx.loopLevel --;
+    ctx.loopStack.pop();
     ctx.submitStatement(new WBr(0, this.location));
     // <-- loop -->
 
     // <-- block -->
-    ctx.setStatementContainer(whileStatements);
-    ctx.submitStatement(new WLoop(thenStatements, this.location));
+    ctx.setStatementContainer(whileBlock);
+    ctx.submitStatement(new WLoop(whileLoop, this.location));
     // <-- block -->
 
     ctx.setStatementContainer(savedContainer);
-    ctx.submitStatement(new WBlock(whileStatements, this.location));
+    ctx.submitStatement(new WBlock(whileBlock, this.location));
 };
 
+/*
+loop{
+    block{
+        ...content
+        continue => br_0
+        break => br_1
+    }
+    int cond = getcond();
+    br_if 0
+}
+ */
 DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
-    ctx.loopLevel ++;
-    const thenStatements: WStatement[] = [];
+    const doWhileLoop: WStatement[] = [];
+    const doWhileBlock: WStatement[] = [];
+
     const savedContainer = ctx.getStatementContainer();
-    ctx.setStatementContainer(thenStatements);
-    ctx.loopLevel ++;
+
+    // <-- block -->
+    ctx.setStatementContainer(doWhileBlock);
+    ctx.loopStack.push([0, 1]);
     this.body.codegen(ctx);
-    ctx.loopLevel --;
+    ctx.loopStack.pop();
+    // <-- block -->
+
+    // <-- loop -->
+    ctx.setStatementContainer(doWhileLoop);
+    ctx.submitStatement(new WBlock(doWhileBlock, this.location));
     const condition =  this.test.codegen(ctx);
     condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
-    ctx.submitStatement(new WBrIf(0, condition.expr, this.location));
+    ctx.submitStatement(new WBrIf(0, condition.expr.fold(), this.location));
+    // <-- loop -->
+
     ctx.setStatementContainer(savedContainer);
-    ctx.submitStatement(new WBlock([
-        new WLoop(thenStatements, this.location)], this.location));
+    ctx.submitStatement(new WLoop(doWhileLoop, this.location));
 };
 
+/*
+...init
+block{
+    loop{
+        int cond = getcond();
+        br_if 1
+        block{
+            ...content
+            continue => br_0
+            break => br_2
+        }
+        do update
+        br 0
+    }
+}
+ */
 ForStatement.prototype.codegen = function(ctx: CompileContext) {
     if (this.init !== null) {
         if ( this.init instanceof Declaration) {
@@ -258,53 +306,58 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
         }
     }
 
-    const forStatements: WStatement[] = [];
-    const thenStatements: WStatement[] = [];
+    const outerBlockStatements: WStatement[] = [];
+    const innerBlockStatements: WStatement[] = [];
+    const loopStatements: WStatement[] = [];
+
     const savedContainer = ctx.getStatementContainer();
 
-    // <-- loop -->
-    ctx.setStatementContainer(thenStatements);
+    // <-- inner block -->
+    ctx.setStatementContainer(innerBlockStatements);
+    ctx.loopStack.push([0, 2]);
+    this.body.codegen(ctx);
+    ctx.loopStack.pop();
+    // <-- inner block -->
 
-    if ( this.test === null) {
-        ctx.submitStatement(new WBr(1, this.location));
-    } else {
+    // <-- loop -->
+    ctx.setStatementContainer(loopStatements);
+    if ( this.test !== null) {
         const condition = new UnaryExpression(this.location,
             "!", this.test).codegen(ctx);
         condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
         condition.type = PrimitiveTypes.int32;
-        ctx.submitStatement(new WBrIf(1, condition.expr, this.location));
+        ctx.submitStatement(new WBrIf(1, condition.expr.fold(), this.location));
     }
-
-    ctx.loopLevel ++;
-    this.body.codegen(ctx);
-    ctx.loopLevel --;
+    ctx.submitStatement(new WBlock(innerBlockStatements, this.location));
     if ( this.update !== null) {
         recycleExpressionResult(ctx, this, this.update.codegen(ctx));
     }
     ctx.submitStatement(new WBr(0, this.location));
     // <-- loop -->
 
-    // <-- block -->
-    ctx.setStatementContainer(forStatements);
-    ctx.submitStatement(new WLoop(thenStatements, this.location));
-    // <-- block -->
+    // <-- outer block -->
+    ctx.setStatementContainer(outerBlockStatements);
+    ctx.submitStatement(new WLoop(loopStatements, this.location));
+    // <-- outer block -->
 
     ctx.setStatementContainer(savedContainer);
-    ctx.submitStatement(new WBlock(forStatements, this.location));
+    ctx.submitStatement(new WBlock(outerBlockStatements, this.location));
 };
 
 ContinueStatement.prototype.codegen = function(ctx: CompileContext) {
-    if ( ctx.loopLevel === 0 ) {
+    if ( ctx.loopStack.length === 0 ) {
         throw new SyntaxError(`continue is not in while/do-while/for`, this);
     }
-    ctx.submitStatement(new WBr(0, this.location));
+    const item = ctx.loopStack[ctx.loopStack.length - 1];
+    ctx.submitStatement(new WBr(item[0], this.location));
 };
 
 BreakStatement.prototype.codegen = function(ctx: CompileContext) {
-    if ( ctx.loopLevel === 0 ) {
+    if ( ctx.loopStack.length === 0 ) {
         throw new SyntaxError(`break is not in while/do-while/for`, this);
     }
-    ctx.submitStatement(new WBr(1, this.location));
+    const item = ctx.loopStack[ctx.loopStack.length - 1];
+    ctx.submitStatement(new WBr(item[1], this.location));
 };
 
 export function statement() {

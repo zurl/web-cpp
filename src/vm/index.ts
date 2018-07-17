@@ -7,8 +7,8 @@ import {RuntimeError} from "../common/error";
 import {OpCode, OpCodeLimit} from "../common/instruction";
 import {JsAPIDefine} from "../common/jsapi";
 import {toHexString} from "../common/utils";
-import {HeapAllocator, LinkedHeapAllocator} from "./allocator";
-import {VMFile} from "./vmfile";
+import {HeapAllocator, LinkedHeapAllocator} from "../runtime/allocator";
+import {VMFile} from "../runtime/vmfile";
 
 interface VirtualMachineOptions {
     memory: DataView;

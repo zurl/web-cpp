@@ -395,6 +395,8 @@ export function getOpFromStr(op: string, type: WType): BinaryOperator| UnaryOper
                 case "!=": return I32Binary.ne;
                 case "&": return I32Binary.and;
                 case "|": return I32Binary.or;
+                case "&&": return I32Binary.and;
+                case "||": return I32Binary.or;
                 case "^": return I32Binary.xor;
                 case ">>": return I32Binary.shr_s;
                 case "<<": return I32Binary.shr_s;

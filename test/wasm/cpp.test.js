@@ -1,17 +1,21 @@
+const {NoInputFile, CommandOutputFile} = require( "../../dist/runtime/vmfile");
+const {JsAPIMap}= require("../../dist/library/index");
+
+const {NativeRuntime} = require("../../dist/runtime/native_runtime");
+
 const TestBase = require("./testbase");
 
 const source = `
-__libcall void putChar(int x);
 __libcall void putInt(int x);
-int b = 1;
+#include <stdio.h>
 int main(){
-    const char * str = "hello world";
-    putInt(str[1]);
-    for(int i = 0; i < 10; i++){
-        b += i;
-        putInt(b);
-    }
-    return 0;
+printf("%d,", 1+2-3*4);
+printf("%.3lf,", 1.0+2.0-3.0*4.0/5.0);
+printf("%d,", 22&33|44^55);
+printf("%.3lf,", 1+4.0*8);
+printf("%d,", 2<=3);
+printf("%d,", 6%2);
+return 0;
 }
 `;
 const fs = require('fs');
@@ -20,17 +24,22 @@ describe('cpp -> wasm', function () {
         const obj = TestBase.compile("main.cpp", source);
         const bin = TestBase.Linker.link("main", [obj], {});
         const importObj = {
-            js: {
+            system: {
                 "@putInt": function(x){
                     console.log(x);
                 },
-                "@putChar": function(x){
+                "@putChar": function(ctx){
                     console.log(String.fromCharCode(x));
-                }
+                },
+                "@printf": JsAPIMap.printf
             }
         };
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
-        const asm = await WebAssembly.instantiate(bin.binary, importObj);
-        asm.instance.exports["@main"]();
+        const runtime = new NativeRuntime(bin.binary, 10, importObj, [
+            new NoInputFile(),
+            new CommandOutputFile(),
+            new CommandOutputFile()
+        ]);
+        return await runtime.run();
     });
 });

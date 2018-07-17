@@ -25,31 +25,68 @@ export function getAlign(number: number) {
     return 0;
 }
 
+export class WFakeExpression extends WExpression {
+    public statement: WStatement;
+
+    constructor(statement: WStatement, location?: SourceLocation) {
+        super(location);
+        this.statement = statement;
+    }
+
+    public deduceType(e: Emitter): WType {
+        throw new EmitError(`internal error`);
+    }
+
+    public emit(e: Emitter): void {
+        this.statement.emit(e);
+    }
+
+    public fold(): WExpression {
+        return this;
+    }
+
+    public isPure(): boolean {
+        return false;
+    }
+
+    public length(e: Emitter): number {
+        return this.statement.length(e);
+    }
+
+}
+
 export class WCall extends WExpression {
     public target: string;
     public argument: WExpression[];
+    public afterStatements: WStatement[];
 
-    constructor(target: string, argument: WExpression[], location?: SourceLocation) {
+    constructor(target: string, argument: WExpression[], afterStatements: WStatement[], location?: SourceLocation) {
         super(location);
         this.target = target;
         this.argument = argument;
+        this.afterStatements = afterStatements;
     }
 
     public emit(e: Emitter): void {
         this.argument.map((x) => x.emit(e));
         e.writeByte(Control.call);
         e.writeUint32(e.getFuncIdx(this.target));
+        this.afterStatements.map((x) => x.emit(e));
     }
 
     public length(e: Emitter): number {
         return getArrayLength(this.argument, (x) => x.length(e)) +
+            getArrayLength(this.afterStatements, (x) => x.length(e)) +
             1 + getLeb128UintLength(e.getFuncIdx(this.target));
     }
 
     public deduceType(e: Emitter): WType {
         const funcType = e.getFuncType(this.target);
-        const arguTypes = this.argument.map((x) => x.deduceType(e));
-        if (funcType.returnTypes.join(",") !== arguTypes.join(",")) {
+        const arguTypes = this.argument
+            .filter((x) => ! (x instanceof WFakeExpression))
+            .map((x) => x.deduceType(e));
+        if (funcType.parameters.map((x) => getNativeType(x)).join(",")
+            !== arguTypes.map((x) => getNativeType(x)).join(",")) {
             throw new EmitError(`type mismatch at call`);
         }
         if (funcType.returnTypes.length === 0) {
@@ -90,7 +127,7 @@ export class WUnaryOperation extends WExpression {
     }
 
     public deduceType(e: Emitter): WType {
-        if ( this.operand.deduceType(e) !== OpTypeMap.get(this.ope)) {
+        if ( getNativeType(this.operand.deduceType(e)) !== OpTypeMap.get(this.ope)) {
             throw new EmitError(`type mismatch at unary ope`);
         }
         return this.operand.deduceType(e);
@@ -143,8 +180,8 @@ export class WBinaryOperation extends WExpression {
     }
 
     public deduceType(e: Emitter): WType {
-        const lhs = this.lhs.deduceType(e);
-        const rhs = this.rhs.deduceType(e);
+        const lhs = getNativeType(this.lhs.deduceType(e));
+        const rhs = getNativeType(this.rhs.deduceType(e));
         if (lhs !== rhs || OpTypeMap.get(this.ope) !== lhs) {
             throw new EmitError(`type mismatch in binaryope`);
         }
@@ -431,6 +468,7 @@ export class WCovertOperation extends WExpression {
             } else {
                 this.operand.constant = parseInt(this.operand.constant).toString();
             }
+            this.operand.type = this.dstType;
             return this.operand;
         } else {
             return this;

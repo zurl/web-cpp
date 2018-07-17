@@ -13,6 +13,7 @@
     "ban-types": false,
     "prefer-for-of": false,
     "variable-name": false,
-    "no-reference":false
+    "no-reference":false,
+    "only-arrow-functions": false
   }
 }

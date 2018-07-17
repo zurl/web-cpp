@@ -5,12 +5,13 @@
  */
 import {RuntimeError} from "../common/error";
 import {PriorityQueue} from "../common/pq";
-import {VirtualMachine} from "./index";
+import {VirtualMachine} from "../vm/index";
+import {Runtime} from "./runtime";
 
 export abstract class HeapAllocator {
-    public abstract init(vm: VirtualMachine): void;
-    public abstract allocHeap(vm: VirtualMachine, size: number): number;
-    public abstract freeHeap(vm: VirtualMachine, offset: number): void;
+    public abstract init(vm: Runtime): void;
+    public abstract allocHeap(vm: Runtime, size: number): number;
+    public abstract freeHeap(vm: Runtime, offset: number): void;
 }
 
 export class LinkedHeapAllocator extends HeapAllocator {
@@ -22,11 +23,11 @@ export class LinkedHeapAllocator extends HeapAllocator {
     // +0 tag (0 => occupied, 1 => free);
     // +4 block size (not include meta)
 
-    public init(vm: VirtualMachine): void {
+    public init(vm: Runtime): void {
         vm.heapPointer += 0;
     }
 
-    public allocHeap(vm: VirtualMachine, size: number): number {
+    public allocHeap(vm: Runtime, size: number): number {
         let ptr = vm.heapStart;
         while (ptr < vm.heapPointer) {
             const tag = vm.memory.getUint32(ptr);
@@ -54,7 +55,7 @@ export class LinkedHeapAllocator extends HeapAllocator {
         }
     }
 
-    public freeHeap(vm: VirtualMachine, offset: number): void {
+    public freeHeap(vm: Runtime, offset: number): void {
         if ( !( offset >= vm.heapStart && offset <= vm.heapPointer)) {
             throw new RuntimeError(`free a blk not be malloc`);
         }
@@ -106,12 +107,12 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
         this.poolPtr = [];
     }
 
-    public init(vm: VirtualMachine): void {
+    public init(vm: Runtime): void {
         super.init(vm);
         this.pool = this.sizeLimit.map((_, i) => this.createPool(vm, i));
     }
 
-    public allocHeap(vm: VirtualMachine, size: number): number {
+    public allocHeap(vm: Runtime, size: number): number {
         if ( size > this.sizeLimit[this.sizeLimit.length - 1]) {
             return super.allocHeap(vm, size);
         } else {
@@ -127,7 +128,7 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
         }
     }
 
-    public freeHeap(vm: VirtualMachine, offset: number): void {
+    public freeHeap(vm: Runtime, offset: number): void {
         const tag = vm.memory.getUint32(offset - 4);
         if ( tag >= this.MAGIC_NUMBER) {
             const idx = tag - this.MAGIC_NUMBER;
@@ -137,7 +138,7 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
         }
     }
 
-    private createPool(vm: VirtualMachine, index: number): Set<number> {
+    private createPool(vm: Runtime, index: number): Set<number> {
         const size = this.sizeLimit[index];
         const poolSize = this.poolSize[index];
         const result = new Set<number>();
@@ -151,7 +152,7 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
         return result;
     }
 
-    private extendPool(vm: VirtualMachine, index: number) {
+    private extendPool(vm: Runtime, index: number) {
         const size = this.sizeLimit[index];
         const poolSize = this.poolSize[index];
         const pool = this.pool[index];

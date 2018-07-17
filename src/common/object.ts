@@ -5,6 +5,7 @@ import {WMemoryLocation} from "../wasm/expression";
 import {Type} from "./type";
 import {ImportObject} from "../runtime/runtime";
 import {WFunctionType} from "../wasm/section";
+import {WStatement} from "../wasm/node";
 
 /**
  *  @file
@@ -27,6 +28,7 @@ export interface ImportSymbol {
 export interface CompiledObject {
     fileName: string;
     dataSize: number;
+    globalStatements: WStatement[];
     functions: WFunction[];
     imports: ImportSymbol[];
     exports: ExportSymbol[];

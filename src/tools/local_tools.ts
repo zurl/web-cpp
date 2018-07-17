@@ -13,7 +13,7 @@ import {BinaryObject, link} from "../linker";
 import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
 import {VirtualMachine} from "../vm";
-import {CommandOutputFile, NoInputFile} from "../vm/vmfile";
+import {CommandOutputFile, NoInputFile} from "../runtime/vmfile";
 
 const BINARY_VERSION = 3;
 

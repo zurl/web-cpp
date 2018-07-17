@@ -80,9 +80,9 @@ export class WFunctionType extends WNode {
     public emit(e: Emitter): void {
         e.writeByte(0x60);
         e.writeUint32(this.parameters.length);
-        this.parameters.map((type) => e.writeUint32(type));
+        this.parameters.map((type) => e.writeUint32(getNativeType(type)));
         e.writeUint32(this.returnTypes.length);
-        this.returnTypes.map((type) => e.writeUint32(type));
+        this.returnTypes.map((type) => e.writeUint32(getNativeType(type)));
     }
 
     public toString(): string {
@@ -91,10 +91,8 @@ export class WFunctionType extends WNode {
 
     public length(e: Emitter): number {
         return 1 +
-            getLeb128UintLength(this.returnTypes.length) +
-            getLeb128UintLength(this.parameters.length) +
-            getArrayLength(this.returnTypes, (x) => getLeb128UintLength(x)) +
-            getArrayLength(this.parameters, (x) => getLeb128UintLength(x));
+            getLeb128UintLength(this.returnTypes.length) + this.returnTypes.length +
+            getLeb128UintLength(this.parameters.length) + this.parameters.length;
     }
 }
 
@@ -224,15 +222,36 @@ class WCodeSection extends WSection {
 
 }
 
-export class WImportFunction extends WNode {
+export class WImportItem extends WNode {
     public module: string;
     public name: string;
+
+    constructor(module: string, name: string, location?: SourceLocation) {
+        super(location);
+        this.module = module;
+        this.name = name;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeUtf8String(this.module);
+        e.writeUtf8String(this.name);
+    }
+
+    public length(e: Emitter): number {
+        return getUtf8StringLength(this.module) +
+            getUtf8StringLength(this.name);
+    }
+
+}
+
+export class WImportFunction extends WImportItem {
+
     public type: WFunctionType;
     public signatureId: number;
 
     constructor(module: string, name: string, returnType: WType[],
                 parameters: WType[], location?: SourceLocation) {
-        super(location);
+        super(module, name, location);
         this.module = module;
         this.name = name;
         this.type = new WFunctionType(returnType, parameters, this.location);
@@ -240,39 +259,71 @@ export class WImportFunction extends WNode {
     }
 
     public emit(e: Emitter): void {
-        e.writeUtf8String(this.module);
-        e.writeUtf8String(this.name);
+        super.emit(e);
         e.writeByte(0x00);
         e.writeUint32(this.signatureId);
         e.setFuncIdx(this.name, this.type);
     }
 
     public length(e: Emitter): number {
-        return getUtf8StringLength(this.module) +
-            getUtf8StringLength(this.name) +
+        return super.length(e) +
             getLeb128UintLength(this.signatureId) + 1;
     }
 
 }
 
-export class WImportSection extends WNode {
-    public functions: WImportFunction[];
+export class WImportMemory extends WImportItem {
+    public min: number;
+    public max: number | null;
 
-    constructor(functions: WImportFunction[], location?: SourceLocation) {
+    constructor(module: string, name: string, min: number, max: number | null, location?: SourceLocation) {
+        super(module, name, location);
+        this.min = min;
+        this.max = max;
+    }
+
+    public emit(e: Emitter): void {
+        super.emit(e);
+        e.writeByte(0x02);
+        if ( this.max === null ) {
+            e.writeByte(0x00);
+            e.writeUint32(this.min);
+        } else {
+            e.writeByte(0x01);
+            e.writeByte(this.min);
+            e.writeByte(this.max);
+        }
+    }
+
+    public length(e: Emitter): number {
+        if ( this.max === null ) {
+            return super.length(e) + 2 + getLeb128UintLength(this.min);
+        } else {
+            return super.length(e) + 2 + getLeb128UintLength(this.min) +
+                getLeb128UintLength(this.max);
+        }
+    }
+}
+
+export class WImportSection extends WNode {
+    public imports: WImportItem[];
+
+    constructor(imports: WImportItem[],
+                location?: SourceLocation) {
         super(location);
-        this.functions = functions;
+        this.imports = imports;
     }
 
     public emit(e: Emitter): void {
         e.writeByte(SectionCode.import);
         e.writeByte(this.getBodyLength(e));
-        e.writeUint32(this.functions.length);
-        this.functions.map((func) => func.emit(e));
+        e.writeUint32(this.imports.length);
+        this.imports.map((x) => x.emit(e));
     }
 
     public getBodyLength(e: Emitter): number {
-        return getLeb128UintLength(this.functions.length) +
-            getArrayLength(this.functions, (x) => x.length(e));
+        return getLeb128UintLength(this.imports.length) +
+            getArrayLength(this.imports, (x) => x.length(e));
     }
 
     public length(e: Emitter): number {
@@ -439,18 +490,20 @@ export class WDataSection extends WSection {
 
 export interface WModuleConfig {
     functions: WFunction[];
-    imports: WImportFunction[];
+    imports: WImportItem[];
     exports: string[];
     globals: WGlobalVariable[];
     data: WDataSegment[];
+    generateMemory: boolean;
 }
 
 export class WModule extends WNode {
     public functions: WFunction[];
-    public imports: WImportFunction[];
+    public imports: WImportItem[];
     public exports: string[];
     public globals: WGlobalVariable[];
     public data: WDataSegment[];
+    public generateMemory: boolean;
 
     constructor(config: WModuleConfig, location?: SourceLocation) {
         super(location);
@@ -459,6 +512,7 @@ export class WModule extends WNode {
         this.exports = config.exports;
         this.globals = config.globals;
         this.data = config.data;
+        this.generateMemory = config.generateMemory;
     }
 
     public emit(e: Emitter): void {
@@ -477,7 +531,9 @@ export class WModule extends WNode {
         typeSection.emit(e);
         importSection.emit(e);
         functionSection.emit(e);
-        memorySection.emit(e);
+        if (this.generateMemory) {
+            memorySection.emit(e);
+        }
         globalSection.emit(e);
         exportSection.emit(e);
         codeSection.emit(e);
@@ -490,7 +546,10 @@ export class WModule extends WNode {
 
     private generateSections() {
         const funcTypes: WFunctionType[] = [];
-        for (const func of [...this.functions, ...this.imports]) {
+        const importFunction: WImportFunction[] =
+            this.imports.filter((x) => x instanceof WImportFunction)
+                .map((x) => x as WImportFunction);
+        for (const func of [...this.functions, ...importFunction]) {
             func.signatureId = funcTypes.length;
             funcTypes.push(func.type);
         }

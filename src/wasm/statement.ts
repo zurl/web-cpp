@@ -73,7 +73,7 @@ export class WStore extends WStatement {
 
     public emit(e: Emitter): void {
         if (getNativeType(this.value.deduceType(e)) !== getNativeType(this.type)) {
-            throw new EmitError(`type mismatch at store`);
+            throw new EmitError(`type mismatch at store: ${this.value.deduceType(e)} and ${this.type}`);
         }
         if ( this.address.deduceType(e) !== WType.u32 && this.address.deduceType(e) !== WType.i32 ) {
             throw new EmitError(`type mismatch at store, address`);
@@ -262,7 +262,7 @@ export class WIfElseBlock extends WStatement {
         this.consequence.map((stmt) => stmt.emit(e));
         if (this.alternative !== null) {
             e.writeByte(Control.else);
-            this.consequence.map((stmt) => stmt.emit(e));
+            this.alternative.map((stmt) => stmt.emit(e));
         }
         e.writeByte(Control.end);
     }

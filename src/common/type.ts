@@ -472,6 +472,7 @@ export enum AddressType {
     MEMORY_EXTERN,
     RVALUE,
     CONSTANT,
+    GLOBAL_SP
 }
 
 export class Variable {
