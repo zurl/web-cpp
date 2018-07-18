@@ -11,7 +11,7 @@ import {
     F64Binary,
     I32Binary,
     I32Unary,
-    I64Binary,
+    I64Binary, I64Unary,
     UnaryOperator,
 } from "./constant";
 
@@ -22,6 +22,7 @@ export function doUnaryCompute(ope: UnaryOperator, value: number): number {
         case F32Unary.ceil:
             return Math.ceil(value);
         case I32Unary.eqz:
+        case I64Unary.eqz:
             return +(value === 0);
     }
     throw new RuntimeError(`unsupport operator ${ope}`);

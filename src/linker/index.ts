@@ -1,7 +1,7 @@
 /// <reference path="../../node_modules/@types/webassembly-js-api/index.d.ts" />
 
 import {LinkerError} from "../common/error";
-import {BinaryObject, CompiledObject} from "../common/object";
+import {BinaryObject, CompiledObject, SourceMap} from "../common/object";
 import {ImportObject} from "../runtime/runtime";
 import {
     i32,
@@ -40,6 +40,15 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     const data: WDataSegment[] = [];
     const initFuncNames: string[] = [];
     const externVarMap: Map<string, number> = new Map<string, number>();
+    const sourceMap: Map<string, SourceMap> = new Map<string, SourceMap>();
+
+    // 0. construct sourceMap
+    for (const object of objects) {
+        sourceMap.set(object.fileName, {
+            source: object.source!.split("\n"),
+            sourceMap: object.sourceMap!,
+        });
+    }
 
     // 1. set function dataStart && bssStart
     let dataNow = 0;
@@ -122,12 +131,18 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
 
     fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");
 
+    const dumper = new WASMEmitter();
+    mod.optimize(dumper);
+
+    dumper.sourceMap = sourceMap;
+    mod.dump(dumper);
+
     const emitter = new WASMEmitter();
     emitter.externMap = externVarMap;
     mod.emit(emitter);
-
     return {
         fileName,
+        sourceMap,
         binary: emitter.buffer.slice(0, emitter.now),
     };
 }

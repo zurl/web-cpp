@@ -101,6 +101,26 @@ describe('instruction integration test', function () {
         const expectOutput = `10987654321`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
+    it('complex flow', async function() {
+
+        const testCode = `
+        for(int i = 0; i < 10 ; i++){
+            printf("%d", i);
+            if( i >= 6) {
+                printf("$");
+                if( i == 7){
+                    break;
+                } 
+                else {
+                     continue;
+                }
+            }
+            printf("@");
+        }
+        `;
+        const expectOutput = `0@1@2@3@4@5@6$7$`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
+    });
     it('constant compute', async function() {
 
         const testCode = `

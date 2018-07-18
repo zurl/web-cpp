@@ -9,13 +9,13 @@ const source = `
 __libcall void putInt(int x);
 #include <stdio.h>
 int main(){
-printf("%d,", 1+2-3*4);
-printf("%.3lf,", 1.0+2.0-3.0*4.0/5.0);
-printf("%d,", 22&33|44^55);
-printf("%.3lf,", 1+4.0*8);
-printf("%d,", 2<=3);
-printf("%d,", 6%2);
-return 0;
+    int arr[100];
+    //arr[0] = arr[0] + 1;
+    for(int i = 1; i < 10; i++){
+        arr[i] = arr[i] + 1;
+        printf("%d\\n", arr[i]);
+    }
+    return 0;
 }
 `;
 const fs = require('fs');

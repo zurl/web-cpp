@@ -21,7 +21,7 @@ export default `
 
     function getLocation() {
         const location_ = location();
-        return new AST.SourceLocation(text(), newPosition(location_.start), newPosition(location_.end));
+        return new AST.SourceLocation(options.fileName, text(), newPosition(location_.start), newPosition(location_.end));
     }
 
     function extractOptional(optional, index) {

@@ -44,7 +44,7 @@ local var:  @foo@var1
 - [X] cast ope (hard)
 - [X] void return type;
 - [X] function call parameter type conversion
-- [ ] var args
+- [X] var args
 - [X] allocator
 - [X] char * a = "123"
 - [X] write, read
@@ -55,9 +55,9 @@ local var:  @foo@var1
 - [ ] goto label
 - [ ] switch case
 - [X] enum
-- [X] non-return detect
-- [X] cc-cli
-- [X] ?:
+- [ ] non-return detect
+- [ ] cc-cli
+- [ ] ?:
 - [ ] 对局部变量取地址
 - [ ] const
 - [ ] bit field of struct
@@ -66,8 +66,9 @@ local var:  @foo@var1
 - [ ] #if #elif
 - [ ] #line __line__ __file__
 - [ ] & array
-- [ ] constant fold on tree
-- [ ] init instructions
+- [X] constant fold on tree
+- [X] init instructions
+- [ ] print sourceMap
 ## C++ Language
 - [ ] 异常处理
 - [ ] 左值引用

@@ -12,7 +12,7 @@ import {
     F32, F32Convert,
     F64, F64Convert, getNativeType, getOperationType, getTypeConvertOpe,
     I32, I32Binary, I32Convert,
-    I64, I64Convert,
+    I64, I64Convert, OpCodes,
     OpTypeMap, UnaryOperator,
     WType,
     WTypeMap,
@@ -51,6 +51,10 @@ export class WFakeExpression extends WExpression {
 
     public length(e: Emitter): number {
         return this.statement.length(e);
+    }
+
+    public dump(e: Emitter): void {
+        this.statement.dump(e);
     }
 
 }
@@ -105,6 +109,12 @@ export class WCall extends WExpression {
         return false;
     }
 
+    public dump(e: Emitter): void {
+        this.argument.map((x) => x.dump(e));
+        e.dump(`call ${this.target}`, this.location);
+        this.afterStatements.map((x) => x.dump(e));
+    }
+
 }
 
 export class WUnaryOperation extends WExpression {
@@ -155,6 +165,10 @@ export class WUnaryOperation extends WExpression {
         return this.operand.isPure();
     }
 
+    public dump(e: Emitter): void {
+        this.operand.dump(e);
+        e.dump(`${OpCodes.get(this.ope)}`, this.location);
+    }
 }
 
 export class WBinaryOperation extends WExpression {
@@ -209,6 +223,12 @@ export class WBinaryOperation extends WExpression {
         }
     }
 
+    public dump(e: Emitter): void {
+        this.lhs.dump(e);
+        this.rhs.dump(e);
+        e.dump(`${OpCodes.get(this.ope)}`, this.location);
+    }
+
     public isPure(): boolean {
         return this.lhs.isPure() && this.rhs.isPure();
     }
@@ -238,6 +258,21 @@ export class WLoad extends WExpression {
         this.offsetName = "";
     }
 
+    public getOp(){
+        switch (this.type) {
+            case WType.u8: return I32.load8_u;
+            case WType.u16: return I32.load16_u;
+            case WType.i8: return I32.load8_s;
+            case WType.i16: return I32.load16_s;
+            case WType.i32:
+            case WType.u32: return I32.load;
+            case WType.f32: return F32.load;
+            case WType.f64: return F64.load;
+            case WType.i64:
+            case WType.u64: return I64.load;
+        }
+    }
+
     public emit(e: Emitter): void {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
@@ -252,18 +287,7 @@ export class WLoad extends WExpression {
             offset = 0;
         }
         this.address.emit(e);
-        switch (this.type) {
-            case WType.u8: e.writeByte(I32.load8_u); break;
-            case WType.u16: e.writeByte(I32.load16_u); break;
-            case WType.i8: e.writeByte(I32.load8_s); break;
-            case WType.i16: e.writeByte(I32.load16_s); break;
-            case WType.i32:
-            case WType.u32: e.writeByte(I32.load); break;
-            case WType.f32: e.writeByte(F32.load); break;
-            case WType.f64: e.writeByte(F64.load); break;
-            case WType.i64:
-            case WType.u64: e.writeByte(I64.load); break;
-        }
+        e.writeByte(this.getOp() as number);
         e.writeUint32(getAlign(offset));
         e.writeUint32(offset);
     }
@@ -306,6 +330,11 @@ export class WLoad extends WExpression {
     public isPure(): boolean {
         return this.address.isPure();
     }
+
+    public dump(e: Emitter): void {
+        this.address.dump(e);
+        e.dump(`${OpCodes.get(this.getOp() as number)}`, this.location);
+    }
 }
 
 export class WGetGlobal extends WExpression {
@@ -341,6 +370,10 @@ export class WGetGlobal extends WExpression {
     public isPure(): boolean {
         return true;
     }
+
+    public dump(e: Emitter): void {
+        e.dump(`get_global ${this.name}`, this.location);
+    }
 }
 
 export class WGetLocal extends WExpression {
@@ -373,6 +406,11 @@ export class WGetLocal extends WExpression {
     public isPure(): boolean {
         return true;
     }
+
+    public dump(e: Emitter): void {
+        e.dump(`get_local $${this.offset}`, this.location);
+    }
+
 }
 
 export class WConst extends WExpression {
@@ -431,6 +469,11 @@ export class WConst extends WExpression {
     public isPure(): boolean {
         return true;
     }
+
+    public dump(e: Emitter): void {
+        e.dump(`${WType[this.type]}.const ${this.constant}`, this.location);
+    }
+
 }
 
 export class WCovertOperation extends WExpression {
@@ -477,6 +520,11 @@ export class WCovertOperation extends WExpression {
 
     public isPure(): boolean {
         return this.operand.isPure();
+    }
+
+    public dump(e: Emitter): void {
+        this.operand.dump(e);
+        e.dump(OpCodes.get(this.ope as number), this.location);
     }
 }
 
@@ -527,5 +575,17 @@ export class WGetAddress extends WExpression {
 
     public isPure(): boolean {
         return true;
+    }
+
+    public dump(e: Emitter): void {
+        if ( this.form === WMemoryLocation.DATA ) {
+            e.dump(`get_data ${this.offset}`, this.location);
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            e.dump(`get_bss ${this.offset}`, this.location);
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            e.dump(`get_extern ${this.offsetName}`, this.location);
+        } else {
+            e.dump(`get_raw $${this.offset}`, this.location);
+        }
     }
 }

@@ -31,6 +31,7 @@ export class CompileContext {
     public currentScope: Scope;
     public statementContainer: WStatement[];
     public loopStack: [number, number][];
+    public blockLevel: number;
 
     // result
     public functions: WFunction[];
@@ -58,6 +59,7 @@ export class CompileContext {
         this.functions = [];
         this.imports = [];
         this.loopStack = [];
+        this.blockLevel = 0;
     }
 
     public isCpp(): boolean {
@@ -129,6 +131,8 @@ export class CompileContext {
             exports: [], // TODO:: exports
             data: this.memory.dataBuffer,
             globalStatements: this.statementContainer,
+            source: this.source,
+            sourceMap: this.sourceMap,
         };
     }
 }

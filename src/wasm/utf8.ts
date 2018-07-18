@@ -14,6 +14,7 @@ export interface ByteStream {
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
 export function readUtf8Str(stream: ByteStream): string{
     const length = readLeb128Uint(stream).toNumber();
     return decoder.decode(stream.view.buffer.slice(0, length));

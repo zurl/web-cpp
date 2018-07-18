@@ -17,6 +17,12 @@ export abstract class WNode {
     public abstract emit(e: Emitter): void;
 
     public abstract length(e: Emitter): number;
+
+    public abstract dump(e: Emitter): void;
+
+    public optimize(e: Emitter): void {
+
+    }
 }
 
 export abstract class WExpression extends WNode {

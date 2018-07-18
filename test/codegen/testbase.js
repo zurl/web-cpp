@@ -10,7 +10,7 @@ const {dumpScopeMap} = require("../../dist/codegen/scope");
 
 function compile(name, source, options = {}) {
     const {code, map} = preprocess(name, source);
-    const translationUnit = CParser.parse(code);
+    const translationUnit = CParser.parse(code, {fileName: name});
     const ctx = new CompileContext(name, options, source, map);
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();

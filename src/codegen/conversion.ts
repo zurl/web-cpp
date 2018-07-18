@@ -32,6 +32,7 @@ export function doTypeTransfrom(type: Type): Type {
 }
 
 export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, node: Node): ExpressionResult {
+
     // left value transform
     if (expr.isLeft) {
         expr.isLeft = false;
@@ -43,7 +44,14 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, no
             throw new InternalError(`if( !(expr.expr instanceof WAddressHolder)) {`);
         }
 
-        expr.expr = expr.expr.createLoad(ctx, expr.type);
+        if ( expr.type instanceof ArrayType ) {
+            expr.type = new PointerType(expr.type.elementType);
+            expr.expr = expr.expr.createLoadAddress(ctx);
+        } else {
+
+            expr.expr = expr.expr.createLoad(ctx, expr.type);
+        }
+
 
     }
 

@@ -112,6 +112,5 @@ export function printf(this: Runtime): number {
         chr = this.memory.getUint8(formatptr);
     }
     const file = this.files[1];
-    console.log("$sp:" + this.sp);
     return file.write(printfBuffer.slice(0, size));
 }

@@ -175,8 +175,8 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         return this.right.codegen(ctx);
     }
 
-    const left = this.left.codegen(ctx);
-    const right = this.right.codegen(ctx);
+    let left = this.left.codegen(ctx);
+    let right = this.right.codegen(ctx);
     const dstType = this.deduceType(ctx);
     const op = getOpFromStr(this.operator, dstType.toWType());
 
@@ -188,19 +188,27 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
 
     if ( dstType instanceof PointerType ) {
         if ( left.type instanceof IntegerType ) {
+            left = doValueTransform(ctx, left, this);
             if ( left.expr instanceof FunctionEntity ) {
                 throw new InternalError(`unsupportfunc name`);
             }
-            left.type = dstType;
-            left.expr = new WBinaryOperation(I32Binary.mul, left.expr,
-                new WConst(WType.u32, dstType.elementType.length.toString(), this.location));
+            left = {
+                type: dstType,
+                isLeft: false,
+                expr: new WBinaryOperation(I32Binary.mul, left.expr,
+                    new WConst(WType.u32, dstType.elementType.length.toString(), this.location))
+            };
         } else if ( right.type instanceof IntegerType ) {
+            right = doValueTransform(ctx, left, this);
             if ( right.expr instanceof FunctionEntity ) {
                 throw new InternalError(`unsupportfunc name`);
             }
-            right.type = dstType;
-            right.expr = new WBinaryOperation(I32Binary.mul, right.expr,
-                new WConst(WType.u32, dstType.elementType.length.toString(), this.location));
+            right = {
+                type: dstType,
+                isLeft: false,
+                expr: new WBinaryOperation(I32Binary.mul, right.expr,
+                    new WConst(WType.u32, dstType.elementType.length.toString(), this.location))
+            };
         }
     }
 
@@ -382,23 +390,6 @@ PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionR
 //         value: 0,
 //     };
 // };
-
-/*
- *  规定：
- *  对于Type value的值是存值的地方的地址
- *  对于Lref value的值是存指针的地方的地址    （rval的话，stop是指针本体
- *  对于pointer value的值是存指针的地方的地址 （rval的话，stop是指针本体
- *
- *  所以 push
- *  ptr/type lvalue => laddr, lmtype
- *  ptr/type rvalue => none
- *  lref lvalue => laddr, lm32, lmtype
- *  lref rvalue => lm32, lmtype
- *
- *  &a的话 {type: ptr(int32), form: rvalue, value=> x 不是指针的地址，却是指针的值
- *
- *
- */
 
 export function expression() {
     return "";

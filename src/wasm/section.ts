@@ -65,6 +65,27 @@ export class WFunction extends WNode {
             this.getBodyLength(e);
     }
 
+    public dump(e: Emitter): void {
+        const params = this.type.parameters.map(
+            (x, i) => WType[x] + `:$${i}`).join(", ");
+        const results = this.type.returnTypes.map(
+            (x, i) => WType[x]).join(", ");
+        const locals = this.local.map(
+            (x, i) => WType[x] + `:$${i + this.type.parameters.length}`).join(", ");
+        e.dump(`(func ${this.name} (param ${params}) (result ${results})`, this.location);
+        e.changeDumpIndent(1);
+        e.dump(`(locals ${locals})`, this.location);
+        e.setCurrentFunc(this);
+        this.body.map((x) => x.dump(e));
+        e.setCurrentFunc();
+        e.changeDumpIndent(-1);
+        e.dump(")", this.location);
+    }
+
+    public optimize(e: Emitter): void {
+        this.body.map((x) => x.optimize(e));
+    }
+
 }
 
 export class WFunctionType extends WNode {
@@ -86,7 +107,7 @@ export class WFunctionType extends WNode {
     }
 
     public toString(): string {
-        return this.returnTypes.join(",") + "#" + this.parameters.join(",");
+        return this.parameters.join(",") + "#" + this.returnTypes.join(",");
     }
 
     public length(e: Emitter): number {
@@ -94,6 +115,7 @@ export class WFunctionType extends WNode {
             getLeb128UintLength(this.returnTypes.length) + this.returnTypes.length +
             getLeb128UintLength(this.parameters.length) + this.parameters.length;
     }
+
 }
 
 export class WMemorySection extends WNode {
@@ -141,7 +163,7 @@ export class WMemorySection extends WNode {
     }
 }
 
-class WTypeSection extends WSection {
+export class WTypeSection extends WSection {
     public types: WFunctionType[];
 
     constructor(types: WFunctionType[], location?: SourceLocation) {
@@ -168,7 +190,7 @@ class WTypeSection extends WSection {
 
 }
 
-class WFunctionSection extends WSection {
+export class WFunctionSection extends WSection {
     public functions: WFunction[];
 
     constructor(functions: WFunction[], location?: SourceLocation) {
@@ -195,7 +217,7 @@ class WFunctionSection extends WSection {
     }
 }
 
-class WCodeSection extends WSection {
+export class WCodeSection extends WSection {
     public functions: WFunction[];
 
     constructor(functions: WFunction[], location?: SourceLocation) {
@@ -218,6 +240,14 @@ class WCodeSection extends WSection {
     public length(e: Emitter): number {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
+    }
+
+    public dump(e: Emitter): void {
+        this.functions.map((x) => x.dump(e));
+    }
+
+    public optimize(e: Emitter): void {
+        this.functions.map((x) => x.optimize(e));
     }
 
 }
@@ -486,6 +516,7 @@ export class WDataSection extends WSection {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
     }
+
 }
 
 export interface WModuleConfig {
@@ -498,83 +529,67 @@ export interface WModuleConfig {
 }
 
 export class WModule extends WNode {
-    public functions: WFunction[];
-    public imports: WImportItem[];
-    public exports: string[];
-    public globals: WGlobalVariable[];
-    public data: WDataSegment[];
+    public typeSection: WTypeSection;
+    public importSection: WImportSection;
+    public functionSection: WFunctionSection;
+    public memorySection: WMemorySection;
+    public globalSection: WGlobalSection;
+    public exportSection: WExportSection;
+    public codeSection: WCodeSection;
+    public dataSection: WDataSection;
     public generateMemory: boolean;
+    public functions: WFunction[];
 
     constructor(config: WModuleConfig, location?: SourceLocation) {
         super(location);
         this.functions = config.functions;
-        this.imports = config.imports;
-        this.exports = config.exports;
-        this.globals = config.globals;
-        this.data = config.data;
+        const funcTypes: WFunctionType[] = [];
+        const importFunction: WImportFunction[] =
+            config.imports.filter((x) => x instanceof WImportFunction)
+                .map((x) => x as WImportFunction);
+        for (const func of [...config.functions, ...importFunction]) {
+            func.signatureId = funcTypes.length;
+            funcTypes.push(func.type);
+        }
         this.generateMemory = config.generateMemory;
+
+        const exports = config.exports.map((x) => new WExportFunction(x, this.location));
+
+        this.globalSection = new WGlobalSection(config.globals, this.location);
+        this.importSection = new WImportSection(config.imports, this.location);
+        this.memorySection = new WMemorySection([[2, null]], this.location);
+        this.functionSection = new WFunctionSection(config.functions, this.location);
+        this.typeSection = new WTypeSection(funcTypes, this.location);
+        this.codeSection = new WCodeSection(config.functions, this.location);
+        this.exportSection = new WExportSection(exports, this.location);
+        this.dataSection = new WDataSection(config.data, this.location);
+
     }
 
     public emit(e: Emitter): void {
         e.writeBytes([0x00, 0x61, 0x73, 0x6D]);
         e.writeBytes([0x01, 0x00, 0x00, 0x00]);
-        const {
-            typeSection,
-            importSection,
-            functionSection,
-            memorySection,
-            globalSection,
-            exportSection,
-            codeSection,
-            dataSection,
-        } = this.generateSections();
-        typeSection.emit(e);
-        importSection.emit(e);
-        functionSection.emit(e);
+        this.typeSection.emit(e);
+        this.importSection.emit(e);
+        this.functionSection.emit(e);
         if (this.generateMemory) {
-            memorySection.emit(e);
+            this.memorySection.emit(e);
         }
-        globalSection.emit(e);
-        exportSection.emit(e);
-        codeSection.emit(e);
-        dataSection.emit(e);
+        this.globalSection.emit(e);
+        this.exportSection.emit(e);
+        this.codeSection.emit(e);
+        this.dataSection.emit(e);
     }
 
     public length(e: Emitter): number {
         return 0;
     }
 
-    private generateSections() {
-        const funcTypes: WFunctionType[] = [];
-        const importFunction: WImportFunction[] =
-            this.imports.filter((x) => x instanceof WImportFunction)
-                .map((x) => x as WImportFunction);
-        for (const func of [...this.functions, ...importFunction]) {
-            func.signatureId = funcTypes.length;
-            funcTypes.push(func.type);
-        }
-
-        const exports = this.exports.map((x) => new WExportFunction(x, this.location));
-
-        const globalSection = new WGlobalSection(this.globals, this.location);
-        const importSection = new WImportSection(this.imports, this.location);
-        const memorySection = new WMemorySection([[2, null]], this.location);
-        const functionSection = new WFunctionSection(this.functions, this.location);
-        const typeSection = new WTypeSection(funcTypes, this.location);
-        const codeSection = new WCodeSection(this.functions, this.location);
-        const exportSection = new WExportSection(exports, this.location);
-        const dataSection = new WDataSection(this.data, this.location);
-
-        return {
-            typeSection,
-            importSection,
-            functionSection,
-            memorySection,
-            globalSection,
-            exportSection,
-            codeSection,
-            dataSection,
-        };
+    public dump(e: Emitter): void {
+        this.codeSection.dump(e);
     }
 
+    public optimize(e: Emitter): void {
+        this.codeSection.optimize(e);
+    }
 }

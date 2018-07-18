@@ -5,7 +5,7 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
-import {Control, F32, F64, getNativeType, I32, I32Binary, I64, WType, WTypeMap} from "./constant";
+import {Control, F32, F64, getNativeType, I32, I32Binary, I64, OpCodes, WType, WTypeMap} from "./constant";
 import {Emitter} from "./emitter";
 import {getAlign, WBinaryOperation, WCall, WConst, WMemoryLocation} from "./expression";
 import {getLeb128UintLength} from "./leb128";
@@ -49,6 +49,21 @@ export class WReturn extends WStatement {
         return 1;
     }
 
+    public dump(e: Emitter): void {
+        if(this.expr !== null) {
+            this.expr.dump(e);
+        }
+        e.dump(`return`);
+    }
+
+    public optimize(e: Emitter): void {
+        if (this.expr !== null) {
+            this.expr = this.expr.fold();
+            this.expr.optimize(e);
+        }
+    }
+
+
 }
 
 export class WStore extends WStatement {
@@ -69,6 +84,21 @@ export class WStore extends WStatement {
         this.offset = 0;
         this.form = form;
         this.offsetName = "";
+    }
+
+    public getOp() {
+        switch (this.type) {
+            case WType.u8:
+            case WType.i8: return I32.store8;
+            case WType.i16:
+            case WType.u16: return I32.store16;
+            case WType.i32:
+            case WType.u32: return I32.store;
+            case WType.f32: return F32.store;
+            case WType.f64: return F64.store;
+            case WType.i64:
+            case WType.u64: return I64.store;
+        }
     }
 
     public emit(e: Emitter): void {
@@ -92,18 +122,7 @@ export class WStore extends WStatement {
         }
         this.address.emit(e);
         this.value.emit(e);
-        switch (this.type) {
-            case WType.u8:
-            case WType.i8: e.writeByte(I32.store8); break;
-            case WType.i16:
-            case WType.u16: e.writeByte(I32.store16); break;
-            case WType.i32:
-            case WType.u32: e.writeByte(I32.store); break;
-            case WType.f32: e.writeByte(F32.store); break;
-            case WType.f64: e.writeByte(F64.store); break;
-            case WType.i64:
-            case WType.u64: e.writeByte(I64.store); break;
-        }
+        e.writeByte(this.getOp() as number);
         e.writeUint32(getAlign(offset));
         e.writeUint32(offset);
     }
@@ -134,6 +153,19 @@ export class WStore extends WStatement {
             getLeb128UintLength(offset) + 1;
     }
 
+    public dump(e: Emitter): void {
+        this.address.dump(e);
+        this.value.dump(e);
+        e.dump(`${OpCodes.get(this.getOp() as number)}`, this.location);
+    }
+
+    public optimize(e: Emitter): void {
+        this.value = this.value.fold();
+        this.value.optimize(e);
+        this.address = this.address.fold();
+        this.address.optimize(e);
+    }
+
 }
 export class WSetLocal extends WStatement {
     public type: WType;
@@ -155,6 +187,16 @@ export class WSetLocal extends WStatement {
 
     public length(e: Emitter): number {
         return this.value.length(e) + 1 + getLeb128UintLength(this.offset);
+    }
+
+    public dump(e: Emitter): void {
+        this.value.dump(e);
+        e.dump(`set_local $${this.offset}`, this.location);
+    }
+
+    public optimize(e: Emitter): void {
+        this.value = this.value.fold();
+        this.value.optimize(e);
     }
 }
 
@@ -182,6 +224,16 @@ export class WSetGlobal extends WStatement {
     public length(e: Emitter): number {
         return this.value.length(e) + 1 + getLeb128UintLength(e.getGlobalType(this.name));
     }
+
+    public dump(e: Emitter): void {
+        this.value.dump(e);
+        e.dump(`set_global ${this.name}`, this.location);
+    }
+
+    public optimize(e: Emitter): void {
+        this.value = this.value.fold();
+        this.value.optimize(e);
+    }
 }
 
 export class WDrop extends WStatement {
@@ -201,6 +253,16 @@ export class WDrop extends WStatement {
         return this.value.length(e) + 1;
     }
 
+    public dump(e: Emitter): void {
+        this.value.dump(e);
+        e.dump(`drop`, this.location);
+    }
+
+    public optimize(e: Emitter): void {
+        this.value = this.value.fold();
+        this.value.optimize(e);
+    }
+
 }
 
 export class WBr extends WStatement {
@@ -218,6 +280,10 @@ export class WBr extends WStatement {
 
     public length(e: Emitter): number {
         return 1 + getLeb128UintLength(this.labelIdx);
+    }
+
+    public dump(e: Emitter): void {
+        e.dump(`br ${this.labelIdx}`, this.location);
     }
 }
 
@@ -239,6 +305,16 @@ export class WBrIf extends WStatement {
 
     public length(e: Emitter): number {
         return this.expression.length(e) + 1 + getLeb128UintLength(this.labelIdx);
+    }
+
+    public dump(e: Emitter): void {
+        this.expression.dump(e);
+        e.dump(`br_if ${this.labelIdx}`, this.location);
+    }
+
+    public optimize(e: Emitter): void {
+        this.expression = this.expression.fold();
+        this.expression.optimize(e);
     }
 }
 
@@ -276,6 +352,30 @@ export class WIfElseBlock extends WStatement {
         return baseLen;
     }
 
+    public dump(e: Emitter): void {
+        e.dump(`if(`, this.location);
+        this.condition.emit(e);
+        e.dump(`){`, this.location);
+        e.changeDumpIndent(+1);
+        this.consequence.map((x) => x.dump(e));
+        e.changeDumpIndent(-1);
+        if (this.alternative !== null) {
+            e.dump(`}else{`);
+            e.changeDumpIndent(+1);
+            this.alternative.map((x) => x.dump(e));
+            e.changeDumpIndent(-1);
+        }
+        e.dump(`}`);
+    }
+
+    public optimize(e: Emitter): void {
+        this.condition = this.condition.fold();
+        this.condition.optimize(e);
+        this.consequence.map((x) => x.optimize(e));
+        if (this.alternative !== null) {
+            this.alternative.map((x) => x.optimize(e));
+        }
+    }
 }
 
 export class WBlock extends WStatement {
@@ -295,6 +395,18 @@ export class WBlock extends WStatement {
 
     public length(e: Emitter): number {
         return getArrayLength(this.body, (stmt) => stmt.length(e)) + 3;
+    }
+
+    public dump(e: Emitter): void {
+        e.dump(`block{`, this.location);
+        e.changeDumpIndent(+1);
+        this.body.map((x) => x.dump(e));
+        e.changeDumpIndent(-1);
+        e.dump(`}`);
+    }
+
+    public optimize(e: Emitter): void {
+        this.body.map((x) => x.optimize(e));
     }
 }
 
@@ -317,6 +429,18 @@ export class WLoop extends WStatement {
         return getArrayLength(this.body, (stmt) => stmt.length(e)) + 3;
     }
 
+    public dump(e: Emitter): void {
+        e.dump(`loop{`, this.location);
+        e.changeDumpIndent(+1);
+        this.body.map((x) => x.dump(e));
+        e.changeDumpIndent(-1);
+        e.dump(`}`);
+    }
+
+    public optimize(e: Emitter): void {
+        this.body.map((x) => x.optimize(e));
+    }
+
 }
 
 export class WExprStatement extends WStatement {
@@ -333,6 +457,15 @@ export class WExprStatement extends WStatement {
 
     public length(e: Emitter): number {
         return this.expr.length(e);
+    }
+
+    public dump(e: Emitter): void {
+        this.expr.dump(e);
+    }
+
+    public optimize(e: Emitter): void {
+        this.expr = this.expr.fold();
+        this.expr.optimize(e);
     }
 
 }

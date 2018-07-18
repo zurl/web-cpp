@@ -3,7 +3,10 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
+import {SourceMapConsumer} from "source-map";
+import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
+import {SourceMap} from "../common/object";
 import {WType} from "./constant";
 import {writeLeb128Int, writeLeb128Uint} from "./leb128";
 import {WFunction, WFunctionType} from "./section";
@@ -47,6 +50,10 @@ export interface Emitter {
     setGlobalIdx(name: string, type: WType): void;
 
     getExternLocation(name: string): number;
+
+    dump(str: string, loc?: SourceLocation): void;
+
+    changeDumpIndent(delta: number): void;
 }
 
 export class WASMEmitter implements Emitter {
@@ -59,6 +66,7 @@ export class WASMEmitter implements Emitter {
     public globalIdxCount: number;
     public currentFunc?: WFunction;
     public externMap: Map<string, number>;
+    public sourceMap?: Map<string, SourceMap>;
 
     constructor() {
         this.buffer = new ArrayBuffer(1000);
@@ -69,6 +77,8 @@ export class WASMEmitter implements Emitter {
         this.globalIdx = new Map<string, [number, WType]>();
         this.globalIdxCount = 0;
         this.externMap = new Map<string, number>();
+        this.dumpIndent = 0;
+        this.lastLine = 0;
     }
 
     public writeByte(byte: number): void {
@@ -172,6 +182,61 @@ export class WASMEmitter implements Emitter {
             throw new EmitError(`unresolve symbol ${name}`);
         }
         return item;
+    }
+
+    public dumpIndent: number;
+    public lastFile?: string;
+    public lastLine: number;
+    public consumer: SourceMapConsumer;
+    public source: string[];
+    public sourceMapItem: SourceMap;
+
+    public dumpSource(st: number, ed: number) {
+        for (let i = st; i <= ed; i++) {
+            console.log("# " + this.source[i].trim());
+        }
+    }
+
+    public dump(str: string, loc?: SourceLocation) {
+        let indent = "";
+        for (let i = 0; i < this.dumpIndent; i++) {
+            indent += " ";
+        }
+        if (this.sourceMap && loc) {
+            if (!this.lastFile || loc.fileName !== this.lastFile) {
+                this.lastFile = loc.fileName;
+                if( this.sourceMap.has(this.lastFile)){
+                    const item = this.sourceMap!.get(this.lastFile)!;
+                    this.sourceMapItem = item;
+                    this.source = item.source;
+                    this.consumer = new SourceMapConsumer(
+                        item.sourceMap.toString());
+                    if( item.lastLine ){
+                        this.lastLine = item.lastLine;
+                    } else {
+                        this.lastLine = 0;
+                    }
+                } else {
+                    this.lastLine = -1;
+                }
+            }
+            const mappedLine = this.consumer.originalPositionFor({
+                line: loc.start.line,
+                column: 1,
+            }).line;
+            if (this.lastLine !== -1 && mappedLine > this.lastLine) {
+                this.sourceMapItem.lastLine = mappedLine;
+                const st = this.lastLine + 1;
+                const ed = mappedLine;
+                this.dumpSource(st, ed);
+                this.lastLine = mappedLine;
+            }
+        }
+        console.log(indent + str);
+    }
+
+    public changeDumpIndent(delta: number): void {
+        this.dumpIndent += delta;
     }
 
 }

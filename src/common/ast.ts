@@ -35,11 +35,13 @@ export class Position {
 }
 
 export class SourceLocation {
+    public fileName: string;
     public source: string;
     public start: Position;
     public end: Position;
 
-    constructor(source: string, start: Position, end: Position) {
+    constructor(fileName: string, source: string, start: Position, end: Position) {
+        this.fileName = fileName;
         this.source = source;
         this.start = start;
         this.end = end;
@@ -52,14 +54,16 @@ export class SourceLocation {
 
 export abstract class Node {
     public location: SourceLocation;
-    public parentNode: Node | null;
 
     protected constructor(location: SourceLocation) {
         this.location = location;
-        this.parentNode = null;
     }
 
     public codegen(ctx: CompileContext): any {
+        throw new InternalError("no_impl at " + this.constructor.name);
+    }
+
+    public preprocess(ctx: CompileContext): any {
         throw new InternalError("no_impl at " + this.constructor.name);
     }
 }
@@ -111,7 +115,7 @@ export class IntegerConstant extends Constant {
         return OneConstant;
     }
 
-    public static getNegOne(){
+    public static getNegOne() {
         return NegOneConstant;
     }
 
@@ -141,7 +145,7 @@ export class IntegerConstant extends Constant {
 }
 
 const ZeroConstant = new IntegerConstant(
-    new SourceLocation("",
+    new SourceLocation("", "",
         new Position(1, 1, 1),
         new Position(1, 1, 1),
     ),
@@ -152,7 +156,7 @@ const ZeroConstant = new IntegerConstant(
 );
 
 const OneConstant = new IntegerConstant(
-    new SourceLocation("",
+    new SourceLocation("", "",
         new Position(1, 1, 1),
         new Position(1, 1, 1),
         ),
@@ -163,7 +167,7 @@ const OneConstant = new IntegerConstant(
 );
 
 const NegOneConstant = new IntegerConstant(
-    new SourceLocation("",
+    new SourceLocation("", "",
         new Position(1, 1, 1),
         new Position(1, 1, 1),
     ),

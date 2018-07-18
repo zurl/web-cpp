@@ -1,5 +1,6 @@
-const {LinkedHeapAllocator, FastHeapAllocator} = require("../../dist/vm/allocator");
-const {VirtualMachine} = require("../../dist/vm/index");
+
+const {LinkedHeapAllocator, FastHeapAllocator} = require("../../dist/runtime/allocator");
+const {Runtime} = require("../../dist/runtime/runtime");
 const {assert} = require("chai");
 
 function printLayout(memory, st, ed){
@@ -17,10 +18,10 @@ describe('heap allocator', function () {
     it('it should be works', function () {
         const allocator = new LinkedHeapAllocator();
         const buffer = new ArrayBuffer(1000);
-        const vm = new VirtualMachine({
-            memory: new DataView(buffer),
-            heapStart: 100
-        });
+        const vm = new Runtime();
+        vm.sp = 10000;
+        vm.heapStart = 100;
+        vm.heapPointer = 100;
         const a1 = allocator.allocHeap(vm, 10);
         const a2 = allocator.allocHeap(vm, 30);
         const a3 = allocator.allocHeap(vm, 70);
@@ -50,10 +51,10 @@ describe('heap allocator', function () {
     it('fast heap alloc', function () {
         const allocator = new FastHeapAllocator();
         const buffer = new ArrayBuffer(10000);
-        const vm = new VirtualMachine({
-            memory: new DataView(buffer),
-            heapStart: 100
-        });
+        const vm = new Runtime();
+        vm.sp = 10000;
+        vm.heapStart = 100;
+        vm.heapPointer = 100;
         allocator.poolSize[0] = 2;
         allocator.poolSize[1] = 2;
         allocator.init(vm);

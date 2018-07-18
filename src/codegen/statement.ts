@@ -189,13 +189,14 @@ IfStatement.prototype.codegen = function(ctx: CompileContext) {
 
     const savedContainer = ctx.getStatementContainer();
     ctx.setStatementContainer(thenStatements);
+    ctx.blockLevel ++;
     this.consequent.codegen(ctx);
     if ( this.alternate !== null) {
         ctx.setStatementContainer(elseStatements);
         this.alternate.codegen(ctx);
     }
     ctx.setStatementContainer(savedContainer);
-
+    ctx.blockLevel --;
     if ( this.alternate !== null) {
         ctx.submitStatement(new WIfElseBlock(condition.expr.fold(), thenStatements,
             elseStatements, this.location));
@@ -229,8 +230,10 @@ WhileStatement.prototype.codegen = function(ctx: CompileContext) {
     condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
     ctx.submitStatement(new WBrIf(1, condition.expr.fold(), this.location));
-    ctx.loopStack.push([0, 1]);
+    ctx.loopStack.push([ctx.blockLevel + 2, ctx.blockLevel + 1]);
+    ctx.blockLevel += 2;
     this.body.codegen(ctx);
+    ctx.blockLevel -= 2;
     ctx.loopStack.pop();
     ctx.submitStatement(new WBr(0, this.location));
     // <-- loop -->
@@ -263,8 +266,10 @@ DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
 
     // <-- block -->
     ctx.setStatementContainer(doWhileBlock);
-    ctx.loopStack.push([0, 1]);
+    ctx.loopStack.push([ctx.blockLevel + 2, ctx.blockLevel + 1]);
+    ctx.blockLevel += 2;
     this.body.codegen(ctx);
+    ctx.blockLevel -= 2;
     ctx.loopStack.pop();
     // <-- block -->
 
@@ -314,8 +319,10 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
 
     // <-- inner block -->
     ctx.setStatementContainer(innerBlockStatements);
-    ctx.loopStack.push([0, 2]);
+    ctx.loopStack.push([ctx.blockLevel + 3, ctx.blockLevel + 1]);
+    ctx.blockLevel += 3;
     this.body.codegen(ctx);
+    ctx.blockLevel += 3;
     ctx.loopStack.pop();
     // <-- inner block -->
 
@@ -349,7 +356,7 @@ ContinueStatement.prototype.codegen = function(ctx: CompileContext) {
         throw new SyntaxError(`continue is not in while/do-while/for`, this);
     }
     const item = ctx.loopStack[ctx.loopStack.length - 1];
-    ctx.submitStatement(new WBr(item[0], this.location));
+    ctx.submitStatement(new WBr(ctx.blockLevel - item[0], this.location));
 };
 
 BreakStatement.prototype.codegen = function(ctx: CompileContext) {
@@ -357,7 +364,7 @@ BreakStatement.prototype.codegen = function(ctx: CompileContext) {
         throw new SyntaxError(`break is not in while/do-while/for`, this);
     }
     const item = ctx.loopStack[ctx.loopStack.length - 1];
-    ctx.submitStatement(new WBr(item[1], this.location));
+    ctx.submitStatement(new WBr(ctx.blockLevel - item[1], this.location));
 };
 
 export function statement() {

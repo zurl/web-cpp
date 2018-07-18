@@ -40,10 +40,18 @@ export interface CompiledObject {
     sourceMap?: SourceMapGenerator;
 }
 
+export interface SourceMap {
+    source: string[];
+    sourceMap: SourceMapGenerator;
+    lastLine: number;
+}
+
 export interface BinaryObject {
     fileName: string;
     binary: ArrayBuffer;
 
     // debug only
     scopeMap?: Map<string, Scope>;
+    sourceMap: Map<string, SourceMap>;
+
 }

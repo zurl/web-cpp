@@ -283,4 +283,8 @@ export class WAddressHolder extends WExpression {
         return true;
     }
 
+    public dump(e: Emitter): void {
+        console.log("ADDRESS HOLDER");
+    }
+
 }
