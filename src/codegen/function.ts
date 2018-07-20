@@ -9,7 +9,7 @@ import {
     FunctionDeclarator,
     FunctionDefinition,
     IdentifierDeclarator,
-    ParameterList, ReturnStatement,
+    ParameterList,
 } from "../common/ast";
 import {assertType, SyntaxError} from "../common/error";
 import {
@@ -21,7 +21,7 @@ import {
     Variable,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
-import {I32Binary, WBinaryOperation, WCall, WConst, WFunction, WType} from "../wasm";
+import {I32Binary, WBinaryOperation, WCall, WConst, WFunction, WReturn, WType} from "../wasm";
 import {WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
@@ -65,23 +65,11 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     if (functionType == null) {
         throw new SyntaxError(`illegal function definition`, this);
     }
-    const fullName = ctx.currentScope.getScopeName() + "@" + functionType.name;
-    let functionEntity: FunctionEntity;
-    const oldEntity = ctx.currentScope.get(functionType.name);
-    if (oldEntity) {
-       if ( !(oldEntity instanceof FunctionEntity)) {
-           throw new SyntaxError(`The function ${functionType.name} has been defined var/type`, this);
-       } else if ( oldEntity.isLibCall ) {
-           return;
-       } else if ( oldEntity.isDefine() ) {
-           throw new SyntaxError(`The function ${functionType.name} has been defined `, this);
-       } else {
-            functionEntity = oldEntity;
-       }
-    } else {
-        functionEntity = new FunctionEntity(functionType.name, ctx.fileName, fullName, functionType);
-        ctx.currentScope.set(functionEntity.name, functionEntity);
-    }
+    const realName = functionType.name + "@" + functionType.toMangledName();
+    const fullName = ctx.scopeManager.getFullName(realName);
+    const functionEntity = new FunctionEntity(functionType.name, fullName,
+        ctx.fileName, functionType, false, true);
+    ctx.scopeManager.define(realName, functionEntity);
     ctx.enterFunction(functionEntity);
 
     // alloc parameters
@@ -96,20 +84,19 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         if (!name) {
             throw new SyntaxError(`unnamed parameter`, this);
         }
-        if (ctx.currentScope.map.has(name)) {
-            throw new SyntaxError(`redefined parameter ${name}`, this);
-        }
         if ( type instanceof ClassType || type instanceof ArrayType ||
             (functionEntity.type.variableArguments
                 && i === functionEntity.type.parameterTypes.length - 1)) {
-            ctx.currentScope.set(name, new Variable(
-                name, ctx.fileName, type, AddressType.STACK, stackParameterNow,
+            ctx.scopeManager.define(name, new Variable(
+                name, ctx.scopeManager.getFullName(name), ctx.fileName,
+                type, AddressType.STACK, stackParameterNow,
             ));
             stackParameterNow += getInStackSize(type.length);
         } else {
             parameterWTypes.push(type.toWType());
-            ctx.currentScope.set(name, new Variable(
-                name, ctx.fileName, type, AddressType.LOCAL, ctx.memory.allocLocal(type.toWType()),
+            ctx.scopeManager.define(name, new Variable(
+                name, ctx.scopeManager.getFullName(name), ctx.fileName,
+                type, AddressType.LOCAL, ctx.memory.allocLocal(type.toWType()),
             ));
         }
     }
@@ -136,7 +123,6 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         new WSetLocal(WType.u32, functionEntity.$sp,
             new WGetGlobal(WType.u32, "$sp", this.location), this.location));
 
-
     // $sp = $sp - 0
     const offsetNode = new WConst(WType.i32, "0", this.location);
     ctx.submitStatement(
@@ -145,15 +131,17 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
                 new WGetLocal(WType.u32, functionEntity.$sp, this.location),
                 offsetNode, this.location), this.location));
 
-    // ctx.submitStatement(new WCall("@putInt",
-    //     [new WGetGlobal(WType.u32, "$sp", this.location)],
-    //     []);
-
     this.body.body.map((item) => item.codegen(ctx));
 
     offsetNode.constant = ctx.memory.stackPtr.toString();
     ctx.setStatementContainer(savedStatements);
     ctx.exitFunction();
+
+    if ( !functionEntity.type.returnType.equals(PrimitiveTypes.void)
+        && (bodyStatements.length === 0
+            || !(bodyStatements[bodyStatements.length - 1] instanceof WReturn))) {
+        throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, this);
+    }
 
     ctx.submitFunction(new WFunction(
         functionEntity.fullName,

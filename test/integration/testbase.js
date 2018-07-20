@@ -16,9 +16,9 @@ async function testRun(source, debug){
         ], options);
     const importObj = {system: {}};
     for(const key of Object.keys(JsAPIMap)){
-        importObj["system"]["@" + key] = JsAPIMap[key];
+        importObj["system"]["::" + key] = JsAPIMap[key];
     }
-    const runtime = new NativeRuntime(bin.binary, 10, importObj, [
+    const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
         new NoInputFile(),
         new StringOutputFile(result),
         new StringOutputFile(result),

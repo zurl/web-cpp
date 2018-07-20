@@ -35,9 +35,9 @@ export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: E
 }
 
 CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
-    ctx.enterScope(null);
+    ctx.scopeManager.enterUnnamedScope();
     this.body.map((node) => node.codegen(ctx));
-    ctx.exitScope();
+    ctx.scopeManager.exitScope();
 };
 
 // LabeledStatement.prototype.codegen = function(ctx: CompileContext) {

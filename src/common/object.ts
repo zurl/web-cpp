@@ -1,5 +1,5 @@
 import {SourceMapGenerator} from "source-map";
-import {Scope} from "../codegen/scope";
+import {Oldscope} from "../codegen/scope";
 import {WFunction, WImportFunction} from "../wasm";
 import {WMemoryLocation} from "../wasm/expression";
 import {Type} from "./type";
@@ -35,7 +35,7 @@ export interface CompiledObject {
     data: ArrayBuffer;
 
     // debug only
-    scopeMap?: Map<string, Scope>;
+    scopeMap?: Map<string, Oldscope>;
     source?: string;
     sourceMap?: SourceMapGenerator;
 }
@@ -48,10 +48,11 @@ export interface SourceMap {
 
 export interface BinaryObject {
     fileName: string;
+    entry: string;
     binary: ArrayBuffer;
 
     // debug only
-    scopeMap?: Map<string, Scope>;
+    scopeMap?: Map<string, Oldscope>;
     sourceMap: Map<string, SourceMap>;
 
 }

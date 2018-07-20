@@ -30,8 +30,8 @@ import {WBinaryOperation, WConst, WGetAddress, WMemoryLocation} from "../wasm/ex
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
+import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
-import {WExpression} from "../wasm/node";
 
 ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     return this.expression.codegen(ctx);
@@ -145,17 +145,20 @@ CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionR
 };
 
 Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    const item = ctx.currentScope.get(this.name);
+    const item = this.name.slice(0, 2) === "::" ?
+        ctx.scopeManager.lookupFullName(this.name) :
+        ctx.scopeManager.lookup(this.name);
     if (item === null) {
         throw new SyntaxError(`Unresolve Name ${this.name}`, this);
     }
     if (item instanceof Type) {
         throw new SyntaxError(`${this.name} expect to be variable, but it is a type :)`, this);
     }
-    if (item instanceof FunctionEntity) {
+    if (item instanceof FunctionLookUpResult) {
+        // TODO:: overload lookup
         return {
-            type: item.type,
-            expr: item,
+            type: item.functions[0].type,
+            expr: item.functions[0],
             isLeft: false,
         };
     }
@@ -180,8 +183,6 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     const dstType = this.deduceType(ctx);
     const op = getOpFromStr(this.operator, dstType.toWType());
 
-
-
     if ( op === null ) {
         throw new InternalError(`unsupport op ${this.operator}`);
     }
@@ -196,7 +197,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
                 type: dstType,
                 isLeft: false,
                 expr: new WBinaryOperation(I32Binary.mul, left.expr,
-                    new WConst(WType.u32, dstType.elementType.length.toString(), this.location))
+                    new WConst(WType.u32, dstType.elementType.length.toString(), this.location)),
             };
         } else if ( right.type instanceof IntegerType ) {
             right = doValueTransform(ctx, left, this);
@@ -207,7 +208,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
                 type: dstType,
                 isLeft: false,
                 expr: new WBinaryOperation(I32Binary.mul, right.expr,
-                    new WConst(WType.u32, dstType.elementType.length.toString(), this.location))
+                    new WConst(WType.u32, dstType.elementType.length.toString(), this.location)),
             };
         }
     }
@@ -215,7 +216,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     let leftExpr = doConversion(ctx, dstType, left, this);
     let rightExpr = doConversion(ctx, dstType, right, this);
 
-    if( this.operator === "&&" || this.operator === "||"){
+    if ( this.operator === "&&" || this.operator === "||") {
         leftExpr = new WBinaryOperation(I32Binary.ne, leftExpr,
             new WConst(WType.i32, "0", this.location), this.location);
         rightExpr = new WBinaryOperation(I32Binary.ne, rightExpr,

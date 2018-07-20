@@ -52,7 +52,6 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, no
             expr.expr = expr.expr.createLoad(ctx, expr.type);
         }
 
-
     }
 
     // array to pointer transform

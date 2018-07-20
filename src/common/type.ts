@@ -4,13 +4,19 @@ import {isArrayEqual} from "./utils";
 
 const MACHINE_POINTER_LENGTH = 4;
 
-export abstract class Type {
+export abstract class Symbol {
+    public abstract isDefine(): boolean;
+    public abstract getType(): Type;
+}
+
+export abstract class Type extends Symbol {
 
     public isExtern: boolean;
     public isStatic: boolean;
     public isConst: boolean;
 
     constructor() {
+        super();
         this.isExtern = false;
         this.isStatic = false;
         this.isConst = false;
@@ -23,6 +29,15 @@ export abstract class Type {
     public abstract toWType(): WType;
     public abstract toString(): string;
     public abstract get length(): number;
+    public abstract toMangledName(): string;
+
+    public isDefine() {
+        return false;
+    }
+
+    public getType(): Type {
+        return this;
+    }
 }
 
 export abstract class CompoundType extends Type {
@@ -52,6 +67,10 @@ export class PointerType extends CompoundType {
     public toWType() {
         return WType.u32;
     }
+
+    public toMangledName(): string {
+        return "P" + this.elementType.toMangledName();
+    }
 }
 
 export abstract class ReferenceType extends CompoundType {
@@ -72,6 +91,10 @@ export class LeftReferenceType extends ReferenceType {
     public toWType() {
         return WType.u32;
     }
+
+    public toMangledName(): string {
+        return "R" + this.elementType.toMangledName();
+    }
 }
 
 export class RightReferenceType extends ReferenceType {
@@ -81,6 +104,10 @@ export class RightReferenceType extends ReferenceType {
 
     public toWType() {
         return WType.u32;
+    }
+
+    public toMangledName(): string {
+        return "r" + this.elementType.toMangledName();
     }
 }
 
@@ -98,6 +125,10 @@ export class VoidType extends PrimitiveType {
     public toWType() {
         return WType.i32;
     }
+
+    public toMangledName(): string {
+        return "v";
+    }
 }
 
 export class NullptrType extends PrimitiveType {
@@ -107,6 +138,10 @@ export class NullptrType extends PrimitiveType {
 
     public toWType() {
         return WType.i32;
+    }
+
+    public toMangledName(): string {
+        return "nullptr";
     }
 }
 
@@ -136,6 +171,10 @@ export class BoolType extends UnsignedIntegerType {
     public toWType() {
         return WType.i8;
     }
+
+    public toMangledName(): string {
+        return "b";
+    }
 }
 
 // HACK: Char = Signed Char
@@ -147,6 +186,10 @@ export class CharType extends SignedIntegerType {
     public toWType() {
         return WType.i8;
     }
+
+    public toMangledName(): string {
+        return "c";
+    }
 }
 
 export class Int16Type extends SignedIntegerType {
@@ -156,6 +199,10 @@ export class Int16Type extends SignedIntegerType {
 
     public toWType() {
         return WType.i16;
+    }
+
+    public toMangledName(): string {
+        return "s";
     }
 }
 
@@ -167,6 +214,10 @@ export class Int32Type extends SignedIntegerType {
     public toWType() {
         return WType.i32;
     }
+
+    public toMangledName(): string {
+        return "i";
+    }
 }
 
 export class Int64Type extends SignedIntegerType {
@@ -176,6 +227,10 @@ export class Int64Type extends SignedIntegerType {
 
     public toWType() {
         return WType.i64;
+    }
+
+    public toMangledName(): string {
+        return "l";
     }
 }
 
@@ -187,6 +242,10 @@ export class UnsignedCharType extends UnsignedIntegerType {
     public toWType() {
         return WType.u8;
     }
+
+    public toMangledName(): string {
+        return "uc";
+    }
 }
 
 export class UnsignedInt16Type extends UnsignedIntegerType {
@@ -196,6 +255,10 @@ export class UnsignedInt16Type extends UnsignedIntegerType {
 
     public toWType() {
         return WType.u16;
+    }
+
+    public toMangledName(): string {
+        return "us";
     }
 }
 
@@ -207,6 +270,10 @@ export class UnsignedInt32Type extends UnsignedIntegerType {
     public toWType() {
         return WType.u32;
     }
+
+    public toMangledName(): string {
+        return "ui";
+    }
 }
 
 export class UnsignedInt64Type extends UnsignedIntegerType {
@@ -216,6 +283,9 @@ export class UnsignedInt64Type extends UnsignedIntegerType {
 
     public toWType() {
         return WType.u64;
+    }
+    public toMangledName(): string {
+        return "ul";
     }
 }
 
@@ -227,6 +297,10 @@ export class FloatType extends FloatingType {
     public toWType() {
         return WType.f32;
     }
+
+    public toMangledName(): string {
+        return "f";
+    }
 }
 
 export class DoubleType extends FloatingType {
@@ -236,6 +310,10 @@ export class DoubleType extends FloatingType {
 
     public toWType() {
         return WType.f64;
+    }
+
+    public toMangledName(): string {
+        return "d";
     }
 }
 
@@ -274,6 +352,10 @@ export class FunctionType extends Type {
     public toWType(): WType {
         throw new InternalError(`could not to Wtype of func`);
     }
+
+    public toMangledName(): string {
+        return this.parameterTypes.map((x) => x.toMangledName()).join(",");
+    }
 }
 
 enum AccessControl {
@@ -293,12 +375,16 @@ export class ClassType extends Type {
     public isUnion: boolean;
     public isComplete: boolean;
     public name: string;
+    public fullName: string;
+    public fileName: string;
     public fields: ClassField[];
     public fieldMap: Map<string, ClassField>;
 
-    constructor(name: string, fields: ClassField[], isUnion: boolean) {
+    constructor(name: string, fullName: string, fileName: string, fields: ClassField[], isUnion: boolean) {
         super();
         this.name = name;
+        this.fileName = fileName;
+        this.fullName = fullName;
         this.fields = fields;
         this.isComplete = true;
         this.fieldMap = new Map<string, ClassField>();
@@ -327,6 +413,14 @@ export class ClassType extends Type {
 
     public toString() {
         return "[Class]";
+    }
+
+    public toMangledName() {
+        return this.fullName;
+    }
+
+    public isDefine(): boolean{
+        return this.isComplete;
     }
 }
 
@@ -395,6 +489,10 @@ export class ArrayType extends Type {
 
     public toWType(): WType {
         throw new InternalError(`could not to Wtype of func`);
+    }
+
+    public toMangledName(): string {
+        return this.elementType.toMangledName() + "[" + this.size + "]";
     }
 }
 
@@ -472,19 +570,22 @@ export enum AddressType {
     MEMORY_EXTERN,
     RVALUE,
     CONSTANT,
-    GLOBAL_SP
+    GLOBAL_SP,
 }
 
-export class Variable {
+export class Variable extends Symbol {
     public name: string;
+    public fullName: string;
     public fileName: string;
     public type: Type;
     public addressType: AddressType;
     public location: number | string;
 
-    constructor(name: string, fileName: string, type: Type,
+    constructor(name: string, fullName: string, fileName: string, type: Type,
                 storageType: AddressType, location: number | string) {
+        super();
         this.name = name;
+        this.fullName = fullName;
         this.fileName = fileName;
         this.type = type;
         this.addressType = storageType;
@@ -494,25 +595,36 @@ export class Variable {
     public toString() {
         return `${this.name}:${this.type.toString()}`;
     }
+
+    public isDefine() {
+        return this.addressType !== AddressType.MEMORY_EXTERN;
+    }
+
+    public getType() {
+        return this.type;
+    }
 }
 
-export class FunctionEntity {
+export class FunctionEntity extends Symbol {
     public name: string;
-    public fileName: string;
-    public location: string | number;
-    public type: FunctionType;
     public fullName: string;
+    public fileName: string;
+    public type: FunctionType;
+
     public isLibCall: boolean;
+    public hasDefine: boolean;
     public parametersSize: number;
     public $sp: number;
 
-    constructor(name: string, fileName: string, fullName: string, type: FunctionType) {
+    constructor(name: string, fullName: string, fileName: string,
+                type: FunctionType, isLibCall: boolean, isDefine: boolean) {
+        super();
         this.name = name;
+        this.fullName = fullName;
         this.fileName = fileName;
         this.type = type;
-        this.location = -1;
-        this.fullName = fullName;
-        this.isLibCall = false;
+        this.isLibCall = isLibCall;
+        this.hasDefine = isDefine;
         this.$sp = 0;
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
@@ -520,6 +632,10 @@ export class FunctionEntity {
     }
 
     public isDefine(): boolean {
-        return this.location !== -1 || this.isLibCall;
+        return this.hasDefine;
+    }
+
+    public getType() {
+        return this.type;
     }
 }

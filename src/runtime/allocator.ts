@@ -4,8 +4,6 @@
  *  Created at 06/07/2018
  */
 import {RuntimeError} from "../common/error";
-import {PriorityQueue} from "../common/pq";
-import {VirtualMachine} from "../vm/index";
 import {Runtime} from "./runtime";
 
 export abstract class HeapAllocator {

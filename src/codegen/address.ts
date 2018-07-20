@@ -7,12 +7,12 @@ import {SourceLocation} from "../common/ast";
 import {EmitError, InternalError} from "../common/error";
 import {AddressType, ArrayType, ClassType, Type} from "../common/type";
 import {I32Binary, WBinaryOperation, WConst, WLoad, WStore, WType} from "../wasm";
+import {getNativeType} from "../wasm/constant";
 import {Emitter} from "../wasm/emitter";
 import {WGetAddress, WGetGlobal, WGetLocal, WMemoryLocation} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {CompileContext} from "./context";
-import {getNativeType} from "../wasm/constant";
 
 export class WAddressHolder extends WExpression {
     public place: number | string | WExpression;

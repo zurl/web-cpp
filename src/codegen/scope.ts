@@ -1,179 +1,251 @@
 /**
  *  @file
  *  @author zcy <zurl@live.com>
- *  Created at 18/06/2018
+ *  Created at 19/07/2018
  */
 
-import {InternalError, LinkerError} from "../common/error";
-import {AddressType, FunctionEntity, Type, Variable} from "../common/type";
+import {inspect} from "util";
+import {Node} from "../common/ast";
+import {SyntaxError} from "../common/error";
+import {FunctionEntity, Symbol, Type, Variable} from "../common/type";
 
 export class Scope {
-    public name: string;
-    public map: Map<string, Variable | FunctionEntity | Type>;
-    public parent: Scope | null;
-    public isRoot: boolean;
+    public shortName: string;
+    public fullName: string;
+    public parent: Scope;
     public children: Scope[];
+    public map: Map<string, Symbol[]>;
 
-    constructor(name: string, parent: Scope | null) {
-        this.name = name;
-        this.map = new Map<string, Variable | FunctionEntity | Type>();
-        this.parent = parent;
-        this.isRoot = false;
+    constructor(shortName: string, parent: Scope | null) {
+        this.shortName = shortName;
+        if (parent === null) {
+            this.parent = this;
+            this.fullName = "";
+        } else {
+            this.parent = parent;
+            this.fullName = this.parent.fullName + "::" + this.shortName;
+        }
         this.children = [];
+        this.map = new Map<string, Symbol[]>();
     }
 
-    public get(key: string): Variable | FunctionEntity | Type | null {
-        const value = this.map.get(key);
-        if (value !== undefined) {
-            return value;
-        }
-        if (this.parent != null) {
-            return this.parent.get(key);
-        }
-        return null;
-    }
-
-    public getInCurrentScope(key: string): Variable | FunctionEntity | Type | null {
-        const value = this.map.get(key);
-        if (value !== undefined) {
-            return value;
-        }
-        return null;
-    }
-
-    public set(key: string, value: Variable | FunctionEntity | Type) {
-        if (this.map.has(key)) {
-            throw new InternalError(`redefined key at set() ${key}`);
-        }
-        this.map.set(key, value);
-    }
-
-    public hasInCurrentScope(key: string): boolean {
-        return this.map.has(key);
-    }
-
-    public getScopeName(): string {
-        if (this.parent == null) {
-            return this.name;
+    public declare(shortName: string, symbol: Symbol, node?: Node) {
+        const realName = shortName.split("@")[0];
+        const item = this.map.get(realName);
+        if (!item) {
+            this.map.set(realName, [symbol]);
         } else {
-            return this.parent.getScopeName() + "@" + this.name;
-        }
-    }
-}
-
-export function mergeScopeTo(dst: Scope, src: Scope) {
-    for (const tuple of src.map.entries()) {
-        const dstval = dst.map.get(tuple[0]);
-        if (dstval === undefined) {
-            dst.map.set(tuple[0], tuple[1]);
-        } else {
-            const srcval = tuple[1];
-            if (srcval instanceof FunctionEntity
-                && dstval instanceof FunctionEntity
-                && srcval.type.equals(dstval.type)) {
-                if (!srcval.isDefine() && !dstval.isDefine()) {
-                    continue;
+            if (item[0] instanceof FunctionEntity) {
+                if (!(symbol instanceof FunctionEntity)) {
+                    throw new SyntaxError(`redefine of ${shortName}`, node!);
                 }
-                if (srcval.isDefine() && !dstval.isDefine()) {
-                    dst.map.set(tuple[0], tuple[1]);
-                    continue;
-                }
-                if (!srcval.isDefine() && dstval.isDefine()) {
-                    continue;
-                }
-                if (srcval.isDefine() && dstval.isDefine()) {
-                    if (srcval.isLibCall && dstval.isLibCall) {
-                        continue;
+                for (let i = 0; i < item.length; i++) {
+                    const x = item[i];
+                    if (x instanceof FunctionEntity) {
+                        if (x.fullName === symbol.fullName) {
+                            if (x.isDefine() && !symbol.isDefine()) {
+                                return;
+                            } else if (x.isDefine() && symbol.isDefine()) {
+                                throw new SyntaxError(`redefine of ${shortName}`, node!);
+                            } else if (!x.isDefine() && symbol.isDefine()) {
+                                item[i] = symbol;
+                                return;
+                            } else if (!x.isDefine() && !symbol.isDefine()) {
+                                return;
+                            }
+                        }
+                    } else {
+                        throw new SyntaxError(`redefine of ${shortName}`, node!);
                     }
-                    throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
                 }
-            } else if (srcval instanceof Variable
-                && dstval instanceof Variable
-                && srcval.type.equals(dstval.type)) {
-                if (srcval.addressType === AddressType.MEMORY_EXTERN
-                    && dstval.addressType === AddressType.MEMORY_EXTERN) {
-                    continue;
-                }
-                if (srcval.addressType !== AddressType.MEMORY_EXTERN
-                    && dstval.addressType === AddressType.MEMORY_EXTERN) {
-                    dst.map.set(tuple[0], tuple[1]);
-                    continue;
-                }
-                if (srcval.addressType === AddressType.MEMORY_EXTERN
-                    && dstval.addressType !== AddressType.MEMORY_EXTERN) {
-                    continue;
-                }
-                if (srcval.addressType !== AddressType.MEMORY_EXTERN
-                    && dstval.addressType !== AddressType.MEMORY_EXTERN) {
-                    throw new LinkerError(`Duplicated Definition of ${srcval.name}`);
-                }
-            } else if (srcval instanceof Type && dstval instanceof Type) {
-                if (srcval.equals(dstval)) {
-                    continue;
-                }
-            }
-            throw new LinkerError(`Different definition of ${srcval.toString()} and  ${dstval.toString()}`);
-        }
-    }
-}
-
-export function mergeScopeMap(scopeMaps: Array<Map<string, Scope>>): Map<string, Scope> {
-    const result = new Map<string, Scope>();
-    for (const scopeMap of scopeMaps) {
-        for (const tuple of scopeMap.entries()) {
-            const item = result.get(tuple[0]);
-            if (item === undefined) {
-                result.set(tuple[0], tuple[1]);
+                item.push(symbol);
             } else {
-                mergeScopeTo(item, tuple[1]);
+                if (item.length !== 1) {
+                    throw new SyntaxError(`redefine of ${shortName}`, node!);
+                } else {
+                    const x = item[0];
+                    if (x.isDefine() && !symbol.isDefine()) {
+                        return;
+                    } else if (x.isDefine() && symbol.isDefine()) {
+                        throw new SyntaxError(`redefine of ${shortName}`, node!);
+                    } else if (!x.isDefine() && symbol.isDefine()) {
+                        item[0] = symbol;
+                        return;
+                    } else if (!x.isDefine() && !symbol.isDefine()) {
+                        return;
+                    }
+                }
             }
         }
     }
-    return result;
+
+    public getScope(tokens: string[]): Scope | null {
+        if (tokens.length === 0) {
+            return this;
+        }
+        for (const scope of this.children) {
+            if (scope.shortName === tokens[0]) {
+                return scope.getScope(tokens.slice(1));
+            }
+        }
+        return null;
+    }
+
+    public lookup(name: string): LookUpResult {
+        const token = name.split("::").filter((x) => x);
+        if (token.length > 1) {
+            const realScope = this.getScope(token.slice(0, token.length - 1));
+            if (realScope === null) {
+                return null;
+            }
+            return realScope.lookup(token[token.length - 1]);
+        }
+        const array = this.map.get(token[0]);
+        if (!array) {
+            return null;
+        }
+        if (array[0] instanceof FunctionEntity) {
+            return new FunctionLookUpResult(array as FunctionEntity[]);
+        } else {
+            return array[0] as Type | Variable;
+        }
+
+    }
 }
 
-export function dumpScopeMap(scopeMap: Map<string, Scope>): string {
-    let result = "";
-    for (const scope of scopeMap.values()) {
-        result += `[${scope.getScopeName()}]:\n`;
-        for (const key of scope.map.keys()) {
-            const item = scope.map.get(key);
-            if (item instanceof Type) {
-                result += `\t(Type)${key}: ${item.toString()}\n`;
-            } else if (item instanceof FunctionEntity) {
-                result += `\t(Func)${key}: ${item.type.toString()}\n`;
-            } else if (item instanceof Variable) {
-                result += `\t(Var)${key}: ${item.type.toString()},` +
-                    `${AddressType[item.addressType]}, len=${item.type.length}`
-                    + `, loc=${item.location}\n`;
-            }
-        }
+export class FunctionLookUpResult {
+    public functions: FunctionEntity[];
+
+    constructor(functions: FunctionEntity[]) {
+        this.functions = functions;
     }
-    return result;
 }
 
-export function cloneScopeMap(scopeMap: Map<string, Scope>): Map<string, Scope> {
-    const result = new Map<string, Scope>();
-    for (const entity of scopeMap.entries()) {
-        const scope = new Scope(entity[1].name, entity[1].parent);
-        result.set(entity[0], scope);
-        for (const item of entity[1].map) {
-            scope.set(item[0], item[1]);
+type LookUpResult = Variable | Type | FunctionLookUpResult | null;
+
+export class ScopeManager {
+
+    public root: Scope;
+    public currentScope: Scope;
+    public activeScopes: Set<Scope>;
+    public scopeId: number;
+
+    constructor() {
+        this.root = new Scope("", null);
+        this.currentScope = this.root;
+        this.activeScopes = new Set<Scope>([this.root]);
+        this.scopeId = 0;
+    }
+
+    public enterUnnamedScope() {
+        const newScope = new Scope("$" + this.scopeId++, this.currentScope);
+        this.currentScope.children.push(newScope);
+        this.activeScopes.add(newScope);
+        this.currentScope = newScope;
+    }
+
+    public enterScope(shortName: string) {
+        const newScope = new Scope(shortName, this.currentScope);
+        this.currentScope.children.push(newScope);
+        this.activeScopes.add(newScope);
+        this.currentScope = newScope;
+    }
+
+    public exitScope() {
+        this.activeScopes.delete(this.currentScope);
+        this.currentScope = this.currentScope.parent;
+    }
+
+    public lookupFullName(fullName: string): LookUpResult {
+        if ( fullName.slice(0, 2) !== "::") {
+            return null;
         }
-        if (entity[1].isRoot) {
-            scope.isRoot = true;
+        const token = fullName.split("::");
+        const shortName = token[token.length - 1];
+        const scope = this.root.getScope(token.slice(1, token.length - 1));
+        if (scope === null) {
+            return null;
+        } else {
+            return scope.lookup(shortName);
         }
     }
-    for (const entity of result.entries()) {
-        if (entity[1].parent !== null) {
-            entity[1].parent = result.get(entity[1].parent!.getScopeName())!;
-            if (!entity[1].parent) {
-                throw new InternalError(`unexpected error in cloneScopeMap`);
+
+    public lookup(shortName: string): LookUpResult {
+        const array = Array.from(this.activeScopes.keys()).map(
+            (x) => x.lookup(shortName))
+            .filter((x) => x !== null).reverse();
+        let result: FunctionLookUpResult | null = null;
+        const funcNameSet = new Set<string>();
+        for (const x of array) {
+            if (x instanceof FunctionLookUpResult) {
+                if (result === null) {
+                    result = new FunctionLookUpResult([...x.functions]);
+                    x.functions.map((y) => funcNameSet.add(y.fullName));
+                } else {
+                    for (const y of x.functions) {
+                        if (!funcNameSet.has(y.fullName)) {
+                            funcNameSet.add(y.fullName);
+                            result.functions.push(y);
+                        }
+                    }
+                }
+            } else {
+                if (result === null) {
+                    return x;
+                }
             }
         }
-        for (const child of entity[1].children) {
-            entity[1].children.push(result.get(child.getScopeName())!);
-        }
+        return result;
     }
-    return result;
+
+    public declare(shortName: string, symbol: Symbol, node?: Node): string {
+        const item = this.innerLookUp(shortName);
+        if (item !== null) {
+            if (!item.getType().equals(symbol.getType())) {
+                throw new SyntaxError(`conflict declaration of ${shortName}`, node!);
+            }
+        } else {
+            this.currentScope.declare(shortName, symbol, node);
+        }
+        return this.currentScope.fullName + "::" + shortName;
+    }
+
+    public define(shortName: string, symbol: Symbol, node?: Node): string {
+        const item = this.innerLookUp(shortName);
+        if (item !== null) {
+            if (item.isDefine()) {
+                throw new SyntaxError(`redefine of  ${shortName}`, node!);
+            }
+            if (!item.getType().equals(symbol.getType())) {
+                throw new SyntaxError(`conflict declaration of ${shortName}`, node!);
+            }
+        }
+        this.currentScope.declare(shortName, symbol, node);
+        return this.currentScope.fullName + "::" + shortName;
+    }
+
+    public getFullName(shortName: string) {
+        return this.currentScope.fullName + "::" + shortName;
+    }
+
+    private innerLookUp(shortName: string): Symbol | null {
+        const realName = shortName.split("@")[0];
+        const result = this.lookupFullName(this.currentScope.fullName
+            + "::" + realName);
+        let item: Symbol | null = null;
+        if (result instanceof FunctionLookUpResult) {
+            const t = result.functions.filter((x) => x.fullName
+                === this.currentScope.fullName + "::" + shortName);
+            if (t.length > 0) {
+                item = t[0];
+            }
+        } else {
+            item = result;
+        }
+        return item;
+    }
+
+    public isRoot(){
+        return this.currentScope === this.root;
+    }
 }

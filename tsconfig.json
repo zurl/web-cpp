@@ -7,7 +7,6 @@
     "sourceMap": true,
     "outDir": "dist",
     "allowJs": true,
-    "declaration": true,
     "experimentalDecorators": true
   },
   "exclude": [

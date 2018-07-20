@@ -121,6 +121,17 @@ describe('instruction integration test', function () {
         const expectOutput = `0@1@2@3@4@5@6$7$`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
+    it('array', async function() {
+        const testCode = `
+        int arr[100];
+        for(int i = 0; i < 10; i++){
+            printf("%d", arr[i]);
+            arr[i] = arr[i] + 1;
+        }
+        `;
+        const expectOutput = `0123456789`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
+    });
     it('constant compute', async function() {
 
         const testCode = `

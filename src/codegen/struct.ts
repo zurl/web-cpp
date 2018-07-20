@@ -19,40 +19,20 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     if (this.union) {
         throw new InternalError(`unsupport union`);
     }
-    const name = this.identifier.name;
-    const scopeName = ctx.isCpp() ? name : "$" + name;
+    let name = this.identifier.name;
+    if ( ! ctx.isCpp() ) {
+        name = "$" + name;
+    }
+    const newItem = new ClassType(name, ctx.scopeManager.getFullName(name), ctx.fileName, [], this.union);
     if ( this.declarations === null) {
         // incomplete definition;
-        const item = ctx.currentScope.get(scopeName);
-        if ( item ) {
-            if ( !(item instanceof ClassType) ) {
-                throw new SyntaxError(`${item} is not a struct`, this);
-            }
-            return item;
-        } else {
-            const newItem = new ClassType(name, [], this.union);
-            newItem.isComplete = false;
-            ctx.currentScope.set(scopeName, newItem);
-            return newItem;
-        }
+        newItem.isComplete = false;
+        ctx.scopeManager.declare(name, newItem);
+        return newItem;
     }
-    let type: ClassType;
-    if ( ctx.currentScope.hasInCurrentScope(scopeName) ) {
-        const item = ctx.currentScope.get(scopeName);
-        if ( !(item instanceof ClassType) ) {
-            throw new SyntaxError(`${item} is not a struct`, this);
-        }
-        if ( item.isComplete ) {
-            throw new SyntaxError(`redefine struct type name ${scopeName}`, this);
-        } else {
-            type = item;
-        }
-    } else {
-        type = new ClassType(name, [], this.union);
-        ctx.currentScope.set(scopeName, type);
-    }
-    const fields = type.fields;
-    type.isComplete = false;
+    ctx.scopeManager.define(name, newItem);
+    const fields = newItem.fields;
+    newItem.isComplete = false;
     let curOffset = 0;
     for (const decl of this.declarations) {
         const baseType = parseTypeFromSpecifiers(ctx, decl.specifierQualifiers, this);
@@ -78,9 +58,9 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             }
          }
     }
-    type.buildFieldMap();
-    type.isComplete = true;
-    return type;
+    newItem.buildFieldMap();
+    newItem.isComplete = true;
+    return newItem;
 };
 
 MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {

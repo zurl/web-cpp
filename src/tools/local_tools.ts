@@ -9,11 +9,11 @@ import {readFileSync, writeFileSync} from "fs";
 import {codegen} from "../codegen";
 import {CompileContext} from "../codegen/context";
 import {Impls, JsAPIMap} from "../library";
-import {BinaryObject, link} from "../linker";
+import {link} from "../linker";
 import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
-import {VirtualMachine} from "../vm";
 import {CommandOutputFile, NoInputFile} from "../runtime/vmfile";
+import {BinaryObject} from "../common/object";
 
 const BINARY_VERSION = 3;
 

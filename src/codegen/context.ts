@@ -7,11 +7,10 @@ import {SourceMapGenerator} from "source-map";
 import {InternalError} from "../common/error";
 import {CompiledObject, ImportSymbol} from "../common/object";
 import {FunctionEntity} from "../common/type";
-import {ImportObject} from "../runtime/runtime";
 import {WFunction, WImportFunction} from "../wasm";
 import {WStatement} from "../wasm/node";
 import {MemoryLayout} from "./memory";
-import {Scope} from "./scope";
+import {ScopeManager} from "./scope";
 
 export interface CompileOptions {
     debugMode?: boolean;
@@ -24,14 +23,13 @@ export class CompileContext {
 
     public fileName: string;
     public options: CompileOptions;
-    public scopeMap: Map<string, Scope>;
     public memory: MemoryLayout;
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
-    public currentScope: Scope;
     public statementContainer: WStatement[];
-    public loopStack: [number, number][];
+    public loopStack: Array<[number, number]>;
     public blockLevel: number;
+    public scopeManager: ScopeManager;
 
     // result
     public functions: WFunction[];
@@ -43,10 +41,7 @@ export class CompileContext {
 
     constructor(fileName: string, compileOptions: CompileOptions = {},
                 source?: string, sourceMap?: SourceMapGenerator) {
-        this.scopeMap = new Map<string, Scope>();
-        this.currentScope = new Scope("", null);
-        this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
-        this.currentScope.isRoot = true;
+        this.scopeManager = new ScopeManager();
         this.functionMap = new Map<string, FunctionEntity>();
         this.memory = new MemoryLayout(1000);
         this.currentFunction = null;
@@ -66,31 +61,9 @@ export class CompileContext {
         return !!this.options.experimentalCpp;
     }
 
-    public enterScope(name: string | null) {
-        if (name === null) {
-            name = this.currentScope.children.length.toString();
-        }
-        const scope = this.scopeMap.get(this.currentScope.getScopeName() + "@" + name);
-        if (scope != null) {
-            this.currentScope = scope;
-        } else {
-            this.currentScope = new Scope(name, this.currentScope);
-            if (this.currentScope.parent != null) {
-                this.currentScope.parent.children.push(this.currentScope);
-            }
-            this.scopeMap.set(this.currentScope.getScopeName(), this.currentScope);
-        }
-    }
-
-    public exitScope() {
-        if (this.currentScope.parent != null) {
-            this.currentScope = this.currentScope.parent;
-        }
-    }
-
     public enterFunction(functionEntity: FunctionEntity) {
-        this.functionMap.set(functionEntity.fullName, functionEntity);
-        this.enterScope(functionEntity.name);
+        this.functionMap.set(functionEntity.name, functionEntity);
+        this.scopeManager.enterScope(functionEntity.name);
         this.memory.enterFunction();
         this.currentFunction = functionEntity;
     }
@@ -99,7 +72,7 @@ export class CompileContext {
         if (this.currentFunction == null) {
             throw new InternalError(`this.currentFunction==null`);
         }
-        this.exitScope();
+        this.scopeManager.exitScope();
     }
 
     public setStatementContainer(constainer: WStatement[]) {

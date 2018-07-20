@@ -20,7 +20,7 @@ export class RuntimeError extends Error {
 
 }
 
-export class EmitError extends Error{
+export class EmitError extends Error {
 
 }
 
@@ -32,7 +32,11 @@ export class CompilerError extends Error {
         super(message);
         this.name = this.constructor.name;
         this.node = node;
-        this.location = node.location;
+        if ( node ) {
+            this.location = node.location;
+        }  else {
+            this.location = new SourceLocation("", "", {}, {});
+        }
     }
 }
 

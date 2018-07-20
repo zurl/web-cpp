@@ -20,7 +20,6 @@ import {
     Pointer,
     PointerDeclarator,
     SpecifierType,
-    StructDeclarator,
     StructOrUnionSpecifier,
     TranslationUnit,
     TypedefName,
@@ -140,32 +139,8 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
     const isTypedef = this.specifiers.includes("typedef");
     for (const declarator of this.initDeclarators) {
         const [type, name] = parseDeclarator(ctx, declarator.declarator, baseType);
-        if (ctx.currentScope.hasInCurrentScope(name)) {
-            const item = ctx.currentScope.get(name)!;
-            if ( item instanceof FunctionEntity) {
-                if (!type.equals(item.type)) {
-                    throw new SyntaxError(`conflict declartion of ${name}`, this);
-                } else {
-                    continue;
-                }
-            } else if ( item instanceof Type) {
-                if (!type.equals(item)) {
-                    throw new SyntaxError(`conflict declartion of ${name}`, this);
-                } else {
-                    continue;
-                }
-            } else if ( type.isExtern ) {
-                if (!type.equals(item.type)) {
-                    throw new SyntaxError(`conflict declartion of ${name}`, this);
-                } else {
-                    continue;
-                }
-            } else {
-                throw new SyntaxError(`redefine name ${name}`, this);
-            }
-        }
         if ( isTypedef ) {
-            ctx.currentScope.set(name, type);
+            ctx.scopeManager.declare(name, type);
             continue;
         }
         if ( type instanceof ClassType && !type.isComplete) {
@@ -173,10 +148,10 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
         }
         let storageType = AddressType.STACK;
         let location: number | string = 0;
-        if (ctx.currentScope.isRoot || type.isStatic) {
+        if (ctx.scopeManager.isRoot() || type.isStatic) {
             if (type.isExtern) {
                 storageType = AddressType.MEMORY_EXTERN;
-                location = ctx.currentScope.getScopeName() + "@" + name;
+                location = ctx.scopeManager.getFullName(name);
             } else if (declarator.initializer !== null) {
                 storageType = AddressType.MEMORY_DATA;
                 location = ctx.memory.allocData(type.length);
@@ -195,10 +170,13 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
 
         if ( type instanceof FunctionType) {
             type.name = name;
-            const entity = new FunctionEntity(type.name, ctx.fileName,
-                ctx.currentScope.getScopeName() + "@" + type.name, type);
+            const realName = type.name + type.toMangledName();
+            const fullName = ctx.scopeManager.getFullName(realName);
+            const entity = new FunctionEntity(realName, fullName, ctx.fileName, type, false, false);
             if ( this.specifiers.includes("__libcall") ) {
                 entity.isLibCall = true;
+                entity.name = type.name;
+                entity.fullName = ctx.scopeManager.getFullName(type.name); // libcall no overload
                 const returnTypes: WType[]  = [];
                 const parametersTypes: WType[] = [];
                 if ( !entity.type.returnType.equals(PrimitiveTypes.void)) {
@@ -210,12 +188,13 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                     type: new WFunctionType(returnTypes, parametersTypes),
                 });
             }
-            ctx.currentScope.set(name, entity);
+            ctx.scopeManager.declare(name, entity);
             return;
         }
 
-        ctx.currentScope.set(name, new Variable(
-            name, ctx.fileName, type, storageType, location,
+        ctx.scopeManager.declare(name, new Variable(
+            name, ctx.scopeManager.getFullName(name), ctx.fileName,
+            type, storageType, location,
         ));
 
         if (declarator.initializer != null) {
@@ -241,7 +220,9 @@ export function parseAbstractDeclarator(ctx: CompileContext, node: AbstractDecla
 }
 
 TypedefName.prototype.codegen = function(ctx: CompileContext) {
-    const item = ctx.currentScope.get(this.identifier.name);
+    const item = this.identifier.name.slice(0, 2) === "::" ?
+        ctx.scopeManager.lookupFullName(this.identifier.name) :
+        ctx.scopeManager.lookup(this.identifier.name);
     if ( item && item instanceof Type) {
         return item;
     }
@@ -267,14 +248,15 @@ EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
                 }
                 val = parseInt(expr.expr.constant);
             }
-            ctx.currentScope.set(this.identifier.name, new Variable(
-                this.identifier.name, ctx.fileName, PrimitiveTypes.int32,
+            ctx.scopeManager.declare(this.identifier.name, new Variable(
+                this.identifier.name, ctx.scopeManager.getFullName(this.identifier.name),
+                ctx.fileName, PrimitiveTypes.int32,
                 AddressType.CONSTANT, val,
             ));
         }
     }
     if ( this.identifier != null ) {
-        ctx.currentScope.set(this.identifier.name, PrimitiveTypes.int32);
+        ctx.scopeManager.declare(this.identifier.name, PrimitiveTypes.int32);
     }
     return PrimitiveTypes.int32;
 };

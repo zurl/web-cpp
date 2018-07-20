@@ -41,14 +41,7 @@ FloatingConstant.prototype.deduceType = function(ctx: CompileContext): Type {
 };
 
 Identifier.prototype.deduceType = function(ctx: CompileContext): Type {
-    const item = ctx.currentScope.get(this.name);
-    if (item === null) {
-        throw new SyntaxError(`Unresolve Name ${this.name}`, this);
-    }
-    if (item instanceof Type) {
-        throw new SyntaxError(`${this.name} expect to be variable, but it is a type :)`, this);
-    }
-    return item.type;
+    return this.codegen(ctx).type;
 };
 
 function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
@@ -217,6 +210,5 @@ ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type
 };
 
 export function expression_type() {
-    const a = 1;
     return "";
 }

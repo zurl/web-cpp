@@ -49,26 +49,27 @@ local var:  @foo@var1
 - [X] char * a = "123"
 - [X] write, read
 - [X] printf
-- [ ] postfix ++ --
+- [X] postfix ++ --
 - [X] do-while
 - [X] break continue
-- [ ] goto label
+- [deprecated] goto label
 - [ ] switch case
 - [X] enum
-- [ ] non-return detect
+- [X] non-return detect
 - [ ] cc-cli
 - [ ] ?:
 - [ ] 对局部变量取地址
 - [ ] const
 - [ ] bit field of struct
-- [ ] js highlevel api
+- [X] js highlevel api
+- [ ] malloc
 - [ ] only export necessary scopeMap
 - [ ] #if #elif
 - [ ] #line __line__ __file__
-- [ ] & array
+- [ ] & array alias
 - [X] constant fold on tree
 - [X] init instructions
-- [ ] print sourceMap
+- [X] print sourceMap
 ## C++ Language
 - [ ] 异常处理
 - [ ] 左值引用

@@ -6,15 +6,17 @@ const {NativeRuntime} = require("../../dist/runtime/native_runtime");
 const TestBase = require("./testbase");
 
 const source = `
-__libcall void putInt(int x);
 #include <stdio.h>
+struct ABC{
+    int a;
+    int b;
+    int c;
+} d;
 int main(){
+    struct ABC i;
     int arr[100];
-    //arr[0] = arr[0] + 1;
-    for(int i = 1; i < 10; i++){
-        arr[i] = arr[i] + 1;
-        printf("%d\\n", arr[i]);
-    }
+    i.a = 123;
+    printf("%d\\n", i.a);
     return 0;
 }
 `;
@@ -25,17 +27,17 @@ describe('cpp -> wasm', function () {
         const bin = TestBase.Linker.link("main", [obj], {});
         const importObj = {
             system: {
-                "@putInt": function(x){
+                "::putInt": function(x){
                     console.log(x);
                 },
-                "@putChar": function(ctx){
+                "::putChar": function(ctx){
                     console.log(String.fromCharCode(x));
                 },
-                "@printf": JsAPIMap.printf
+                "::printf": JsAPIMap.printf
             }
         };
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
-        const runtime = new NativeRuntime(bin.binary, 10, importObj, [
+        const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
             new NoInputFile(),
             new CommandOutputFile(),
             new CommandOutputFile()

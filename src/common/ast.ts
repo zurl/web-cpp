@@ -2,7 +2,7 @@ import * as Long from "long";
 import {CompileContext} from "../codegen/context";
 import {WExpression} from "../wasm/node";
 import {InternalError} from "./error";
-import {FunctionEntity, Type} from "./type";
+import {FunctionCandidates, FunctionEntity, Type} from "./type";
 
 export type SpecifierType =
     string

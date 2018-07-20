@@ -11,13 +11,16 @@ export class NativeRuntime extends Runtime {
 
     public wasmMemory: WebAssembly.Memory;
     public instance: WebAssembly.Instance | null;
+    public entry: string;
 
     constructor(code: ArrayBuffer,
                 memorySize: number,
+                entry: string,
                 importObjects?: ImportObject,
                 files?: VMFile[]) {
         super(code, importObjects, 0, files);
         const that = this;
+        this.entry = entry;
 
         // wrap importObject
         for (const moduleName of Object.keys(this.importObjects)) {
@@ -48,7 +51,7 @@ export class NativeRuntime extends Runtime {
         const asm = await WebAssembly.instantiate(this.code, this.importObjects);
         this.instance = asm.instance;
         asm.instance.exports["$start"]();
-        asm.instance.exports["@main"]("main");
+        asm.instance.exports[this.entry]("main");
         this.instance = null;
         this.files.map((file) => file.flush());
     }

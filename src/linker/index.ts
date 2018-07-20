@@ -47,14 +47,20 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         sourceMap.set(object.fileName, {
             source: object.source!.split("\n"),
             sourceMap: object.sourceMap!,
+            lastLine: -1,
         });
     }
+
+    const entry = [];
 
     // 1. set function dataStart && bssStart
     let dataNow = 0;
     for (const object of objects) {
         for (const func of object.functions) {
             func.dataStart = dataNow;
+            if (/::main@.*/.test(func.name)) {
+                entry.push(func.name);
+            }
             functions.push(func);
         }
         data.push(new WDataSegment(dataNow, object.data.slice(0, object.dataSize)));
@@ -117,11 +123,19 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         new WSetGlobal(WType.u32,  "$sp", new WGetLocal(WType.u32, 0)),
     ]));
 
+    if ( entry.length === 0) {
+        throw new LinkerError(`no main function found`);
+    }
+
+    if (entry.length > 1) {
+        throw new LinkerError(`multiple main function found`);
+    }
+
     // 6. generate target code
     const mod = new WModule({
         functions,
         imports,
-        exports: ["$start", "@main", "$get_sp", "$set_sp"],
+        exports: ["$start", entry[0], "$get_sp", "$set_sp"],
         globals: [
             new WGlobalVariable("$sp", u32, new WConst(u32, "1000")),
         ],
@@ -142,6 +156,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     mod.emit(emitter);
     return {
         fileName,
+        entry: entry[0],
         sourceMap,
         binary: emitter.buffer.slice(0, emitter.now),
     };
