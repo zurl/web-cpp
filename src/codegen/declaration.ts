@@ -140,7 +140,7 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
     for (const declarator of this.initDeclarators) {
         const [type, name] = parseDeclarator(ctx, declarator.declarator, baseType);
         if ( isTypedef ) {
-            ctx.scopeManager.declare(name, type);
+            ctx.scopeManager.declare(name, type, this);
             continue;
         }
         if ( type instanceof ClassType && !type.isComplete) {
@@ -188,14 +188,14 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                     type: new WFunctionType(returnTypes, parametersTypes),
                 });
             }
-            ctx.scopeManager.declare(name, entity);
+            ctx.scopeManager.declare(name, entity, this);
             return;
         }
 
         ctx.scopeManager.declare(name, new Variable(
             name, ctx.scopeManager.getFullName(name), ctx.fileName,
             type, storageType, location,
-        ));
+        ), this);
 
         if (declarator.initializer != null) {
             if ( declarator.initializer instanceof InitializerList ) {
@@ -252,11 +252,11 @@ EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
                 this.identifier.name, ctx.scopeManager.getFullName(this.identifier.name),
                 ctx.fileName, PrimitiveTypes.int32,
                 AddressType.CONSTANT, val,
-            ));
+            ), this);
         }
     }
     if ( this.identifier != null ) {
-        ctx.scopeManager.declare(this.identifier.name, PrimitiveTypes.int32);
+        ctx.scopeManager.declare(this.identifier.name, PrimitiveTypes.int32, this);
     }
     return PrimitiveTypes.int32;
 };

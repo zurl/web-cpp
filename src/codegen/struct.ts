@@ -23,14 +23,26 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     if ( ! ctx.isCpp() ) {
         name = "$" + name;
     }
+    const oldItem = ctx.scopeManager.lookup(name);
+    if ( oldItem !== null ) {
+        if ( this.declarations === null ) {
+            if ( oldItem instanceof ClassType ) {
+                return oldItem;
+            } else {
+                throw new SyntaxError(`conflict type of ${name}`, this);
+            }
+        } else {
+            throw new SyntaxError(`redefine of ${name}`, this);
+        }
+    }
     const newItem = new ClassType(name, ctx.scopeManager.getFullName(name), ctx.fileName, [], this.union);
     if ( this.declarations === null) {
         // incomplete definition;
         newItem.isComplete = false;
-        ctx.scopeManager.declare(name, newItem);
+        ctx.scopeManager.declare(name, newItem, this);
         return newItem;
     }
-    ctx.scopeManager.define(name, newItem);
+    ctx.scopeManager.define(name, newItem, this);
     const fields = newItem.fields;
     newItem.isComplete = false;
     let curOffset = 0;

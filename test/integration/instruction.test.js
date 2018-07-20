@@ -72,24 +72,24 @@ describe('instruction integration test', function () {
         const expectOutput = `001234`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    it('goto', async function() {
-        const testCode = `
-        int a = 1;
-        label1:
-         printf("1");
-         if( a == 1){
-            a = 2;
-            goto label1;
-         }
-         printf("2");
-         goto label2;
-         printf("3");
-         label2:
-         printf("4");
-        `;
-        const expectOutput = `1124`;
-        return await TestBase.testRunCompareResult(testCode, expectOutput);
-    });
+    // it('goto', async function() {
+    //     const testCode = `
+    //     int a = 1;
+    //     label1:
+    //      printf("1");
+    //      if( a == 1){
+    //         a = 2;
+    //         goto label1;
+    //      }
+    //      printf("2");
+    //      goto label2;
+    //      printf("3");
+    //      label2:
+    //      printf("4");
+    //     `;
+    //     const expectOutput = `1124`;
+    //     return await TestBase.testRunCompareResult(testCode, expectOutput);
+    // });
     it('do-while', async function() {
         const testCode = `
         int i = 10;

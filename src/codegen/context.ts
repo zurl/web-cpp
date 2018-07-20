@@ -8,7 +8,7 @@ import {InternalError} from "../common/error";
 import {CompiledObject, ImportSymbol} from "../common/object";
 import {FunctionEntity} from "../common/type";
 import {WFunction, WImportFunction} from "../wasm";
-import {WStatement} from "../wasm/node";
+import {WExpression, WStatement} from "../wasm/node";
 import {MemoryLayout} from "./memory";
 import {ScopeManager} from "./scope";
 
@@ -19,6 +19,15 @@ export interface CompileOptions {
     detectStackPollution?: boolean;
 }
 
+export interface CaseContext {
+    statements: WStatement[];
+    value: WExpression | null;
+}
+
+export interface SwitchContext {
+    cases: CaseContext[];
+}
+
 export class CompileContext {
 
     public fileName: string;
@@ -27,9 +36,11 @@ export class CompileContext {
     public functionMap: Map<string, FunctionEntity>;
     public currentFunction: FunctionEntity | null;
     public statementContainer: WStatement[];
-    public loopStack: Array<[number, number]>;
     public blockLevel: number;
     public scopeManager: ScopeManager;
+    public switchContext: SwitchContext | null;
+    public breakStack: number[];
+    public continueStack: number[];
 
     // result
     public functions: WFunction[];
@@ -53,7 +64,9 @@ export class CompileContext {
         this.statementContainer = [];
         this.functions = [];
         this.imports = [];
-        this.loopStack = [];
+        this.switchContext = null;
+        this.breakStack = [];
+        this.continueStack = [];
         this.blockLevel = 0;
     }
 

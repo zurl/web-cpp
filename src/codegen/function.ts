@@ -69,7 +69,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     const fullName = ctx.scopeManager.getFullName(realName);
     const functionEntity = new FunctionEntity(functionType.name, fullName,
         ctx.fileName, functionType, false, true);
-    ctx.scopeManager.define(realName, functionEntity);
+    ctx.scopeManager.define(realName, functionEntity, this);
     ctx.enterFunction(functionEntity);
 
     // alloc parameters
@@ -90,14 +90,14 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
             ctx.scopeManager.define(name, new Variable(
                 name, ctx.scopeManager.getFullName(name), ctx.fileName,
                 type, AddressType.STACK, stackParameterNow,
-            ));
+            ), this);
             stackParameterNow += getInStackSize(type.length);
         } else {
             parameterWTypes.push(type.toWType());
             ctx.scopeManager.define(name, new Variable(
                 name, ctx.scopeManager.getFullName(name), ctx.fileName,
                 type, AddressType.LOCAL, ctx.memory.allocLocal(type.toWType()),
-            ));
+            ), this);
         }
     }
 

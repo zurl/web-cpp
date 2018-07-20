@@ -53,7 +53,7 @@ local var:  @foo@var1
 - [X] do-while
 - [X] break continue
 - [deprecated] goto label
-- [ ] switch case
+- [X] switch case
 - [X] enum
 - [X] non-return detect
 - [ ] cc-cli

@@ -7,16 +7,15 @@ const TestBase = require("./testbase");
 
 const source = `
 #include <stdio.h>
-struct ABC{
-    int a;
-    int b;
-    int c;
-} d;
+
 int main(){
-    struct ABC i;
-    int arr[100];
-    i.a = 123;
-    printf("%d\\n", i.a);
+    int a = 10;
+    switch(a){
+        case 1: printf("1\\n"); break;
+        case 2: printf("2\\n"); break;
+        case 3: printf("3\\n"); break;
+        default: printf("default\\n"); break;
+    }
     return 0;
 }
 `;

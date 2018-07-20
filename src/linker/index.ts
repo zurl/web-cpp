@@ -148,8 +148,8 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     const dumper = new WASMEmitter();
     mod.optimize(dumper);
 
-    dumper.sourceMap = sourceMap;
-    mod.dump(dumper);
+    // dumper.sourceMap = sourceMap;
+    // mod.dump(dumper);
 
     const emitter = new WASMEmitter();
     emitter.externMap = externVarMap;
