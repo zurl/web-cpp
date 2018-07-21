@@ -43,6 +43,9 @@ export class WAddressHolder extends WExpression {
                         value,
                         this.location,
                     );
+                    if ( this.offset !== 0) {
+                        throw new InternalError(`illegal offset`);
+                    }
                     break;
                 case AddressType.MEMORY_DATA:
                     result = new WStore(
@@ -52,7 +55,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.DATA,
                         this.location,
                     );
-                    (result as WStore).offset = this.place as number;
+                    (result as WStore).offset = this.place as number + this.offset;
                     break;
                 case AddressType.MEMORY_BSS:
                     result = new WStore(
@@ -62,7 +65,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.BSS,
                         this.location,
                     );
-                    (result as WStore).offset = this.place as number;
+                    (result as WStore).offset = this.place as number + this.offset;
                     break;
                 case AddressType.MEMORY_EXTERN:
                     result = new WStore(
@@ -72,6 +75,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.EXTERN,
                         this.location,
                     );
+                    (result as WStore).offset = this.offset;
                     (result as WStore).offsetName = this.place as string;
                     break;
                 case AddressType.CONSTANT:
@@ -87,7 +91,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.RAW,
                         this.location,
                     );
-                    (result as WStore).offset = this.place as number;
+                    (result as WStore).offset = this.place as number + this.offset;
                     break;
                 case AddressType.GLOBAL:
                     result = new WSetGlobal(
@@ -96,6 +100,9 @@ export class WAddressHolder extends WExpression {
                         value,
                         this.location,
                     );
+                    if ( this.offset !== 0) {
+                        throw new InternalError(`illegal offset`);
+                    }
                     break;
                 case AddressType.GLOBAL_SP:
                     result = new WStore(
@@ -106,12 +113,15 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.RAW,
                         this.location,
                     );
-                    (result as WStore).offset = this.place as number;
+                    (result as WStore).offset = this.place as number + this.offset;
                     break;
                 case AddressType.RVALUE:
                     result = new WStore(
                         wtype,
-                        this.place as WExpression,
+                        new WBinaryOperation(I32Binary.add,
+                            this.place as WExpression,
+                            new WConst(WType.i32, this.offset.toString(), this.location),
+                            this.location),
                         value,
                         WMemoryLocation.RAW,
                         this.location,
@@ -137,6 +147,9 @@ export class WAddressHolder extends WExpression {
                         this.place as number,
                         this.location,
                     );
+                    if ( this.offset !== 0) {
+                        throw new InternalError(`illegal offset`);
+                    }
                     break;
                 case AddressType.MEMORY_DATA:
                     result = new WLoad(
@@ -145,7 +158,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.DATA,
                         this.location,
                     );
-                    (result as WLoad).offset = this.place as number;
+                    (result as WLoad).offset = this.place as number + this.offset;
                     break;
                 case AddressType.MEMORY_BSS:
                     result = new WLoad(
@@ -154,7 +167,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.BSS,
                         this.location,
                     );
-                    (result as WLoad).offset = this.place as number;
+                    (result as WLoad).offset = this.place as number + this.offset;
                     break;
                 case AddressType.MEMORY_EXTERN:
                     result = new WLoad(
@@ -164,9 +177,13 @@ export class WAddressHolder extends WExpression {
                         this.location,
                     );
                     (result as WLoad).offsetName = this.place as string;
+                    (result as WLoad).offset = this.offset;
                     break;
                 case AddressType.CONSTANT:
-                    result = this.place as WExpression;
+                    result = new WConst(WType.i32, this.place.toString(), this.location);
+                    if ( this.offset !== 0) {
+                        throw new InternalError(`illegal offset`);
+                    }
                     break;
                 case AddressType.STACK:
                     if (ctx.currentFunction === null) {
@@ -178,7 +195,7 @@ export class WAddressHolder extends WExpression {
                         WMemoryLocation.RAW,
                         this.location,
                     );
-                    (result as WLoad).offset = this.place as number;
+                    (result as WLoad).offset = this.place as number + this.offset;
                     break;
                 case AddressType.GLOBAL:
                     result = new WGetGlobal(
@@ -186,11 +203,27 @@ export class WAddressHolder extends WExpression {
                         this.place as string,
                         this.location,
                     );
+                    if ( this.offset !== 0) {
+                        throw new InternalError(`illegal offset`);
+                    }
+                    break;
+                case AddressType.GLOBAL_SP:
+                    result = new WLoad(
+                        // require align
+                        type.toWType(),
+                        new WGetGlobal(WType.u32, "$sp", this.location),
+                        WMemoryLocation.RAW,
+                        this.location,
+                    );
+                    (result as WLoad).offset = this.place as number + this.offset;
                     break;
                 case AddressType.RVALUE:
                     result = new WLoad(
                         type.toWType(),
-                        this.place as WExpression,
+                        new WBinaryOperation(I32Binary.add,
+                            this.place as WExpression,
+                            new WConst(WType.i32, this.offset.toString(), this.location),
+                            this.location),
                         WMemoryLocation.RAW,
                         this.location,
                     );
@@ -213,21 +246,22 @@ export class WAddressHolder extends WExpression {
                     WMemoryLocation.DATA,
                     this.location,
                 );
-                (result as WLoad).offset = this.place as number;
+                (result as WLoad).offset = this.place as number + this.offset;
                 break;
             case AddressType.MEMORY_BSS:
                 result = new WGetAddress(
                     WMemoryLocation.BSS,
                     this.location,
                 );
-                (result as WLoad).offset = this.place as number;
+                (result as WLoad).offset = this.place as number + this.offset;
                 break;
             case AddressType.MEMORY_EXTERN:
                 result = new WGetAddress(
                     WMemoryLocation.EXTERN,
                     this.location,
                 );
-                (result as WLoad).offsetName = this.place as string;
+                (result as WGetAddress).offset = this.offset;
+                (result as WGetAddress).offsetName = this.place as string;
                 break;
             case AddressType.CONSTANT:
                 throw new InternalError(`store a constant()`);
@@ -241,10 +275,13 @@ export class WAddressHolder extends WExpression {
                     new WConst(WType.i32, this.offset.toString()),
                     this.location,
                 );
-                (result as WLoad).offset = this.place as number;
+                (result as WLoad).offset = this.place as number + this.offset;
                 break;
             case AddressType.RVALUE:
-                result = this.place as WExpression;
+                result = new WBinaryOperation(I32Binary.add,
+                    this.place as WExpression,
+                    new WConst(WType.i32, this.offset.toString(), this.location),
+                    this.location);
                 break;
             case AddressType.GLOBAL:
                 throw new InternalError(`could not get address of global variable`);

@@ -6,7 +6,7 @@
 
 import {inspect} from "util";
 import {Node} from "../common/ast";
-import {SyntaxError} from "../common/error";
+import {LanguageError, SyntaxError} from "../common/error";
 import {FunctionEntity, Symbol, Type, Variable} from "../common/type";
 
 export class Scope {
@@ -15,8 +15,9 @@ export class Scope {
     public parent: Scope;
     public children: Scope[];
     public map: Map<string, Symbol[]>;
+    public isCpp: boolean;
 
-    constructor(shortName: string, parent: Scope | null) {
+    constructor(shortName: string, parent: Scope | null, isCpp: boolean) {
         this.shortName = shortName;
         if (parent === null) {
             this.parent = this;
@@ -27,6 +28,7 @@ export class Scope {
         }
         this.children = [];
         this.map = new Map<string, Symbol[]>();
+        this.isCpp = isCpp;
     }
 
     public declare(shortName: string, symbol: Symbol, node?: Node) {
@@ -38,6 +40,9 @@ export class Scope {
             if (item[0] instanceof FunctionEntity) {
                 if (!(symbol instanceof FunctionEntity)) {
                     throw new SyntaxError(`redefine of ${shortName}`, node!);
+                }
+                if ( !this.isCpp ) {
+                    throw new LanguageError(`function overload is support only in C++`, node!);
                 }
                 for (let i = 0; i < item.length; i++) {
                     const x = item[i];
@@ -129,23 +134,25 @@ export class ScopeManager {
     public currentScope: Scope;
     public activeScopes: Set<Scope>;
     public scopeId: number;
+    public isCpp: boolean;
 
-    constructor() {
-        this.root = new Scope("", null);
+    constructor(isCpp: boolean) {
+        this.isCpp = isCpp;
+        this.root = new Scope("", null, isCpp);
         this.currentScope = this.root;
         this.activeScopes = new Set<Scope>([this.root]);
         this.scopeId = 0;
     }
 
     public enterUnnamedScope() {
-        const newScope = new Scope("$" + this.scopeId++, this.currentScope);
+        const newScope = new Scope("$" + this.scopeId++, this.currentScope, this.isCpp);
         this.currentScope.children.push(newScope);
         this.activeScopes.add(newScope);
         this.currentScope = newScope;
     }
 
     public enterScope(shortName: string) {
-        const newScope = new Scope(shortName, this.currentScope);
+        const newScope = new Scope(shortName, this.currentScope, this.isCpp);
         this.currentScope.children.push(newScope);
         this.activeScopes.add(newScope);
         this.currentScope = newScope;
@@ -228,6 +235,10 @@ export class ScopeManager {
         return this.currentScope.fullName + "::" + shortName;
     }
 
+    public isRoot() {
+        return this.currentScope === this.root;
+    }
+
     private innerLookUp(shortName: string): Symbol | null {
         const realName = shortName.split("@")[0];
         const result = this.lookupFullName(this.currentScope.fullName
@@ -245,7 +256,4 @@ export class ScopeManager {
         return item;
     }
 
-    public isRoot(){
-        return this.currentScope === this.root;
-    }
 }

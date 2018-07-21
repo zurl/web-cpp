@@ -5,7 +5,7 @@
  */
 
 import {PEG, PegjsError} from "pegjs";
-import {Node, SourceLocation} from "./ast";
+import {Node, Position, SourceLocation} from "./ast";
 
 export class FatalError extends Error {
 }
@@ -35,7 +35,11 @@ export class CompilerError extends Error {
         if ( node ) {
             this.location = node.location;
         }  else {
-            this.location = new SourceLocation("", "", {}, {});
+            this.location = new SourceLocation(
+                "", "",
+                new Position(0, 0, 0),
+                new Position(0, 0, 0),
+            );
         }
     }
 }
@@ -44,6 +48,9 @@ export class TypeError extends CompilerError {
 }
 
 export class SyntaxError extends CompilerError {
+}
+
+export class LanguageError extends CompilerError {
 }
 
 export class PreprocessingError extends CompilerError {

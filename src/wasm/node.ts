@@ -21,7 +21,7 @@ export abstract class WNode {
     public abstract dump(e: Emitter): void;
 
     public optimize(e: Emitter): void {
-
+        return;
     }
 }
 

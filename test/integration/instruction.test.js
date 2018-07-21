@@ -1,5 +1,62 @@
 const TestBase = require('./testbase');
 describe('instruction integration test', function () {
+    it('test address',async function() {
+        const testCode = `
+#include <stdio.h>
+        int a = 0;
+        int b;
+        int main(){
+            int c;
+            a = 1;
+            b = 2;
+            c = 3;
+            int d = a;
+            d = b;
+            d = c;
+            printf("%d%d%d%d", a, b, c, d);
+            return 0;
+        }
+        `;
+        const expectOutput = `1233`;
+        return await TestBase.testFullCode(testCode, expectOutput);
+    });
+    it('test const init',async function() {
+        const testCode = `
+#include <stdio.h>
+        char a = 1;
+        unsigned char b = 2;
+        short c = 3;
+        unsigned short d = 4;
+        int e = 5;
+        unsigned int f = 6;
+        long long g = 7;
+        unsigned long long h = 8;
+        
+        float a0 = 1.0f;
+        double a1 = 1.14;
+        int main(){
+            printf("%d%d%d%d,", a, b, c, d);
+            printf("%d%d,", e, f);
+            printf("%f,%lf,", a0, a1);
+            return 0;
+        }
+        `;
+        const expectOutput = `1234,56,1,1.14,`;
+        return await TestBase.testFullCode(testCode, expectOutput);
+    });
+    it('test const string',async function() {
+        const testCode = `
+#include <stdio.h>
+        const char * str = "Hello World";
+        const char * fmt = "%s,%%,%s";
+        int main(){
+            printf(fmt, str, str);
+            return 0;
+        }
+        `;
+        const expectOutput = `Hello World,%,Hello World`;
+        return await TestBase.testFullCode(testCode, expectOutput);
+    });
     it('switch case',async function() {
         const testCode = `
         int a = 1;

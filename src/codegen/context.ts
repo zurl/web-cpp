@@ -7,16 +7,14 @@ import {SourceMapGenerator} from "source-map";
 import {InternalError} from "../common/error";
 import {CompiledObject, ImportSymbol} from "../common/object";
 import {FunctionEntity} from "../common/type";
-import {WFunction, WImportFunction} from "../wasm";
+import {WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
 import {MemoryLayout} from "./memory";
 import {ScopeManager} from "./scope";
 
 export interface CompileOptions {
-    debugMode?: boolean;
-    experimentalCpp?: boolean;
-    eliminateConstantVariable?: boolean;
-    detectStackPollution?: boolean;
+    debug?: boolean;
+    isCpp?: boolean;
 }
 
 export interface CaseContext {
@@ -52,7 +50,7 @@ export class CompileContext {
 
     constructor(fileName: string, compileOptions: CompileOptions = {},
                 source?: string, sourceMap?: SourceMapGenerator) {
-        this.scopeManager = new ScopeManager();
+        this.scopeManager = new ScopeManager(!!compileOptions.isCpp);
         this.functionMap = new Map<string, FunctionEntity>();
         this.memory = new MemoryLayout(1000);
         this.currentFunction = null;
@@ -60,7 +58,6 @@ export class CompileContext {
         this.fileName = fileName;
         this.sourceMap = sourceMap;
         this.source = source;
-        this.options.detectStackPollution = true;
         this.statementContainer = [];
         this.functions = [];
         this.imports = [];
@@ -71,7 +68,7 @@ export class CompileContext {
     }
 
     public isCpp(): boolean {
-        return !!this.options.experimentalCpp;
+        return !!this.options.isCpp;
     }
 
     public enterFunction(functionEntity: FunctionEntity) {

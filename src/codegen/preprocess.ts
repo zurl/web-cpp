@@ -23,12 +23,15 @@ AssignmentExpression.prototype.preprocess = function(ctx: CompileContext): void 
 };
 
 IntegerConstant.prototype.preprocess = function(ctx: CompileContext): void {
+    return;
 };
 
 FloatingConstant.prototype.preprocess = function(ctx: CompileContext): void {
+    return;
 };
 
 Identifier.prototype.preprocess = function(ctx: CompileContext): void {
+    return;
 };
 
 BinaryExpression.prototype.preprocess = function(ctx: CompileContext): void {
@@ -56,7 +59,7 @@ MemberExpression.prototype.preprocess = function(ctx: CompileContext): void {
 };
 
 TypeName.prototype.preprocess = function(ctx: CompileContext): void {
-
+    return;
 };
 
 CastExpression.prototype.preprocess = function(ctx: CompileContext): void {

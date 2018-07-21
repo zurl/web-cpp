@@ -3,8 +3,8 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-import {VMFile} from "./vmfile";
 import {fromBytesToString} from "../common/utils";
+import {VMFile} from "./vmfile";
 
 export interface ImportObject {
     [module: string]: {

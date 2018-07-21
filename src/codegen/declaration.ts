@@ -231,7 +231,7 @@ TypedefName.prototype.codegen = function(ctx: CompileContext) {
 
 EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
     if ( this.enumerators != null ) {
-        let now = 0, val = 0;
+        let now = -1, val = 0;
         for (const enumerator of this.enumerators) {
             now ++;
             if (enumerator.value === null) {
@@ -248,8 +248,8 @@ EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {
                 }
                 val = parseInt(expr.expr.constant);
             }
-            ctx.scopeManager.declare(this.identifier.name, new Variable(
-                this.identifier.name, ctx.scopeManager.getFullName(this.identifier.name),
+            ctx.scopeManager.declare(enumerator.identifier.name, new Variable(
+                enumerator.identifier.name, ctx.scopeManager.getFullName(enumerator.identifier.name),
                 ctx.fileName, PrimitiveTypes.int32,
                 AddressType.CONSTANT, val,
             ), this);

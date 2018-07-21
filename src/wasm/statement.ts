@@ -50,7 +50,7 @@ export class WReturn extends WStatement {
     }
 
     public dump(e: Emitter): void {
-        if(this.expr !== null) {
+        if (this.expr !== null) {
             this.expr.dump(e);
         }
         e.dump(`return`);
@@ -62,7 +62,6 @@ export class WReturn extends WStatement {
             this.expr.optimize(e);
         }
     }
-
 
 }
 

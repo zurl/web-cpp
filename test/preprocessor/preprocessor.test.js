@@ -32,12 +32,15 @@ function arrayEqual(arr1, arr2){
 #define ABCD 2
 ABCD
 #undef ABCD
+#define FOO(X, Y, Z) X + Y + Z
+FOO(1,2,(3+4))
 ABCD
 `;
 const result = `
 "Should Exists 1"
 "Should Exists 2"
 2
+1 + 2 + (3+4)
 ABCD
 
 `;
@@ -49,6 +52,7 @@ describe('preprocessor', function(){
         const {code} = preprocess(fileName, source2);
         assert.equal(code,result)
     });
+
     it('parse marco', function () {
         arrayEqual(
             parseMarco(["foo", "luu", "goo"], "foo goo luu"),

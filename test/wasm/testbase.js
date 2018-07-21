@@ -4,7 +4,7 @@ const {codegen} = require('../../dist/codegen/index');
 const {CompileContext} = require('../../dist/codegen/context');
 const Linker = require('../../dist/linker');
 
-const {compile} = require("../codegen/testbase");
+const {compile} = require("../integration/testbase");
 
 
 module.exports = {

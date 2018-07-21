@@ -145,15 +145,16 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
 
     fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");
 
-    const dumper = new WASMEmitter();
-    mod.optimize(dumper);
-
-    // dumper.sourceMap = sourceMap;
-    // mod.dump(dumper);
-
     const emitter = new WASMEmitter();
     emitter.externMap = externVarMap;
+    mod.optimize(emitter);
     mod.emit(emitter);
+
+    if (option.debug) {
+        const dumper = new WASMEmitter();
+        dumper.sourceMap = sourceMap;
+        mod.dump(dumper);
+    }
     return {
         fileName,
         entry: entry[0],

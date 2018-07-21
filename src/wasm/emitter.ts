@@ -68,6 +68,15 @@ export class WASMEmitter implements Emitter {
     public externMap: Map<string, number>;
     public sourceMap?: Map<string, SourceMap>;
 
+    // dump
+
+    public dumpIndent: number;
+    public lastFile?: string;
+    public lastLine: number;
+    public consumer?: SourceMapConsumer;
+    public source?: string[];
+    public sourceMapItem?: SourceMap;
+
     constructor() {
         this.buffer = new ArrayBuffer(1000);
         this.view = new DataView(this.buffer);
@@ -184,16 +193,9 @@ export class WASMEmitter implements Emitter {
         return item;
     }
 
-    public dumpIndent: number;
-    public lastFile?: string;
-    public lastLine: number;
-    public consumer: SourceMapConsumer;
-    public source: string[];
-    public sourceMapItem: SourceMap;
-
     public dumpSource(st: number, ed: number) {
         for (let i = st; i <= ed; i++) {
-            console.log("# " + this.source[i].trim());
+            console.log("# " + this.source![i].trim());
         }
     }
 
@@ -205,13 +207,13 @@ export class WASMEmitter implements Emitter {
         if (this.sourceMap && loc) {
             if (!this.lastFile || loc.fileName !== this.lastFile) {
                 this.lastFile = loc.fileName;
-                if( this.sourceMap.has(this.lastFile)){
+                if ( this.sourceMap.has(this.lastFile)) {
                     const item = this.sourceMap!.get(this.lastFile)!;
                     this.sourceMapItem = item;
                     this.source = item.source;
                     this.consumer = new SourceMapConsumer(
                         item.sourceMap.toString());
-                    if( item.lastLine ){
+                    if ( item.lastLine ) {
                         this.lastLine = item.lastLine;
                     } else {
                         this.lastLine = 0;
@@ -220,12 +222,12 @@ export class WASMEmitter implements Emitter {
                     this.lastLine = -1;
                 }
             }
-            const mappedLine = this.consumer.originalPositionFor({
+            const mappedLine = this.consumer!.originalPositionFor({
                 line: loc.start.line,
                 column: 1,
             }).line;
             if (this.lastLine !== -1 && mappedLine > this.lastLine) {
-                this.sourceMapItem.lastLine = mappedLine;
+                this.sourceMapItem!.lastLine = mappedLine;
                 const st = this.lastLine + 1;
                 const ed = mappedLine;
                 this.dumpSource(st, ed);

@@ -61,6 +61,7 @@ export function printf(this: Runtime): number {
             }
             if (chr2 === "%") {
                 printfView.setUint8(size, "%".charCodeAt(0));
+                size ++;
             } else if (chr2 === "d") {
                 const str = this.memory.getInt32(sp, true).toString();
                 sp += 4;

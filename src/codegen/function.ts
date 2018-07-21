@@ -3,6 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
+import {inspect} from "util";
 import {
     CallExpression,
     Declarator, ExpressionResult,
@@ -21,7 +22,18 @@ import {
     Variable,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
-import {I32Binary, WBinaryOperation, WCall, WConst, WFunction, WReturn, WType} from "../wasm";
+import {
+    I32Binary,
+    WBinaryOperation,
+    WBlock,
+    WCall,
+    WConst,
+    WFunction,
+    WIfElseBlock,
+    WLoop,
+    WReturn,
+    WType,
+} from "../wasm";
 import {WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
@@ -78,7 +90,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     const parameterWTypes: WType[] = [];
 
     let stackParameterNow = 0;
-    for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
+    for (let i = functionEntity.type.parameterTypes.length - 1; i >= 0; i--) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
         if (!name) {
@@ -134,15 +146,39 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     this.body.body.map((item) => item.codegen(ctx));
 
     offsetNode.constant = ctx.memory.stackPtr.toString();
-    ctx.setStatementContainer(savedStatements);
-    ctx.exitFunction();
 
-    if ( !functionEntity.type.returnType.equals(PrimitiveTypes.void)
-        && (bodyStatements.length === 0
-            || !(bodyStatements[bodyStatements.length - 1] instanceof WReturn))) {
-        throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, this);
+    if ( !functionEntity.type.returnType.equals(PrimitiveTypes.void)) {
+        let curBlk: WStatement[] = bodyStatements;
+        while (curBlk.length > 0
+        && curBlk[curBlk.length - 1] instanceof WBlock
+        || curBlk[curBlk.length - 1] instanceof WIfElseBlock
+        || curBlk[curBlk.length - 1] instanceof WLoop) {
+            const item = curBlk[curBlk.length - 1];
+            if ( item instanceof WBlock || item instanceof WLoop) {
+                curBlk = item.body;
+            } else if ( item instanceof WIfElseBlock ) {
+                if ( item.alternative === null ) {
+                    throw new SyntaxError(`not all path of function contains return in `
+                        + `${functionEntity.fullName}`, this);
+                } else {
+                    curBlk = item.alternative;
+                }
+            } else {
+                throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, this);
+            }
+        }
+        if (curBlk.length === 0 || !(curBlk[curBlk.length - 1] instanceof WReturn)) {
+            throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, this);
+        }
+        if ( bodyStatements.length > 0 && bodyStatements[bodyStatements.length - 1] instanceof WIfElseBlock) {
+            // should do auto injection;
+            ctx.submitStatement(new WReturn(new WConst(
+                functionEntity.type.returnType.toWType(), "0"), this.location));
+        }
     }
 
+    ctx.setStatementContainer(savedStatements);
+    ctx.exitFunction();
     ctx.submitFunction(new WFunction(
         functionEntity.fullName,
         returnWTypes,

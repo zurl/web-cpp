@@ -419,7 +419,7 @@ export class ClassType extends Type {
         return this.fullName;
     }
 
-    public isDefine(): boolean{
+    public isDefine(): boolean {
         return this.isComplete;
     }
 }

@@ -56,20 +56,21 @@ local var:  @foo@var1
 - [X] switch case
 - [X] enum
 - [X] non-return detect
+- [X] js highlevel api
+- [X] constant fold on tree
+- [X] init instructions
+- [X] print sourceMap
 - [ ] cc-cli
 - [ ] ?:
 - [ ] 对局部变量取地址
 - [ ] const
 - [ ] bit field of struct
-- [X] js highlevel api
 - [ ] malloc
 - [ ] only export necessary scopeMap
 - [ ] #if #elif
 - [ ] #line __line__ __file__
 - [ ] & array alias
-- [X] constant fold on tree
-- [X] init instructions
-- [X] print sourceMap
+- [ ] int64
 ## C++ Language
 - [ ] 异常处理
 - [ ] 左值引用

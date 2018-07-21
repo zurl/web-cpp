@@ -116,6 +116,10 @@ export class WFunctionType extends WNode {
             getLeb128UintLength(this.parameters.length) + this.parameters.length;
     }
 
+    public dump(e: Emitter) {
+        e.dump(`(function)`, this.location);
+    }
+
 }
 
 export class WMemorySection extends WNode {
@@ -161,6 +165,10 @@ export class WMemorySection extends WNode {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
     }
+
+    public dump(e: Emitter) {
+        e.dump(`(memory)`, this.location);
+    }
 }
 
 export class WTypeSection extends WSection {
@@ -188,6 +196,9 @@ export class WTypeSection extends WSection {
             this.getBodyLength(e) + 1;
     }
 
+    public dump(e: Emitter) {
+        e.dump(`(type)`, this.location);
+    }
 }
 
 export class WFunctionSection extends WSection {
@@ -214,6 +225,10 @@ export class WFunctionSection extends WSection {
     public length(e: Emitter): number {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
+    }
+
+    public dump(e: Emitter) {
+        e.dump(`(function)`, this.location);
     }
 }
 
@@ -272,6 +287,10 @@ export class WImportItem extends WNode {
             getUtf8StringLength(this.name);
     }
 
+    public dump(e: Emitter) {
+        e.dump(`(import)`, this.location);
+    }
+
 }
 
 export class WImportFunction extends WImportItem {
@@ -300,6 +319,9 @@ export class WImportFunction extends WImportItem {
             getLeb128UintLength(this.signatureId) + 1;
     }
 
+    public dump(e: Emitter) {
+        e.dump(`(import)`, this.location);
+    }
 }
 
 export class WImportMemory extends WImportItem {
@@ -333,6 +355,10 @@ export class WImportMemory extends WImportItem {
                 getLeb128UintLength(this.max);
         }
     }
+
+    public dump(e: Emitter) {
+        e.dump(`(import memory)`, this.location);
+    }
 }
 
 export class WImportSection extends WNode {
@@ -360,6 +386,10 @@ export class WImportSection extends WNode {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
     }
+
+    public dump(e: Emitter) {
+        e.dump(`(import)`, this.location);
+    }
 }
 
 export class WExportFunction extends WNode {
@@ -379,6 +409,10 @@ export class WExportFunction extends WNode {
     public length(e: Emitter): number {
         return getUtf8StringLength(this.name) +
             getLeb128UintLength(e.getFuncIdx(this.name)) + 1;
+    }
+
+    public dump(e: Emitter) {
+        e.dump(`(export)`, this.location);
     }
 
 }
@@ -407,6 +441,10 @@ export class WExportSection extends WSection {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
     }
+
+    public dump(e: Emitter) {
+        e.dump(`(export)`, this.location);
+    }
 }
 
 export class WGlobalVariable extends WNode {
@@ -433,6 +471,9 @@ export class WGlobalVariable extends WNode {
         return 3 + this.init.length(e);
     }
 
+    public dump(e: Emitter) {
+        e.dump(`(global)`, this.location);
+    }
 }
 
 export class WGlobalSection extends WSection {
@@ -458,6 +499,10 @@ export class WGlobalSection extends WSection {
     public length(e: Emitter): number {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
+    }
+
+    public dump(e: Emitter) {
+        e.dump(`(global)`, this.location);
     }
 }
 
@@ -490,6 +535,10 @@ export class WDataSegment extends WNode {
             getLeb128UintLength(this.dataBuffer.byteLength);
     }
 
+    public dump(e: Emitter) {
+        e.dump(`(idx=${this.memIdx} off=${(this.offset as WConst).constant} ${this.dataBuffer})`);
+    }
+
 }
 
 export class WDataSection extends WSection {
@@ -515,6 +564,14 @@ export class WDataSection extends WSection {
     public length(e: Emitter): number {
         return getLeb128UintLength(this.getBodyLength(e)) +
             this.getBodyLength(e) + 1;
+    }
+
+    public dump(e: Emitter) {
+        e.dump(`(data`, this.location);
+        e.changeDumpIndent(1);
+        this.segments.map((x) => x.dump(e));
+        e.changeDumpIndent(-1);
+        e.dump(`)`, this.location);
     }
 
 }

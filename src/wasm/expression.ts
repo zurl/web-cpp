@@ -258,7 +258,7 @@ export class WLoad extends WExpression {
         this.offsetName = "";
     }
 
-    public getOp(){
+    public getOp() {
         switch (this.type) {
             case WType.u8: return I32.load8_u;
             case WType.u16: return I32.load16_u;
