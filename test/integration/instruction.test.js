@@ -38,7 +38,7 @@ describe('instruction integration test', function () {
         int main(){
             printf("%d%d%d%d,", a, b, c, d);
             printf("%d%d,", e, f);
-            printf("%f,%lf,", a0, a1);
+            printf("%lf,%lf,", a0, a1);
             return 0;
         }
         `;
@@ -212,7 +212,7 @@ describe('instruction integration test', function () {
         float a6 = 1;
         double a7 = 1;
         printf("%d%d%d%d%d%d%.3lf,",a0,a1,a2,a3,a4,a5,a7);
-        printf("%.3f", a6);
+        printf("%.3lf", a6);
         `;
         const expectOutput = `1111111,1`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);

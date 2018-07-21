@@ -18,11 +18,18 @@ int main(){
 const source3=`
 #include <stdio.h>
 
+void foo(const int & b){
+    b = 3;
+}
+
 int main(){
     int a = 1;
     int &b = a;
     int &c = a;
-    b = 2;
+    printf("%d", a);
+    foo(a);
+    printf("%d", a);
+    foo(b);
     printf("%d", a);
     return 0;
 }

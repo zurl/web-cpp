@@ -37,16 +37,16 @@ export class WAddressHolder extends WExpression {
             const wtype = requireAlign ? getNativeType(type.toWType()) : type.toWType();
             switch (this.type) {
                 case AddressType.LOCAL:
-                    result = new WSetLocal(
-                        wtype,
-                        this.place as number,
-                        value,
-                        this.location,
-                    );
-                    if ( this.offset !== 0) {
-                        throw new InternalError(`illegal offset`);
-                    }
-                    break;
+                result = new WSetLocal(
+                    wtype,
+                    this.place as number,
+                    value,
+                    this.location,
+                );
+                if ( this.offset !== 0) {
+                    throw new InternalError(`illegal offset`);
+                }
+                break;
                 case AddressType.MEMORY_DATA:
                     result = new WStore(
                         wtype,

@@ -8,13 +8,12 @@ import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
     AddressType,
     ArithmeticType,
-    ArrayType, ClassType, CompoundType, FloatingType,
-    FunctionEntity, FunctionType, Int64Type,
+    ArrayType, FloatingType, FloatType,
     IntegerType, LeftReferenceType,
-    PointerType, PrimitiveType, PrimitiveTypes,
-    Type, UnsignedInt64Type,
+    PointerType, PrimitiveTypes,
+    Type,
 } from "../common/type";
-import {getTypeConvertOpe} from "../wasm/constant";
+import {getTypeConvertOpe, WType} from "../wasm/constant";
 import {WConst, WCovertOperation} from "../wasm/expression";
 import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
@@ -33,7 +32,8 @@ export function doTypeTransfrom(type: Type): Type {
     return type;
 }
 
-export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, node: Node): ExpressionResult {
+export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
+                                 node: Node, toReference = false): ExpressionResult {
 
     if ( !expr.isLeft && expr.type instanceof LeftReferenceType) {
         throw new InternalError(`LeftReferenceType could not be rvalue`);
@@ -51,14 +51,26 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, no
         }
 
         if ( expr.type instanceof ArrayType ) {
+            if ( toReference ) {
+                throw new SyntaxError(`no reference to array`, node);
+            }
             expr.type = new PointerType(expr.type.elementType);
             expr.expr = expr.expr.createLoadAddress(ctx);
         } else if ( expr.type instanceof LeftReferenceType) {
-            expr.type = expr.type.elementType;
-            expr.expr = new WAddressHolder(expr.expr.createLoad(ctx, PrimitiveTypes.uint32),
-                AddressType.RVALUE, node.location).createLoad(ctx, expr.type);
+            if ( toReference ) {
+                expr.expr = expr.expr.createLoad(ctx, PrimitiveTypes.uint32);
+            } else {
+                expr.type = expr.type.elementType;
+                expr.expr = new WAddressHolder(expr.expr.createLoad(ctx, PrimitiveTypes.uint32),
+                    AddressType.RVALUE, node.location).createLoad(ctx, expr.type);
+            }
         } else {
-            expr.expr = expr.expr.createLoad(ctx, expr.type);
+            if ( toReference ) {
+                expr.type = new LeftReferenceType(expr.type);
+                expr.expr = expr.expr.createLoadAddress(ctx);
+            } else {
+                expr.expr = expr.expr.createLoad(ctx, expr.type);
+            }
         }
     }
 
@@ -75,10 +87,17 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, no
 
 export function doConversion(ctx: CompileContext, dstType: Type, src: ExpressionResult,
                              node: Node, force: boolean = false): WExpression {
-    src = doValueTransform(ctx, src, node);
+
+    src = doValueTransform(ctx, src, node, dstType instanceof LeftReferenceType);
 
     if ( src.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`unsupport function name`, node);
+    }
+
+    if ( dstType instanceof LeftReferenceType && src.type instanceof LeftReferenceType) {
+        if( dstType.equals(src.type)){
+            return src.expr;
+        }
     }
 
     // arithmetic conversion
@@ -135,10 +154,11 @@ export function getInStackSize(size: number): number {
 
 export function doValuePromote(ctx: CompileContext, src: ExpressionResult, node: Node): ExpressionResult {
     src = doValueTransform(ctx, src, node);
-    if( src.type instanceof IntegerType && src.type.length < 4 ){
+    if ( src.type instanceof IntegerType && src.type.length < 4 ) {
         src.type = PrimitiveTypes.int32;
     }
-    if( src.type instanceof FloatingType ){
+    if ( src.type instanceof FloatType ) {
+        src.expr = doConversion(ctx, PrimitiveTypes.double, src, node);
         src.type = PrimitiveTypes.double;
     }
     return src;

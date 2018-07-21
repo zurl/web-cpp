@@ -79,7 +79,7 @@ export class PointerType extends CompoundType {
     }
 
     public toMangledName(): string {
-        return "P" + this.elementType.toMangledName();
+        return this.elementType.toMangledName() + "*";
     }
 
     public compatWith(type: Type): boolean {
@@ -108,7 +108,7 @@ export class LeftReferenceType extends ReferenceType {
     }
 
     public toMangledName(): string {
-        return "R" + this.elementType.toMangledName();
+        return this.elementType.toMangledName() + "&";
     }
 }
 
@@ -122,7 +122,7 @@ export class RightReferenceType extends ReferenceType {
     }
 
     public toMangledName(): string {
-        return "r" + this.elementType.toMangledName();
+        return this.elementType.toMangledName() + "&&";
     }
 }
 
@@ -438,7 +438,7 @@ export class ClassType extends Type {
     }
 
     public toMangledName() {
-        return this.fullName;
+        return "$" + this.fullName;
     }
 
     public isDefine(): boolean {
@@ -599,6 +599,7 @@ export function getStackStorageType(rawType: Type): StackStorageType {
 export enum AddressType {
     GLOBAL,
     LOCAL,
+    LOCAL_REF,
     STACK,
     MEMORY_DATA,
     MEMORY_BSS,

@@ -15,7 +15,7 @@ import {
 import {assertType, SyntaxError} from "../common/error";
 import {
     AddressType, ArrayType, ClassType,
-    FunctionType,
+    FunctionType, LeftReferenceType,
     PointerType,
     PrimitiveTypes,
     Type,
@@ -205,7 +205,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     let entity: FunctionEntity | null = lookUpResult.functions[0];
 
     if ( ctx.isCpp() ) {
-        entity = doFunctionOverLoadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)));
+        entity = doFunctionOverLoadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
     }
 
     if (entity === null ) {
