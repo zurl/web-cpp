@@ -78,7 +78,7 @@ export class WASMEmitter implements Emitter {
     public sourceMapItem?: SourceMap;
 
     constructor() {
-        this.buffer = new ArrayBuffer(1000);
+        this.buffer = new ArrayBuffer(2000);
         this.view = new DataView(this.buffer);
         this.now = 0;
         this.funcIdx = new Map<string, [number, WFunctionType]>();
@@ -214,7 +214,7 @@ export class WASMEmitter implements Emitter {
                     this.consumer = new SourceMapConsumer(
                         item.sourceMap.toString());
                     if ( item.lastLine ) {
-                        this.lastLine = item.lastLine;
+                        this.lastLine = Math.max(0, item.lastLine);
                     } else {
                         this.lastLine = 0;
                     }

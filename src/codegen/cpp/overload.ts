@@ -10,7 +10,9 @@ export function doFunctionOverLoadResolution(funcs: FunctionLookUpResult,
                                              argus: Type[]): FunctionEntity | null {
     // 1. filter parameter number
     const f1 = funcs.functions.filter((x) =>
-        x.type.parameterTypes.length === argus.length);
+        x.type.parameterTypes.length === argus.length
+        || x.type.variableArguments,
+    );
 
     if (f1.length === 0) {
         return null;
@@ -32,6 +34,14 @@ export function doFunctionOverLoadResolution(funcs: FunctionLookUpResult,
 
     if (f3.length > 0) {
         return f3[0];
+    }
+
+    // 4. var arguments
+
+    const f4 = f1.filter( (x) => x.type.variableArguments);
+
+    if (f4.length > 0) {
+        return f4[0];
     }
 
     return null;

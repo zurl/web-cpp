@@ -978,7 +978,15 @@ DirectDeclarator
 
 Pointer
     = '*' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
-        return new AST.Pointer(getLocation(), qualifiers || [], pointer);
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '*');
+    }
+    /
+    '&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&');
+    }
+    /
+    '&&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&&');
     }
 
 TypeQualifierList
@@ -1234,6 +1242,32 @@ DeclarationList
     = head:Declaration tail:(_ Declaration)* {
         return buildList(head, tail, 1);
     }
-
+TryBlock
+    = 'try' _ body:CompoundStatement _ handlers:HandlerSeq {
+        return new AST.TryBlock(getLocation(), body, handlers);
+    }
+    
+HandlerSeq
+    = head:ExceptionHandler tail:(_ ExceptionHandler)* {
+        return buildList(head, tail, 1);
+    }
+    
+ExceptionHandler
+    = 'catch' _ '(' _ decl:ExceptionDeclaration _ ')' _ body:CompoundStatement {
+        return new AST.ExceptionHandler(getLocation(), decl, body);
+    }
+    
+ExceptionDeclaration 
+ 	= specifiers:DeclarationSpecifiers _ declarator:Declarator {
+ 	    return new AST.ExceptionDeclaration(getLocation(), specifiers, declarator);
+ 	}
+ 	/ specifiers:DeclarationSpecifiers _ declarator:AbstractDeclarator {
+ 	    return new AST.ExceptionDeclaration(getLocation(), specifiers, declarator);
+ 	}
+ 	
+ThrowExpression 
+ 	= 'throw' _ body:AssignmentExpression? {
+ 	    return new AST.ThrowExpression(getLocation(), body);
+ 	}
 // A.3 Preprocessing directives
 `

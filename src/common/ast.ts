@@ -546,11 +546,13 @@ export class PointerDeclarator extends Declarator {
 export class Pointer extends Node {
     public qualifiers: string[];
     public pointer: Pointer | null;
+    public type: string;
 
-    constructor(location: SourceLocation, qualifiers: string[], pointer: Pointer | null) {
+    constructor(location: SourceLocation, qualifiers: string[], pointer: Pointer | null, type: string) {
         super(location);
         this.qualifiers = qualifiers;
         this.pointer = pointer;
+        this.type = type;
     }
 }
 

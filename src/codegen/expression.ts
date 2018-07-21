@@ -200,7 +200,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
                     new WConst(WType.u32, dstType.elementType.length.toString(), this.location)),
             };
         } else if ( right.type instanceof IntegerType ) {
-            right = doValueTransform(ctx, left, this);
+            right = doValueTransform(ctx, right, this);
             if ( right.expr instanceof FunctionLookUpResult ) {
                 throw new InternalError(`unsupport func name`);
             }

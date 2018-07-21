@@ -16,9 +16,6 @@ import {CompileContext} from "./context";
 import {parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 
 StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
-    if (this.union) {
-        throw new InternalError(`unsupport union`);
-    }
     let name = this.identifier.name;
     if ( ! ctx.isCpp() ) {
         name = "$" + name;

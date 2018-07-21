@@ -246,14 +246,14 @@ export class WAddressHolder extends WExpression {
                     WMemoryLocation.DATA,
                     this.location,
                 );
-                (result as WLoad).offset = this.place as number + this.offset;
+                (result as WGetAddress).offset = this.place as number + this.offset;
                 break;
             case AddressType.MEMORY_BSS:
                 result = new WGetAddress(
                     WMemoryLocation.BSS,
                     this.location,
                 );
-                (result as WLoad).offset = this.place as number + this.offset;
+                (result as WGetAddress).offset = this.place as number + this.offset;
                 break;
             case AddressType.MEMORY_EXTERN:
                 result = new WGetAddress(
@@ -272,10 +272,20 @@ export class WAddressHolder extends WExpression {
                 result = new WBinaryOperation(
                     I32Binary.add,
                     new WGetLocal(WType.i32, ctx.currentFunction.$sp, this.location),
-                    new WConst(WType.i32, this.offset.toString()),
+                    new WConst(WType.i32, (this.place as number + this.offset).toString()),
                     this.location,
                 );
-                (result as WLoad).offset = this.place as number + this.offset;
+                break;
+            case AddressType.GLOBAL_SP:
+                if ( ctx.currentFunction === null) {
+                    throw new InternalError(`not in function`);
+                }
+                result = new WBinaryOperation(
+                    I32Binary.add,
+                    new WGetGlobal(WType.i32, "$sp", this.location),
+                    new WConst(WType.i32, (this.place as number + this.offset).toString()),
+                    this.location,
+                );
                 break;
             case AddressType.RVALUE:
                 result = new WBinaryOperation(I32Binary.add,
@@ -321,7 +331,7 @@ export class WAddressHolder extends WExpression {
     }
 
     public dump(e: Emitter): void {
-        console.log("ADDRESS HOLDER");
+        e.dump("===ADDRESS HOLDER===", this.location);
     }
 
 }

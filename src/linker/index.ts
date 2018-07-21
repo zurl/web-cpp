@@ -47,7 +47,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         sourceMap.set(object.fileName, {
             source: object.source!.split("\n"),
             sourceMap: object.sourceMap!,
-            lastLine: -1,
+            lastLine: 0,
         });
     }
 

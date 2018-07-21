@@ -1,4 +1,5 @@
 const TestBase = require('./testbase');
+const {TypeError} = require("../../dist/common/error");
 describe('instruction integration test', function () {
     it('test address',async function() {
         const testCode = `
@@ -129,24 +130,6 @@ describe('instruction integration test', function () {
         const expectOutput = `001234`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
-    // it('goto', async function() {
-    //     const testCode = `
-    //     int a = 1;
-    //     label1:
-    //      printf("1");
-    //      if( a == 1){
-    //         a = 2;
-    //         goto label1;
-    //      }
-    //      printf("2");
-    //      goto label2;
-    //      printf("3");
-    //      label2:
-    //      printf("4");
-    //     `;
-    //     const expectOutput = `1124`;
-    //     return await TestBase.testRunCompareResult(testCode, expectOutput);
-    // });
     it('do-while', async function() {
         const testCode = `
         int i = 10;
@@ -181,12 +164,14 @@ describe('instruction integration test', function () {
     it('array', async function() {
         const testCode = `
         int arr[100];
-        for(int i = 0; i < 10; i++){
+        arr[0] = 1;
+        arr[1] = 1;
+        for(int i = 2; i < 10; i++){
+            arr[i] = arr[i - 1] + arr[i - 2];
             printf("%d", arr[i]);
-            arr[i] = arr[i] + 1;
         }
         `;
-        const expectOutput = `0123456789`;
+        const expectOutput = `235813213455`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
     it('constant compute', async function() {
@@ -232,4 +217,71 @@ describe('instruction integration test', function () {
         const expectOutput = `1111111,1`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
+    it('test pointer conversion', async function() {
+        const testCode = `
+        int a = 123;
+        int *b = &a;
+        int *c = &b;
+        `;
+        try{
+            await TestBase.testRunCompareResult(testCode, '', false);
+            TestBase.assert.isTrue(false);
+        } catch (e) {
+            if( !(e instanceof TypeError)){
+                throw e;
+            }
+        }
+    });
+    it('test pointer', async function() {
+        const testCode = `
+        int a = 123;
+        int *b = &a;
+        printf("%d,", *b);
+        
+        int **c = &b;
+        printf("%d,", **c);
+        
+        **c = 72;
+        printf("%d,", a);
+        
+        int d = 999;
+        int *e = &d;
+        int **f = &e;
+        **c = **f;
+        printf("%d,", a);
+        
+        `;
+        const expectOutput = `123,123,72,999,`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput, false);
+    });
+    it('bb sort', async function(){
+        const testCode = `
+        int a[10];
+        a[0] = 1;
+        a[1] = 1;
+        a[2] = 4;
+        a[3] = 5;
+        a[4] = 1;
+        a[5] = 4;
+    
+        // bb sort
+        int n = 6;
+        for(int i = 0; i < n; i++){
+            for(int j = 0; j < i; j++){
+                if(a[j] > a[j + 1]){
+                    int t = a[j];
+                    a[j] = a[j + 1];
+                    a[j + 1] = t;
+                }
+            }
+        }
+    
+        //output
+        for(int k = 0; k < n; k++){
+            printf("%d", a[k]);
+        }
+    `;
+        const expectOutput = `111445`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput, false);
+    })
 });

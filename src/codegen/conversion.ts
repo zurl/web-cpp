@@ -91,8 +91,7 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
     if (dstType instanceof PointerType && src.type instanceof PointerType) {
         const dstElem = dstType.elementType;
         const srcElem = src.type.elementType;
-        if ( (dstElem instanceof PrimitiveType || srcElem instanceof CompoundType)
-            && (srcElem instanceof PrimitiveType || srcElem instanceof CompoundType)) {
+        if ( dstElem.equals(PrimitiveTypes.void) || srcElem.equals(dstElem)) {
             return src.expr;
         }
     }

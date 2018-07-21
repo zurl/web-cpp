@@ -30,7 +30,7 @@ import {
     ArrayType,
     ClassType,
     FunctionType,
-    IntegerType, PointerType,
+    IntegerType, LeftReferenceType, PointerType,
     PrimitiveTypes, Type, Variable,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
@@ -104,7 +104,13 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
         let pointer = declarator.pointer as Pointer | null;
         let result = type;
         while (pointer != null) {
-            result = new PointerType(result);
+            if ( pointer.type === "*" ) {
+                result = new PointerType(result);
+            } else if ( pointer.type === "&" ) {
+                result = new LeftReferenceType(result);
+            } else if ( pointer.type === "&&" ) {
+                throw new SyntaxError(`unsupport right value reference`, this);
+            }
             pointer = pointer.pointer;
         }
         return result;

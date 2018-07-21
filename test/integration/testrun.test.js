@@ -8,10 +8,8 @@ struct mystruct{
 };
 struct mystruct d[10];
 int main(){
-struct mystruct u[10];
-    int a[100];
-    struct mystruct * b = u+7;
-    (*b).a=14;
+    int a = 1;
+    int &b = 2;
     printf("%d\\n", (*b).a); 
     return 0;
 }
@@ -32,9 +30,8 @@ int main(){
     // bb sort
     int n = 6;
     for(int i = 0; i < n; i++){
-        for(int j = 0; j < i - 1; j++){
+        for(int j = 0; j < i; j++){
             if(a[j] > a[j + 1]){
-                printf("swap %d %d\\n", i, j);
                 int t = a[j];
                 a[j] = a[j + 1];
                 a[j + 1] = t;
@@ -52,8 +49,8 @@ int main(){
 `;
 
 describe('test run', function(){
-    it('test run', function(){
-        const result = TestBase.testRun(source3, true);
+    it('test run', async function(){
+        const result = await TestBase.testRun(source3, false, true);
         console.log(result);
     })
 });

@@ -61,13 +61,15 @@ describe('function integration test', function () {
         }
         int main(){
             char a = 2;
+            short b = 3;
             foo(1);
             foo(a);
             foo(a, a);
+            foo(b, b);
             return 0;
         }
         `;
-        const expectOutput = `132`;
+        const expectOutput = `1322`;
         return await TestBase.testFullCode(testCode, expectOutput, true);
     });
 });
