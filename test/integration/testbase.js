@@ -37,12 +37,12 @@ async function testRun(source, debug, isCpp){
 
 
 async function testRunCompareResult(source, expectOutput, isCpp = false){
-    const actualOutput = await testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n", true, isCpp);
+    const actualOutput = await testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n", false, isCpp);
     assert.equal(actualOutput.trim(), expectOutput.trim());
 }
 
 async function testFullCode(source, expectOutput, isCpp = false){
-    const actualOutput = await testRun(source, true, isCpp);
+    const actualOutput = await testRun(source, false, isCpp);
     assert.equal(actualOutput.trim(), expectOutput.trim());
 }
 

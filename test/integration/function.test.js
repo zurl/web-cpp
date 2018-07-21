@@ -44,4 +44,30 @@ describe('function integration test', function () {
         const expectOutput = `128,1,4,1,`;
         return await TestBase.testFullCode(testCode, expectOutput);
     });
+    it('test overload', async function () {
+        const testCode = `
+#include <stdio.h>
+        int foo(int a){
+            printf("1");
+            return 0;
+        }
+        int foo(int a, int b){
+            printf("2");
+            return 0;
+        }
+        int foo(char a){
+            printf("3");
+            return 0;
+        }
+        int main(){
+            char a = 2;
+            foo(1);
+            foo(a);
+            foo(a, a);
+            return 0;
+        }
+        `;
+        const expectOutput = `132`;
+        return await TestBase.testFullCode(testCode, expectOutput, true);
+    });
 });

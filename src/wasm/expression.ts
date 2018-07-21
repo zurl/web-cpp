@@ -524,7 +524,7 @@ export class WCovertOperation extends WExpression {
 
     public dump(e: Emitter): void {
         this.operand.dump(e);
-        e.dump(OpCodes.get(this.ope as number), this.location);
+        e.dump(OpCodes.get(this.ope as number)!, this.location);
     }
 }
 

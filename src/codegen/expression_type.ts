@@ -3,7 +3,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant, MemberExpression,
-    ParenthesisExpression, PostfixExpression, SubscriptExpression, TypeName, UnaryExpression,
+    ParenthesisExpression, PostfixExpression, StringLiteral, SubscriptExpression, TypeName, UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
@@ -37,6 +37,10 @@ IntegerConstant.prototype.deduceType = function(ctx: CompileContext): Type {
 };
 
 FloatingConstant.prototype.deduceType = function(ctx: CompileContext): Type {
+    return this.codegen(ctx).type;
+};
+
+StringLiteral.prototype.deduceType = function(ctx: CompileContext): Type {
     return this.codegen(ctx).type;
 };
 

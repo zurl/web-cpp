@@ -1,8 +1,9 @@
 import * as Long from "long";
 import {CompileContext} from "../codegen/context";
+import {FunctionLookUpResult} from "../codegen/scope";
 import {WExpression} from "../wasm/node";
 import {InternalError} from "./error";
-import {FunctionEntity, Type} from "./type";
+import {Type} from "./type";
 
 export type SpecifierType =
     string
@@ -14,7 +15,7 @@ export type SpecifierType =
 
 export interface ExpressionResult {
     type: Type;
-    expr: WExpression | FunctionEntity;
+    expr: WExpression | FunctionLookUpResult;
     isLeft: boolean;
 }
 

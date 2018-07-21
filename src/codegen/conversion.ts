@@ -18,6 +18,7 @@ import {WConst, WCovertOperation} from "../wasm/expression";
 import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
+import {FunctionLookUpResult} from "./scope";
 
 export function doTypeTransfrom(type: Type): Type {
     // array to pointer transform
@@ -69,7 +70,7 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
                              node: Node, force: boolean = false): WExpression {
     src = doValueTransform(ctx, src, node);
 
-    if ( src.expr instanceof FunctionEntity) {
+    if ( src.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`unsupport function name`, node);
     }
 

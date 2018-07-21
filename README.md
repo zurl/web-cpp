@@ -70,6 +70,7 @@ local var:  @foo@var1
 - [ ] #if #elif
 - [ ] #line __line__ __file__
 - [ ] & array alias
+- [ ] &
 - [ ] int64
 ## C++ Language
 - [ ] 异常处理

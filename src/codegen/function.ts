@@ -40,7 +40,9 @@ import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, getInStackSize} from "./conversion";
+import {doFunctionOverLoadResolution} from "./cpp/overload";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
+import {FunctionLookUpResult} from "./scope";
 
 function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                  resultType: Type): FunctionType {
@@ -79,7 +81,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     }
     const realName = functionType.name + "@" + functionType.toMangledName();
     const fullName = ctx.scopeManager.getFullName(realName);
-    const functionEntity = new FunctionEntity(functionType.name, fullName,
+    const functionEntity = new FunctionEntity(realName, fullName,
         ctx.fileName, functionType, false, true);
     ctx.scopeManager.define(realName, functionEntity, this);
     ctx.enterFunction(functionEntity);
@@ -194,21 +196,34 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     if (callee.type instanceof PointerType) {
         callee.type = callee.type.elementType;
     }
-    const entity = callee.expr;
-    if ( !(callee.type instanceof FunctionType) || !(entity instanceof FunctionEntity)) {
+
+    const lookUpResult = callee.expr;
+    if ( !(lookUpResult instanceof FunctionLookUpResult)) {
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
     }
 
-    if ( callee.type.parameterTypes.length > this.arguments.length ) {
+    let entity: FunctionEntity | null = lookUpResult.functions[0];
+
+    if ( ctx.isCpp() ) {
+        entity = doFunctionOverLoadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)));
+    }
+
+    if (entity === null ) {
+        throw new SyntaxError(`no matching function for ${lookUpResult.functions[0].name}`, this);
+    }
+
+    const funcType = entity.type;
+
+    if ( funcType.parameterTypes.length > this.arguments.length ) {
         throw new SyntaxError(`function call parameters number mismatch`, this);
     }
 
     const argus: WExpression[] = [];
     let stackOffset = 0;
 
-    if (callee.type.variableArguments) {
+    if (funcType.variableArguments) {
         for (let i = this.arguments.length - 1;
-                i > callee.type.parameterTypes.length - 1; i--) {
+                i > funcType.parameterTypes.length - 1; i--) {
             const src = this.arguments[i].codegen(ctx);
             const srcExpr = doConversion(ctx, src.type, src, this).fold();
             stackOffset -= getInStackSize(src.type.length);
@@ -219,18 +234,18 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         }
         argus.push(new WConst(WType.u32, this.arguments.length.toString()));
     } else {
-        if ( callee.type.parameterTypes.length < this.arguments.length ) {
+        if ( funcType.parameterTypes.length < this.arguments.length ) {
             throw new SyntaxError(`function call parameters number mismatch`, this);
         }
     }
 
-    for (let i = callee.type.parameterTypes.length - 1; i >= 0; i--) {
-        const dstType = callee.type.parameterTypes[i];
+    for (let i = funcType.parameterTypes.length - 1; i >= 0; i--) {
+        const dstType = funcType.parameterTypes[i];
         const src = this.arguments[i].codegen(ctx);
         const srcExpr = doConversion(ctx, dstType, src, this).fold();
         if ( dstType instanceof ClassType || dstType instanceof ArrayType ||
-            (callee.type.variableArguments
-                && i === callee.type.parameterTypes.length - 1)) {
+            (funcType.variableArguments
+                && i === funcType.parameterTypes.length - 1)) {
             stackOffset -= getInStackSize(src.type.length);
             argus.push(new WFakeExpression(
                 new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
@@ -258,7 +273,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
 
     return {
-        type: callee.type.returnType,
+        type: funcType.returnType,
         expr: new WCall(entity.fullName, argus, afterStatements, this.location),
         isLeft: false,
     };

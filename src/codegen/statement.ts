@@ -20,9 +20,10 @@ import {WBlock, WBr, WBrIf, WDrop, WExprStatement, WIfElseBlock, WLoop, WReturn,
 import {WAddressHolder} from "./address";
 import {CaseContext, CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
+import {FunctionLookUpResult} from "./scope";
 
 export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: ExpressionResult) {
-    if ( expr.expr instanceof FunctionEntity) {
+    if ( expr.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`illegal function name`, node);
     }
     if ( expr.isLeft && expr.expr.isPure()) {
@@ -82,7 +83,7 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     const tmpVarLoc = ctx.memory.allocStack(4);
     const tmpVarPtr = new WAddressHolder(tmpVarLoc, AddressType.STACK, this.location);
     const cond = doValueTransform(ctx, this.discriminant.codegen(ctx), this);
-    if ( !(cond.type instanceof IntegerType) || cond.expr instanceof FunctionEntity) {
+    if ( !(cond.type instanceof IntegerType) || cond.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`illegal switch cond type`, this);
     }
     ctx.setStatementContainer(savedStatementContainer);
@@ -116,7 +117,7 @@ CaseStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.switchContext.cases.push(caseCtx);
     if ( this.test !== null ) {
         const expr = this.test.codegen(ctx);
-        if (expr.expr instanceof FunctionEntity) {
+        if (expr.expr instanceof FunctionLookUpResult) {
             throw new SyntaxError(`func name not support`, this);
         }
         expr.expr = expr.expr.fold();

@@ -157,8 +157,8 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     if (item instanceof FunctionLookUpResult) {
         // TODO:: overload lookup
         return {
-            type: item.functions[0].type,
-            expr: item.functions[0],
+            type: PrimitiveTypes.void,
+            expr: item,
             isLeft: false,
         };
     }
@@ -190,8 +190,8 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     if ( dstType instanceof PointerType ) {
         if ( left.type instanceof IntegerType ) {
             left = doValueTransform(ctx, left, this);
-            if ( left.expr instanceof FunctionEntity ) {
-                throw new InternalError(`unsupportfunc name`);
+            if ( left.expr instanceof FunctionLookUpResult ) {
+                throw new InternalError(`unsupport func name`);
             }
             left = {
                 type: dstType,
@@ -201,8 +201,8 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
             };
         } else if ( right.type instanceof IntegerType ) {
             right = doValueTransform(ctx, left, this);
-            if ( right.expr instanceof FunctionEntity ) {
-                throw new InternalError(`unsupportfunc name`);
+            if ( right.expr instanceof FunctionLookUpResult ) {
+                throw new InternalError(`unsupport func name`);
             }
             right = {
                 type: dstType,
@@ -256,7 +256,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
     if (this.operator === "*") {
         const newExpr = doValueTransform(ctx, expr, this);
         if (newExpr.type instanceof PointerType) {
-            if ( newExpr.expr instanceof FunctionEntity) {
+            if ( newExpr.expr instanceof FunctionLookUpResult) {
                 throw new SyntaxError(`unsupport function name`, this);
             }
             return {

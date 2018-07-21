@@ -26,6 +26,10 @@ export abstract class Type extends Symbol {
         return this.constructor === type.constructor;
     }
 
+    public compatWith(type: Type) {
+        return this.constructor === type.constructor;
+    }
+
     public abstract toWType(): WType;
     public abstract toString(): string;
     public abstract get length(): number;
@@ -57,6 +61,12 @@ export abstract class CompoundType extends Type {
             type instanceof CompoundType &&
             this.elementType.equals(type.elementType);
     }
+
+    public compatWith(type: Type): boolean {
+        return super.compatWith(type) &&
+            type instanceof CompoundType &&
+            this.elementType.compatWith(type.elementType);
+    }
 }
 
 export class PointerType extends CompoundType {
@@ -70,6 +80,11 @@ export class PointerType extends CompoundType {
 
     public toMangledName(): string {
         return "P" + this.elementType.toMangledName();
+    }
+
+    public compatWith(type: Type): boolean {
+        return super.compatWith(type) || (
+            type instanceof ArrayType && this.elementType.compatWith(type.elementType));
     }
 }
 
@@ -146,6 +161,9 @@ export class NullptrType extends PrimitiveType {
 }
 
 export abstract class ArithmeticType extends PrimitiveType {
+    public compatWith(type: Type): boolean {
+        return type instanceof ArithmeticType;
+    }
 }
 
 export abstract class IntegerType extends ArithmeticType {
@@ -356,6 +374,10 @@ export class FunctionType extends Type {
     public toMangledName(): string {
         return this.parameterTypes.map((x) => x.toMangledName()).join(",");
     }
+
+    public compatWith(type: Type): boolean {
+        return type.equals(this);
+    }
 }
 
 enum AccessControl {
@@ -421,6 +443,14 @@ export class ClassType extends Type {
 
     public isDefine(): boolean {
         return this.isComplete;
+    }
+
+    public equals(type: Type): boolean {
+        return type === this;
+    }
+
+    public compatWith(type: Type): boolean {
+        return type === this;
     }
 }
 
@@ -493,6 +523,11 @@ export class ArrayType extends Type {
 
     public toMangledName(): string {
         return this.elementType.toMangledName() + "[" + this.size + "]";
+    }
+
+    public compatWith(type: Type): boolean {
+        return type.equals(this) || (
+            type instanceof PointerType && type.elementType.equals(this.elementType));
     }
 }
 

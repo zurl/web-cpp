@@ -21,7 +21,7 @@ describe('c++ scope test', function () {
         const var_def = new Variable('', '', '', var_type, AddressType.MEMORY_DATA, '');
         const type = new ClassType();
 
-        const m = new ScopeManager();
+        const m = new ScopeManager(true);
 
         // foo(i)
         m.declare("foo@i", func);
