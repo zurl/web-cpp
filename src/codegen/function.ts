@@ -39,7 +39,7 @@ import {WExpression, WStatement} from "../wasm/node";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {doConversion, getInStackSize} from "./conversion";
+import {doConversion, doValuePromote, getInStackSize} from "./conversion";
 import {doFunctionOverLoadResolution} from "./cpp/overload";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
@@ -225,11 +225,14 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         for (let i = this.arguments.length - 1;
                 i > funcType.parameterTypes.length - 1; i--) {
             const src = this.arguments[i].codegen(ctx);
-            const srcExpr = doConversion(ctx, src.type, src, this).fold();
-            stackOffset -= getInStackSize(src.type.length);
+            const newSrc = doValuePromote(ctx, src, this);
+            stackOffset -= getInStackSize(newSrc.type.length);
+            if ( newSrc.expr instanceof FunctionLookUpResult) {
+                throw new SyntaxError(`unsupport function name`, this);
+            }
             argus.push(new WFakeExpression(
                 new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
-                    .createStore(ctx, src.type, srcExpr, true)
+                    .createStore(ctx, newSrc.type, newSrc.expr, true)
                 , this.location));
         }
         argus.push(new WConst(WType.u32, this.arguments.length.toString()));

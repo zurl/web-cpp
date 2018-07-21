@@ -19,31 +19,11 @@ const source3=`
 #include <stdio.h>
 
 int main(){
-    int a[10];
-    a[0] = 1;
-    a[1] = 1;
-    a[2] = 4;
-    a[3] = 5;
-    a[4] = 1;
-    a[5] = 4;
-
-    // bb sort
-    int n = 6;
-    for(int i = 0; i < n; i++){
-        for(int j = 0; j < i; j++){
-            if(a[j] > a[j + 1]){
-                int t = a[j];
-                a[j] = a[j + 1];
-                a[j + 1] = t;
-            }
-        }
-    }
-
-    //output
-    for(int k = 0; k < n; k++){
-        printf("%d ", a[k]);
-    }
-    printf("\\n");
+    int a = 1;
+    int &b = a;
+    int &c = a;
+    b = 2;
+    printf("%d", a);
     return 0;
 }
 `;

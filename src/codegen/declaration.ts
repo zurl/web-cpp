@@ -24,14 +24,14 @@ import {
     TranslationUnit,
     TypedefName,
 } from "../common/ast";
-import {assertType, InternalError, SyntaxError} from "../common/error";
+import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
 import {
     AddressType,
     ArrayType,
     ClassType,
     FunctionType,
     IntegerType, LeftReferenceType, PointerType,
-    PrimitiveTypes, Type, Variable,
+    PrimitiveTypes, ReferenceType, Type, Variable,
 } from "../common/type";
 import {FunctionEntity} from "../common/type";
 import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
@@ -104,17 +104,26 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
         let pointer = declarator.pointer as Pointer | null;
         let result = type;
         while (pointer != null) {
+            if ( result instanceof ReferenceType) {
+                throw new SyntaxError(`there is no pointer/reference of reference`, declarator);
+            }
             if ( pointer.type === "*" ) {
                 result = new PointerType(result);
             } else if ( pointer.type === "&" ) {
+                if ( !ctx.isCpp() ) {
+                    throw new LanguageError(`reference is only supported in c++`, declarator);
+                }
                 result = new LeftReferenceType(result);
             } else if ( pointer.type === "&&" ) {
-                throw new SyntaxError(`unsupport right value reference`, this);
+                throw new SyntaxError(`unsupport right value reference`, declarator);
             }
             pointer = pointer.pointer;
         }
         return result;
     } else if (declarator instanceof ArrayDeclarator || declarator instanceof AbstractArrayDeclarator) {
+        if ( type instanceof ReferenceType) {
+            throw new SyntaxError(`there is no array of reference`, declarator);
+        }
         const length = declarator.length.codegen(ctx);
         if (!(length.expr instanceof WExpression)) {
             throw new SyntaxError("illegal length type", declarator);

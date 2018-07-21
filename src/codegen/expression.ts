@@ -19,7 +19,7 @@ import {
 import {InternalError, SyntaxError} from "../common/error";
 import {
     AddressType, ArrayType, CharType, ClassType, DoubleType, FloatingType, FloatType,
-    FunctionEntity, Int16Type, Int32Type, Int64Type, IntegerType,
+    FunctionEntity, Int16Type, Int32Type, Int64Type, IntegerType, LeftReferenceType,
     PointerType,
     PrimitiveTypes,
     Type, UnsignedCharType, UnsignedInt16Type, UnsignedInt32Type, UnsignedInt64Type,
@@ -30,6 +30,7 @@ import {WBinaryOperation, WConst, WGetAddress, WMemoryLocation} from "../wasm/ex
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";
+import {doReferenceBinding} from "./cpp/reference";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
 
@@ -50,11 +51,27 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
     const left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
 
+    // reference binding
+    if ( this.isInitExpr && left.type instanceof LeftReferenceType ) {
+        doReferenceBinding(ctx, left, right, this);
+        return left;
+    }
+
     if (!left.isLeft || !(left.expr instanceof WAddressHolder)) {
         throw new SyntaxError(`could not assign to a right value`, this);
     }
 
-    if (right.expr instanceof FunctionEntity) {
+    if ( left.type instanceof LeftReferenceType ) {
+        left.type = left.type.elementType;
+        left.expr = new WAddressHolder(left.expr.createLoad(ctx, PrimitiveTypes.uint32),
+            AddressType.RVALUE, this.location);
+    }
+
+    if (!left.isLeft || !(left.expr instanceof WAddressHolder)) {
+        throw new SyntaxError(`could not assign to a right value`, this);
+    }
+
+    if (right.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`could not assign a function name`, this);
     }
 

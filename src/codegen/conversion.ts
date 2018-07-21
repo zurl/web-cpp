@@ -6,12 +6,13 @@
 import {ExpressionResult, Node} from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
+    AddressType,
     ArithmeticType,
-    ArrayType, ClassType, CompoundType,
-    FunctionEntity, FunctionType,
-    IntegerType,
+    ArrayType, ClassType, CompoundType, FloatingType,
+    FunctionEntity, FunctionType, Int64Type,
+    IntegerType, LeftReferenceType,
     PointerType, PrimitiveType, PrimitiveTypes,
-    Type,
+    Type, UnsignedInt64Type,
 } from "../common/type";
 import {getTypeConvertOpe} from "../wasm/constant";
 import {WConst, WCovertOperation} from "../wasm/expression";
@@ -34,10 +35,14 @@ export function doTypeTransfrom(type: Type): Type {
 
 export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, node: Node): ExpressionResult {
 
+    if ( !expr.isLeft && expr.type instanceof LeftReferenceType) {
+        throw new InternalError(`LeftReferenceType could not be rvalue`);
+    }
+
     // left value transform
     if (expr.isLeft) {
         expr.isLeft = false;
-        if ( expr.expr instanceof FunctionEntity) {
+        if ( expr.expr instanceof FunctionLookUpResult) {
             throw new SyntaxError(`unsupport function name`, node);
         }
 
@@ -48,11 +53,13 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult, no
         if ( expr.type instanceof ArrayType ) {
             expr.type = new PointerType(expr.type.elementType);
             expr.expr = expr.expr.createLoadAddress(ctx);
+        } else if ( expr.type instanceof LeftReferenceType) {
+            expr.type = expr.type.elementType;
+            expr.expr = new WAddressHolder(expr.expr.createLoad(ctx, PrimitiveTypes.uint32),
+                AddressType.RVALUE, node.location).createLoad(ctx, expr.type);
         } else {
-
             expr.expr = expr.expr.createLoad(ctx, expr.type);
         }
-
     }
 
     // array to pointer transform
@@ -124,4 +131,15 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
 export function getInStackSize(size: number): number {
     if ( size % 4 === 0) { return size; }
     return size + 4 - (size % 4);
+}
+
+export function doValuePromote(ctx: CompileContext, src: ExpressionResult, node: Node): ExpressionResult {
+    src = doValueTransform(ctx, src, node);
+    if( src.type instanceof IntegerType && src.type.length < 4 ){
+        src.type = PrimitiveTypes.int32;
+    }
+    if( src.type instanceof FloatingType ){
+        src.type = PrimitiveTypes.double;
+    }
+    return src;
 }
