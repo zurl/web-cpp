@@ -342,6 +342,7 @@ export class FunctionType extends Type {
     public parameterTypes: Type[];
     public parameterNames: string[];
     public variableArguments: boolean;
+    public isMemberFunction: boolean;
 
     constructor(name: string, returnType: Type, parameterTypes: Type[],
                 parameterNames: string[], variableArguments: boolean) {
@@ -351,6 +352,7 @@ export class FunctionType extends Type {
         this.parameterTypes = parameterTypes;
         this.parameterNames = parameterNames;
         this.variableArguments = variableArguments;
+        this.isMemberFunction = false;
     }
 
     get length(): number {

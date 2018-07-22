@@ -80,8 +80,8 @@ local var:  @foo@var1
 - [ ] DTOR
 - [ ] copy-ctor, copy-assignment-ctor
 - [ ] 访问控制
-- [ ] 静态成员函数
-- [ ] 成员函数
+- [X] 静态成员函数
+- [X] 成员函数
 - [ ] 虚成员函数
 - [X] 函数重载
 - [ ] 成员函数重载
@@ -93,12 +93,3 @@ local var:  @foo@var1
 - [ ] typeid
 - [ ] 构造函数
 - [ ] namespace
-### reference
-### operator overload
-### function overload (mangled name)
-### class
-> member function
-> virtual function
-### exception
-### template
-

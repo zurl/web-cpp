@@ -6,7 +6,7 @@
 
 import {Node} from "../common/ast";
 import {LanguageError, SyntaxError} from "../common/error";
-import {FunctionEntity, Symbol, Type, Variable} from "../common/type";
+import {ClassType, FunctionEntity, Symbol, Type, Variable} from "../common/type";
 import {WAddressHolder} from "./address";
 
 export class Scope {
@@ -120,11 +120,13 @@ export class Scope {
 
 export class FunctionLookUpResult {
     public instance: WAddressHolder | null;
+    public instanceType: ClassType | null;
     public functions: FunctionEntity[];
 
     constructor(functions: FunctionEntity[]) {
         this.functions = functions;
         this.instance = null;
+        this.instanceType = null;
     }
 }
 

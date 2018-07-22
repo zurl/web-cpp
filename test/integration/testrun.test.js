@@ -24,7 +24,9 @@ struct A{
         return a + 1;
     }
     int goo(int b){
-        printf("%d", this->d + b);
+        printf("%d,", b);
+        printf("%d,", this->d);
+        printf("%d,", this->d + b);
         return 0;
     }
     int d;
@@ -36,8 +38,8 @@ int main(){
     A::bbb = 3;
     A a;
     a.d = 2;
-    printf("%d", A::foo(2));
-    printf("%d", a.d);
+    //printf("%d", A::foo(2));
+    //printf("%d", a.d);
     printf("%d", a.goo(2));
     return 0;
 }

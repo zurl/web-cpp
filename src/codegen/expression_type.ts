@@ -13,13 +13,14 @@ import {
     LeftReferenceType,
     PointerType,
     PrimitiveTypes,
-    Type, UnresolveFunctionOverloadType, UnsignedInt64Type, UnsignedIntegerType,
+    Type, UnresolveFunctionOverloadType, UnsignedInt64Type, UnsignedIntegerType, Variable,
 } from "../common/type";
 import {CompileContext} from "./context";
 import {doTypeTransfrom} from "./conversion";
 import {doFunctionOverloadResolution} from "./cpp/overload";
 import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
+import {WAddressHolder} from "./address";
 /**
  *  @file
  *  @author zcy <zurl@live.com>
@@ -192,6 +193,19 @@ MemberExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     }
     if ( !(rawType instanceof ClassType)) {
         throw new SyntaxError(`only struct/class could be get member`, this);
+    }
+    const item = ctx.scopeManager.lookupFullName(rawType.fullName + "::" + this.member.name);
+
+    if ( item !== null ) {
+        if ( item instanceof Type ) {
+            throw new SyntaxError(`illegal type member expression`, this);
+        } else if (item instanceof Variable) {
+            // static field
+            return item.type;
+        } else {
+            item.instanceType = rawType;
+            return new UnresolveFunctionOverloadType(item);
+        }
     }
     const field = rawType.fieldMap.get(this.member.name);
     if ( !field ) {

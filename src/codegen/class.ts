@@ -17,7 +17,7 @@ import {
     ClassType,
     FunctionType,
     LeftReferenceType,
-    PointerType,
+    PointerType, PrimitiveTypes,
     Type,
     Variable,
 } from "../common/type";
@@ -54,6 +54,7 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                 } else {
                     fieldType.parameterTypes = [buildCtx.classPtrType, ...fieldType.parameterTypes];
                     fieldType.parameterNames = ["this", ...fieldType.parameterNames];
+                    fieldType.isMemberFunction = true;
                     declareFunction(ctx, fieldType, fieldName,
                         decl.specifiers.includes("__libcall"), node);
                 }
@@ -159,6 +160,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             } else {
                 functionType.parameterTypes = [buildCtx.classPtrType, ...functionType.parameterTypes];
                 functionType.parameterNames = ["this", ...functionType.parameterNames];
+                functionType.isMemberFunction = true;
                 declareFunction(ctx, functionType, realName,
                     decl.specifiers.includes("__libcall"), this);
             }
@@ -189,20 +191,43 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     if ( !(rawType instanceof ClassType)) {
         throw new SyntaxError(`only struct/class could be get member`, this);
     }
+    if ( !(left.isLeft && left.expr instanceof WAddressHolder)) {
+        throw new InternalError(`unsupport rvalue of member expression`);
+    }
+
+    const item = ctx.scopeManager.lookupFullName(rawType.fullName + "::" + this.member.name);
+
+    if ( item !== null ) {
+        if ( item instanceof Type ) {
+            throw new SyntaxError(`illegal type member expression`, this);
+        } else if (item instanceof Variable) {
+            // static field
+            return {
+                type: item.type,
+                expr: new WAddressHolder(item.location, item.addressType, this.location),
+                isLeft: true,
+            };
+        } else {
+            item.instance = left.expr;
+            item.instanceType = rawType;
+            return {
+                type: PrimitiveTypes.void,
+                expr: item,
+                isLeft: false,
+            };
+        }
+    }
+
+    // class field
     const field = rawType.fieldMap.get(this.member.name);
     if ( !field ) {
         throw new SyntaxError(`property ${this.member.name} does not appear on ${rawType.name}`, this);
     }
-
-    if ( left.isLeft && left.expr instanceof WAddressHolder) {
-        return {
-            isLeft: true,
-            type: field.type,
-            expr: left.expr.makeOffset(field.startOffset),
-        };
-    } else {
-        throw new InternalError(`unsupport rvalue of member expression`);
-    }
+    return {
+        isLeft: true,
+        type: field.type,
+        expr: left.expr.makeOffset(field.startOffset),
+    };
 };
 
 export function classes() {

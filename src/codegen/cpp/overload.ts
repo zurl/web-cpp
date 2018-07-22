@@ -5,7 +5,7 @@
  */
 import {Node} from "../../common/ast";
 import {SyntaxError} from "../../common/error";
-import {FunctionEntity, ReferenceType, Type} from "../../common/type";
+import {FunctionEntity, FunctionType, PointerType, ReferenceType, Type} from "../../common/type";
 import {FunctionLookUpResult} from "../scope";
 
 export function doStrictTypeMatch(dst: Type, src: Type): boolean {
@@ -28,12 +28,28 @@ export function doWeakTypeMatch(dst: Type, src: Type): boolean {
     return dst.compatWith(src);
 }
 
+export function doFunctionFilter(func: FunctionEntity, argus: Type[],
+                                 funcs: FunctionLookUpResult,
+                                 matcher: (dst: Type, src: Type) => boolean): boolean {
+    if (func.type.isMemberFunction) {
+        const first = func.type.parameterTypes[0];
+        if (funcs.instanceType === null || !(first instanceof PointerType)) {
+            return false;
+        }
+        return first.elementType.equals(funcs.instanceType) &&
+            func.type.parameterTypes.slice(1).every((t, i) => matcher(t, argus[i]));
+    } else {
+        return func.type.parameterTypes.every((t, i) => matcher(t, argus[i]));
+    }
+}
+
 export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
                                              argus: Type[], node: Node): FunctionEntity {
     // 1. filter parameter number
-    const f1 = funcs.functions.filter((x) =>
-        x.type.parameterTypes.length === argus.length
-        || x.type.variableArguments,
+    const f1 = funcs.functions.filter((func) =>
+        (func.type.isMemberFunction && func.type.parameterTypes.length === argus.length + 1)
+        || (!func.type.isMemberFunction && func.type.parameterTypes.length === argus.length)
+        || func.type.variableArguments,
     );
 
     if (f1.length === 0) {
@@ -42,8 +58,7 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
 
     // 2. strong type match
 
-    const f2 = f1.filter((func) =>
-        func.type.parameterTypes.every((t, i) => doStrictTypeMatch(t, argus[i])));
+    const f2 = f1.filter((func) => doFunctionFilter(func, argus, funcs, doStrictTypeMatch));
 
     if (f2.length === 1) {
         return f2[0];
@@ -51,8 +66,7 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
 
     // 3. weak type match
 
-    const f3 = f1.filter((func) =>
-        func.type.parameterTypes.every((t, i) => doWeakTypeMatch(t, argus[i])));
+    const f3 = f1.filter((func) => doFunctionFilter(func, argus, funcs, doWeakTypeMatch));
 
     if (f3.length === 1) {
         return f3[0];

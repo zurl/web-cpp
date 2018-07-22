@@ -246,8 +246,21 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
 
     const funcType = entity.type;
+    const thisPtrs: ExpressionResult[] = [];
 
-    if ( funcType.parameterTypes.length > this.arguments.length ) {
+    if ( funcType.isMemberFunction) {
+        if ( lookUpResult.instance === null || lookUpResult.instanceType === null ) {
+            throw new SyntaxError(`call a member function must bind a object`, this);
+        }
+        thisPtrs.push({
+            expr: lookUpResult.instance.createLoadAddress(ctx),
+            type: new PointerType(lookUpResult.instanceType),
+            isLeft: false,
+        });
+    }
+    const arguExprs = [...thisPtrs, ... this.arguments.map((x) => x.codegen(ctx))];
+
+    if ( funcType.parameterTypes.length > arguExprs.length ) {
         throw new SyntaxError(`function call parameters number mismatch`, this);
     }
 
@@ -255,9 +268,9 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     let stackOffset = 0;
 
     if (funcType.variableArguments) {
-        for (let i = this.arguments.length - 1;
+        for (let i = arguExprs.length - 1;
                 i > funcType.parameterTypes.length - 1; i--) {
-            const src = this.arguments[i].codegen(ctx);
+            const src = arguExprs[i];
             const newSrc = doValuePromote(ctx, src, this);
             stackOffset -= getInStackSize(newSrc.type.length);
             if ( newSrc.expr instanceof FunctionLookUpResult) {
@@ -277,7 +290,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
 
     for (let i = funcType.parameterTypes.length - 1; i >= 0; i--) {
         const dstType = funcType.parameterTypes[i];
-        const src = this.arguments[i].codegen(ctx);
+        const src = arguExprs[i];
         const srcExpr = doConversion(ctx, dstType, src, this).fold();
         if ( dstType instanceof ClassType || dstType instanceof ArrayType ||
             (funcType.variableArguments
