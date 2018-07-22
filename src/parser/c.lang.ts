@@ -197,15 +197,21 @@ Keyword
 
 Id
     = (&{ return options.preprocessing } / !Keyword) head:IdentifierNondigit tail:IdentifierPart* {
-        //console.log(currScope);
         return new AST.Identifier(getLocation(), head + tail.join(''));
     }
 
-Identifier
+SingleIdentifier
     = id:Id &{
         return !isTypedefName(id.name)
     } {
         return id;
+    }
+    
+Identifier 
+    = isFullName:'::'? namespace:(Id '::')* name:SingleIdentifier {
+        let prefix = isFullName === "::" ? "::" : "";
+        name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return name;
     }
 
 // ADDED
@@ -796,6 +802,7 @@ StorageClassSpecifier
     = ('typedef'
     / 'extern'
     / 'static'
+    / 'virtual'
     / '_Thread_local'
     / 'auto'
     / 'register') !IdentifierPart {
@@ -830,12 +837,15 @@ TypeSpecifier
 
 StructOrUnionSpecifier
     = structOrUnion:StructOrUnion _ identifier:Identifier? _ '{' _ declarations:StructDeclarationList _ &!'}' {
+        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, declarations);
     }
     / structOrUnion:StructOrUnion _ identifier:Identifier '{' _ &!'}'{
+        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, []);
     }
     / structOrUnion:StructOrUnion _ identifier:Identifier {
+        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, null);
     }
 
@@ -846,7 +856,7 @@ StructOrUnion
     }
 
 StructDeclarationList
-    = head:StructDeclaration tail:(_ StructDeclaration)* {
+    = head:ExternalDeclaration tail:(_ ExternalDeclaration)* {
         return buildList(head, tail, 1);
     }
 
@@ -875,10 +885,10 @@ StructDeclaratorList
 
 StructDeclarator
     = ':' _ width:ConstantExpression {
-        return new AST.StructDeclarator(getLocation(), null, width);
+        return new AST.StructDeclarator(getLocation(), null, width, null);
     }
-    / declarator:Declarator width:(_ ':' _ ConstantExpression)? {
-        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3));
+    / declarator:Declarator _ initDeclarators:InitDeclaratorList? width:(_ ':' _ ConstantExpression)? {
+        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3), initDeclarators);
     }
 
 EnumSpecifier

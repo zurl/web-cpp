@@ -1,3 +1,4 @@
+import {FunctionLookUpResult} from "../codegen/scope";
 import {WType} from "../wasm";
 import {InternalError, TypeError} from "./error";
 import {isArrayEqual} from "./utils";
@@ -673,5 +674,39 @@ export class FunctionEntity extends Symbol {
 
     public getType() {
         return this.type;
+    }
+}
+
+export class UnresolveFunctionOverloadType extends Type {
+
+    public functionLookupResult: FunctionLookUpResult;
+
+    constructor(functionLookupResult: FunctionLookUpResult) {
+        super();
+        this.functionLookupResult = functionLookupResult;
+    }
+
+    public equals(type: Type) {
+        return false;
+    }
+
+    public compatWith(type: Type) {
+        return false;
+    }
+
+    public toString() {
+        return `[UnresolveFunctionOverloadType]`;
+    }
+
+    public get length() {
+        return 0;
+    }
+
+    public toWType() {
+        return WType.none;
+    }
+
+    public toMangledName() {
+        return `[UnresolveFunctionOverloadType]`;
     }
 }

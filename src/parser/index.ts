@@ -5,7 +5,6 @@ import * as CTree_ from "../common/ast";
 import {Node, SpecifierType} from "../common/ast";
 import {ParserError, TypeError} from "../common/error";
 import CGrammar from "./c.lang";
-import CPPGrammar from "./c.lang";
 
 const storageClassSpecifierStringToEnum = [
     "typedef", "extern", "static", "_Thread_local", "auto", "register",
@@ -57,7 +56,7 @@ function loadParser(source: string, query: any) {
     if ((global as any)["window"] === undefined && fs.existsSync("/tmp/" + query.parserName + ".js")) {
         const newCode = fs.readFileSync("/tmp/" + query.parserName + ".js", "utf8");
         // if( "TranslationUnitPegParser" !== query.parserName)
-        return eval(newCode);
+        //return eval(newCode);
     }
     source = source.replace(/&!'((\\.|[^'])*)'/g, (match,
                                                    rule) => `(expected:'${rule}'? {
@@ -85,8 +84,6 @@ const ConstantExpressionPegParser = loadParser(CGrammar,
     {parserName: "ConstantExpression", allowedStartRules: "ConstantExpression"});
 const TranslationUnitPegParser = loadParser(CGrammar,
     {parserName: "TranslationUnitPegParser"});
-const CPPTranslationUnitPegParser = loadParser(CPPGrammar,
-    {parserName: "CPPTranslationUnitPegParser"});
 
 function wrapPegParser(parser: any) {
     return {
@@ -106,4 +103,3 @@ function wrapPegParser(parser: any) {
 
 export const ConstantExpressionParser = wrapPegParser(ConstantExpressionPegParser);
 export const CParser = wrapPegParser(TranslationUnitPegParser);
-export const CPPParser = wrapPegParser(CPPTranslationUnitPegParser);

@@ -4,10 +4,10 @@
  *  Created at 19/07/2018
  */
 
-import {inspect} from "util";
 import {Node} from "../common/ast";
 import {LanguageError, SyntaxError} from "../common/error";
 import {FunctionEntity, Symbol, Type, Variable} from "../common/type";
+import {WAddressHolder} from "./address";
 
 export class Scope {
     public shortName: string;
@@ -41,7 +41,7 @@ export class Scope {
                 if (!(symbol instanceof FunctionEntity)) {
                     throw new SyntaxError(`redefine of ${shortName}`, node!);
                 }
-                if ( !this.isCpp ) {
+                if (!this.isCpp) {
                     throw new LanguageError(`function overload is support only in C++`, node!);
                 }
                 for (let i = 0; i < item.length; i++) {
@@ -119,10 +119,12 @@ export class Scope {
 }
 
 export class FunctionLookUpResult {
+    public instance: WAddressHolder | null;
     public functions: FunctionEntity[];
 
     constructor(functions: FunctionEntity[]) {
         this.functions = functions;
+        this.instance = null;
     }
 }
 
@@ -163,8 +165,16 @@ export class ScopeManager {
         this.currentScope = this.currentScope.parent;
     }
 
+    public lookupAnyName(anyName: string): LookUpResult {
+        if (anyName.slice(0, 2) === "::") {
+            return this.lookupFullName(anyName);
+        } else {
+            return this.lookupShortName(anyName);
+        }
+    }
+
     public lookupFullName(fullName: string): LookUpResult {
-        if ( fullName.slice(0, 2) !== "::") {
+        if (fullName.slice(0, 2) !== "::") {
             return null;
         }
         const token = fullName.split("::");
@@ -177,7 +187,7 @@ export class ScopeManager {
         }
     }
 
-    public lookup(shortName: string): LookUpResult {
+    public lookupShortName(shortName: string): LookUpResult {
         const array = Array.from(this.activeScopes.keys()).map(
             (x) => x.lookup(shortName))
             .filter((x) => x !== null).reverse();
@@ -205,19 +215,19 @@ export class ScopeManager {
         return result;
     }
 
-    public declare(shortName: string, symbol: Symbol, node?: Node): string {
+    public declareInScope(shortName: string, symbol: Symbol, scope: Scope, node?: Node): string {
         const item = this.innerLookUp(shortName);
         if (item !== null) {
             if (!item.getType().equals(symbol.getType())) {
                 throw new SyntaxError(`conflict declaration of ${shortName}`, node!);
             }
         } else {
-            this.currentScope.declare(shortName, symbol, node);
+            scope.declare(shortName, symbol, node);
         }
-        return this.currentScope.fullName + "::" + shortName;
+        return scope.fullName + "::" + shortName;
     }
 
-    public define(shortName: string, symbol: Symbol, node?: Node): string {
+    public defineInScope(shortName: string, symbol: Symbol, scope: Scope, node?: Node): string {
         const item = this.innerLookUp(shortName);
         if (item !== null) {
             if (item.isDefine()) {
@@ -227,8 +237,16 @@ export class ScopeManager {
                 throw new SyntaxError(`conflict declaration of ${shortName}`, node!);
             }
         }
-        this.currentScope.declare(shortName, symbol, node);
-        return this.currentScope.fullName + "::" + shortName;
+        scope.declare(shortName, symbol, node);
+        return scope.fullName + "::" + shortName;
+    }
+
+    public declare(shortName: string, symbol: Symbol, node?: Node): string {
+        return this.declareInScope(shortName, symbol, this.currentScope, node);
+    }
+
+    public define(shortName: string, symbol: Symbol, node?: Node): string {
+        return this.defineInScope(shortName, symbol, this.currentScope, node);
     }
 
     public getFullName(shortName: string) {

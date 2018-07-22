@@ -425,39 +425,14 @@ export class AtomicTypeSpecifier extends Node {
 export class StructOrUnionSpecifier extends Node {
     public union: boolean;
     public identifier: Identifier;
-    public declarations: StructDeclaration[] | null;
+    public declarations: Array<Declaration | FunctionDefinition> | null;
 
     constructor(location: SourceLocation, union: boolean,
-                identifier: Identifier, declarations: StructDeclaration[] | null) {
+                identifier: Identifier, declarations: Array<Declaration | FunctionDefinition> | null) {
         super(location);
         this.union = union;
         this.identifier = identifier;
         this.declarations = declarations;
-    }
-}
-
-export class StructDeclaration extends Node {
-    public specifierQualifiers: Array<string | AtomicTypeSpecifier |
-        StructOrUnionSpecifier | EnumSpecifier | TypedefName>;
-    public declarators: StructDeclarator[];
-
-    constructor(location: SourceLocation, specifierQualifiers: Array<string |
-                    AtomicTypeSpecifier | StructOrUnionSpecifier | EnumSpecifier | TypedefName>,
-                declarators: StructDeclarator[]) {
-        super(location);
-        this.specifierQualifiers = specifierQualifiers;
-        this.declarators = declarators;
-    }
-}
-
-export class StructDeclarator extends Node {
-    public declarator: Declarator | null;
-    public width: Expression | null;
-
-    constructor(location: SourceLocation, declarator: Declarator | null, width: Expression | null) {
-        super(location);
-        this.declarator = declarator;
-        this.width = width;
     }
 }
 

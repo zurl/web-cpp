@@ -28,7 +28,7 @@ export function doWeakTypeMatch(dst: Type, src: Type): boolean {
     return dst.compatWith(src);
 }
 
-export function doFunctionOverLoadResolution(funcs: FunctionLookUpResult,
+export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
                                              argus: Type[], node: Node): FunctionEntity {
     // 1. filter parameter number
     const f1 = funcs.functions.filter((x) =>

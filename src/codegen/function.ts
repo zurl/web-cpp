@@ -6,11 +6,11 @@
 import {inspect} from "util";
 import {
     CallExpression,
-    Declarator, ExpressionResult,
+    Declaration, Declarator,
+    ExpressionResult,
     FunctionDeclarator,
     FunctionDefinition,
-    IdentifierDeclarator,
-    ParameterList,
+    IdentifierDeclarator, Node, ParameterList, Statement,
 } from "../common/ast";
 import {assertType, SyntaxError} from "../common/error";
 import {
@@ -36,22 +36,28 @@ import {
 } from "../wasm";
 import {WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
+import {WFunctionType} from "../wasm/section";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doValuePromote, getInStackSize} from "./conversion";
-import {doFunctionOverLoadResolution} from "./cpp/overload";
+import {doFunctionOverloadResolution} from "./cpp/overload";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
 
-function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
-                                 resultType: Type): FunctionType {
+export function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
+                                        resultType: Type): FunctionType {
     if (node instanceof FunctionDeclarator && node.declarator instanceof IdentifierDeclarator) {
         assertType(node.parameters, ParameterList);
         const [parameterTypes, parameterNames, variableArguments] = (node.parameters as ParameterList).codegen(ctx);
-        return new FunctionType(node.declarator.identifier.name,
+        const result = new FunctionType(node.declarator.identifier.name,
             resultType, parameterTypes,
             parameterNames, variableArguments);
+        if ( resultType.isStatic ) {
+            result.isStatic = true;
+            resultType.isStatic = false;
+        }
+        return result;
     } else if (node.declarator != null) {
         const newResultType = mergeTypeWithDeclarator(ctx, resultType, node);
         return parseFunctionDeclarator(ctx, node.declarator, newResultType);
@@ -60,30 +66,35 @@ function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
     }
 }
 
-ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[], boolean] {
-    // TODO:: deal with abstract Declarator
-    const parameters = this.parameters.map((parameter) =>
-        parseDeclarator(ctx, parameter.declarator as Declarator,
-            parseTypeFromSpecifiers(ctx, parameter.specifiers, this)));
-    const parameterTypes = parameters.map((x) => x[0]);
-    const parameterNames = parameters.map((x) => x[1]);
-    return [parameterTypes, parameterNames, this.variableArguments];
-};
-
-FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
-    const resultType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
-    if (resultType == null) {
-        throw new SyntaxError(`illegal return type`, this);
+export function declareFunction(ctx: CompileContext, type: FunctionType, name: string, isLibCall: boolean, node: Node) {
+    type.name = name;
+    const realName = type.name + "@" + type.toMangledName();
+    const fullName = ctx.scopeManager.getFullName(realName);
+    const entity = new FunctionEntity(realName, fullName, ctx.fileName, type, false, false);
+    if ( isLibCall ) {
+        entity.isLibCall = true;
+        entity.name = type.name;
+        entity.fullName = ctx.scopeManager.getFullName(type.name); // libcall no overload
+        const returnTypes: WType[]  = [];
+        const parametersTypes: WType[] = [];
+        if ( !entity.type.returnType.equals(PrimitiveTypes.void)) {
+            returnTypes.push(entity.type.returnType.toWType());
+        }
+        entity.type.parameterTypes.map((t) => parametersTypes.push(t.toWType()));
+        ctx.imports.push({
+            name: entity.fullName,
+            type: new WFunctionType(returnTypes, parametersTypes),
+        });
     }
-    const functionType = parseFunctionDeclarator(ctx, this.declarator, resultType);
-    if (functionType == null) {
-        throw new SyntaxError(`illegal function definition`, this);
-    }
+    ctx.scopeManager.declare(name, entity, node);
+}
+export function defineFunction(ctx: CompileContext, functionType: FunctionType,
+                               name: string, body: Array<Statement | Declaration>, node: Node) {
     const realName = functionType.name + "@" + functionType.toMangledName();
     const fullName = ctx.scopeManager.getFullName(realName);
     const functionEntity = new FunctionEntity(realName, fullName,
         ctx.fileName, functionType, false, true);
-    ctx.scopeManager.define(realName, functionEntity, this);
+    ctx.scopeManager.define(realName, functionEntity, node);
     ctx.enterFunction(functionEntity);
 
     // alloc parameters
@@ -96,7 +107,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         const type = functionEntity.type.parameterTypes[i];
         const name = functionEntity.type.parameterNames[i];
         if (!name) {
-            throw new SyntaxError(`unnamed parameter`, this);
+            throw new SyntaxError(`unnamed parameter`, node);
         }
         if ( type instanceof ClassType || type instanceof ArrayType ||
             (functionEntity.type.variableArguments
@@ -104,14 +115,14 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
             ctx.scopeManager.define(name, new Variable(
                 name, ctx.scopeManager.getFullName(name), ctx.fileName,
                 type, AddressType.STACK, stackParameterNow,
-            ), this);
+            ), node);
             stackParameterNow += getInStackSize(type.length);
         } else {
             parameterWTypes.push(type.toWType());
             ctx.scopeManager.define(name, new Variable(
                 name, ctx.scopeManager.getFullName(name), ctx.fileName,
                 type, AddressType.LOCAL, ctx.memory.allocLocal(type.toWType()),
-            ), this);
+            ), node);
         }
     }
 
@@ -135,17 +146,17 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     // bp = $sp
     ctx.submitStatement(
         new WSetLocal(WType.u32, functionEntity.$sp,
-            new WGetGlobal(WType.u32, "$sp", this.location), this.location));
+            new WGetGlobal(WType.u32, "$sp", node.location), node.location));
 
     // $sp = $sp - 0
-    const offsetNode = new WConst(WType.i32, "0", this.location);
+    const offsetNode = new WConst(WType.i32, "0", node.location);
     ctx.submitStatement(
         new WSetGlobal(WType.u32, "$sp",
             new WBinaryOperation(I32Binary.add,
-                new WGetLocal(WType.u32, functionEntity.$sp, this.location),
-                offsetNode, this.location), this.location));
+                new WGetLocal(WType.u32, functionEntity.$sp, node.location),
+                offsetNode, node.location), node.location));
 
-    this.body.body.map((item) => item.codegen(ctx));
+    body.map((item) => item.codegen(ctx));
 
     offsetNode.constant = ctx.memory.stackPtr.toString();
 
@@ -161,21 +172,21 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
             } else if ( item instanceof WIfElseBlock ) {
                 if ( item.alternative === null ) {
                     throw new SyntaxError(`not all path of function contains return in `
-                        + `${functionEntity.fullName}`, this);
+                        + `${functionEntity.fullName}`, node);
                 } else {
                     curBlk = item.alternative;
                 }
             } else {
-                throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, this);
+                throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, node);
             }
         }
         if (curBlk.length === 0 || !(curBlk[curBlk.length - 1] instanceof WReturn)) {
-            throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, this);
+            throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, node);
         }
         if ( bodyStatements.length > 0 && bodyStatements[bodyStatements.length - 1] instanceof WIfElseBlock) {
             // should do auto injection;
             ctx.submitStatement(new WReturn(new WConst(
-                functionEntity.type.returnType.toWType(), "0"), this.location));
+                functionEntity.type.returnType.toWType(), "0"), node.location));
         }
     }
 
@@ -187,8 +198,30 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
         parameterWTypes,
         ctx.memory.localTypes, // TODO:: add local
         bodyStatements,
-        this.location,
+        node.location,
     ));
+}
+
+ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[], boolean] {
+    // TODO:: deal with abstract Declarator
+    const parameters = this.parameters.map((parameter) =>
+        parseDeclarator(ctx, parameter.declarator as Declarator,
+            parseTypeFromSpecifiers(ctx, parameter.specifiers, this)));
+    const parameterTypes = parameters.map((x) => x[0]);
+    const parameterNames = parameters.map((x) => x[1]);
+    return [parameterTypes, parameterNames, this.variableArguments];
+};
+
+FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
+    const resultType = parseTypeFromSpecifiers(ctx, this.specifiers, this);
+    if (resultType == null) {
+        throw new SyntaxError(`illegal return type`, this);
+    }
+    const functionType = parseFunctionDeclarator(ctx, this.declarator, resultType);
+    if (functionType == null) {
+        throw new SyntaxError(`illegal function definition`, this);
+    }
+    defineFunction(ctx, functionType, functionType.name, this.body.body, this);
 };
 
 CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
@@ -205,7 +238,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     let entity: FunctionEntity | null = lookUpResult.functions[0];
 
     if ( ctx.isCpp() ) {
-        entity = doFunctionOverLoadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
+        entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
     }
 
     if (entity === null ) {

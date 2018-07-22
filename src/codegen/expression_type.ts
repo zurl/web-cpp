@@ -7,17 +7,19 @@ import {
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
-    ArithmeticType, ArrayType, ClassType, FloatingType,
+    ArithmeticType, ArrayType, ClassType, FloatingType, FunctionEntity,
     FunctionType, Int64Type,
     IntegerType,
     LeftReferenceType,
     PointerType,
     PrimitiveTypes,
-    Type, UnsignedInt64Type, UnsignedIntegerType,
+    Type, UnresolveFunctionOverloadType, UnsignedInt64Type, UnsignedIntegerType,
 } from "../common/type";
 import {CompileContext} from "./context";
 import {doTypeTransfrom} from "./conversion";
+import {doFunctionOverloadResolution} from "./cpp/overload";
 import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
+import {FunctionLookUpResult} from "./scope";
 /**
  *  @file
  *  @author zcy <zurl@live.com>
@@ -45,7 +47,12 @@ StringLiteral.prototype.deduceType = function(ctx: CompileContext): Type {
 };
 
 Identifier.prototype.deduceType = function(ctx: CompileContext): Type {
-    return this.codegen(ctx).type;
+    const item = this.codegen(ctx);
+    if ( item.expr instanceof FunctionLookUpResult ) {
+        return new UnresolveFunctionOverloadType(item.expr);
+    } else {
+        return item.type;
+    }
 };
 
 function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
@@ -144,10 +151,22 @@ UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
 
 CallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     const calleeType = this.callee.deduceType(ctx);
-    if (!(calleeType instanceof FunctionType)) {
+    if (!(calleeType instanceof UnresolveFunctionOverloadType)) {
         throw new TypeError(`the callee is not function`, this);
     }
-    return calleeType.returnType;
+    const lookUpResult = calleeType.functionLookupResult;
+
+    let entity: FunctionEntity | null = lookUpResult.functions[0];
+
+    if ( ctx.isCpp() ) {
+        entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
+    }
+
+    if (entity === null ) {
+        throw new SyntaxError(`no matching function for ${lookUpResult.functions[0].name}`, this);
+    }
+
+    return entity.type;
 };
 
 SubscriptExpression.prototype.deduceType = function(ctx: CompileContext): Type {

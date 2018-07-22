@@ -283,5 +283,27 @@ describe('instruction integration test', function () {
     `;
         const expectOutput = `111445`;
         return await TestBase.testRunCompareResult(testCode, expectOutput, false);
+    });
+    it('reference ', async function(){
+        const testCode = `
+#include <stdio.h>
+        void foo(const int & b){
+            b = 3;
+        }
+        int main(){
+            int a = 1;
+            int &b = a;
+            int &c = a;
+            printf("%d", a);
+            foo(a);
+            printf("%d", a);
+            foo(b);
+            printf("%d", a);
+            return 0;
+        }
+    `;
+        const expectOutput = `133`;
+        return await TestBase.testFullCode(testCode, expectOutput, true);
     })
+
 });

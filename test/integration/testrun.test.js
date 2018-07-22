@@ -18,26 +18,34 @@ int main(){
 const source3=`
 #include <stdio.h>
 
-void foo(const int & b){
-    b = 3;
-}
+struct A{
+    static int bbb;
+    static int foo(int a){
+        return a + 1;
+    }
+    int goo(int b){
+        printf("%d", this->d + b);
+        return 0;
+    }
+    int d;
+};
+
+int A::bbb;
 
 int main(){
-    int a = 1;
-    int &b = a;
-    int &c = a;
-    printf("%d", a);
-    foo(a);
-    printf("%d", a);
-    foo(b);
-    printf("%d", a);
+    A::bbb = 3;
+    A a;
+    a.d = 2;
+    printf("%d", A::foo(2));
+    printf("%d", a.d);
+    printf("%d", a.goo(2));
     return 0;
 }
 `;
 
 describe('test run', function(){
     it('test run', async function(){
-        const result = await TestBase.testRun(source3, false, true);
+        const result = await TestBase.testRun(source3, true, true);
         console.log(result);
     })
 });

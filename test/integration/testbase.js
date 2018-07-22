@@ -12,7 +12,7 @@ const Linker = require('../../dist/linker');
 
 function compile(name, source, options = {}) {
     const {code, map} = preprocess(name, source);
-    const translationUnit = CParser.parse(code, {fileName: name});
+    const translationUnit = CParser.parse(code, {fileName: name, isCpp: options.isCpp});
     const ctx = new CompileContext(name, options, source, map);
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();

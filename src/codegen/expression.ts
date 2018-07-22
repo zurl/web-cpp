@@ -162,9 +162,7 @@ CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionR
 };
 
 Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    const item = this.name.slice(0, 2) === "::" ?
-        ctx.scopeManager.lookupFullName(this.name) :
-        ctx.scopeManager.lookup(this.name);
+    const item = ctx.scopeManager.lookupAnyName(this.name);
     if (item === null) {
         throw new SyntaxError(`Unresolve Name ${this.name}`, this);
     }
@@ -172,7 +170,7 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
         throw new SyntaxError(`${this.name} expect to be variable, but it is a type :)`, this);
     }
     if (item instanceof FunctionLookUpResult) {
-        // TODO:: overload lookup
+        // TODO:: overload lookupShortName
         return {
             type: PrimitiveTypes.void,
             expr: item,

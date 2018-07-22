@@ -74,8 +74,11 @@ local var:  @foo@var1
 - [ ] int64
 ## C++ Language
 - [ ] 异常处理
-- [ ] 左值引用
-- [ ] 静态成员变量
+- [X] 左值引用
+- [X] 静态成员变量
+- [ ] 构造函数
+- [ ] DTOR
+- [ ] copy-ctor, copy-assignment-ctor
 - [ ] 访问控制
 - [ ] 静态成员函数
 - [ ] 成员函数

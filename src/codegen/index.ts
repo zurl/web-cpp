@@ -4,13 +4,13 @@
  *  Created at 15/06/2018
  */
 import {Node} from "../common/ast";
+import {classes} from "./class";
 import {CompileContext} from "./context";
 import {declaration} from "./declaration";
 import {expression} from "./expression";
 import {expression_type} from "./expression_type";
 import {functions} from "./function";
 import {statement} from "./statement";
-import {struct} from "./struct";
 
 function loadCodegen() {
     declaration();
@@ -18,7 +18,7 @@ function loadCodegen() {
     functions();
     expression();
     expression_type();
-    struct();
+    classes();
 }
 
 loadCodegen();
