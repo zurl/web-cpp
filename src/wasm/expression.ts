@@ -427,11 +427,11 @@ export class WConst extends WExpression {
         switch (getNativeType(this.type)) {
             case WType.i32:
                 e.writeByte(I32.const);
-                e.writeInt32(parseInt(this.constant));
+                e.writeInt32(this.constant.split(".")[0]);
                 break;
             case WType.i64:
                 e.writeByte(I64.const);
-                e.writeInt64(parseInt(this.constant));
+                e.writeInt64(this.constant.split(".")[0]);
                 break;
             case WType.f32:
                 e.writeByte(F32.const);
@@ -451,15 +451,14 @@ export class WConst extends WExpression {
     public length(e: Emitter): number {
         switch (getNativeType(this.type)) {
             case WType.i32:
-                return 1 + getLeb128IntLength(parseInt(this.constant));
-            case WType.u32:
-                return 1 + getLeb128UintLength(parseInt(this.constant));
+            case WType.i64:
+                return 1 + getLeb128IntLength(this.constant.split(".")[0]);
             case WType.f32:
                 return 5;
             case WType.f64:
                 return 9;
         }
-        return Number.MAX_SAFE_INTEGER;
+        throw new EmitError(`unsupport type`);
     }
 
     public fold(): WExpression {

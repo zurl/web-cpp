@@ -60,10 +60,10 @@ local var:  @foo@var1
 - [X] constant fold on tree
 - [X] init instructions
 - [X] print sourceMap
-- [ ] cc-cli
+- [X] cc-cli
 - [ ] ?:
 - [ ] 对局部变量取地址
-- [ ] const
+- [X] const
 - [ ] bit field of struct
 - [ ] malloc
 - [ ] only export necessary scopeMap
@@ -71,7 +71,8 @@ local var:  @foo@var1
 - [ ] #line __line__ __file__
 - [ ] & array alias
 - [ ] &
-- [ ] int64
+- [X] int64
+- [ ] remove Long.js
 ## C++ Language
 - [ ] 异常处理
 - [X] 左值引用
@@ -84,12 +85,13 @@ local var:  @foo@var1
 - [X] 成员函数
 - [ ] 虚成员函数
 - [X] 函数重载
-- [ ] 成员函数重载
-- [ ] 运算符重载
+- [X] 成员函数重载
+- [ ] 运算符重载 => working
 - [ ] using
 - [ ] 函数模板
 - [ ] class模板
 - [ ] new/delete
-- [ ] typeid
+- [ ] typeinfo
 - [ ] 构造函数
 - [ ] namespace
+- [ ] static_cast / dynamic_cast / reinterpret_cast

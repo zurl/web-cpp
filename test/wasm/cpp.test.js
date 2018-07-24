@@ -32,7 +32,8 @@ describe('cpp -> wasm', function () {
                 "::putChar": function(ctx){
                     console.log(String.fromCharCode(x));
                 },
-                "::printf": JsAPIMap.printf
+                "::printf": JsAPIMap.printf,
+                "::memcpy": JsAPIMap.memcpy,
             }
         };
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));

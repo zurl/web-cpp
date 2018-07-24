@@ -46,8 +46,10 @@ export class MemoryLayout {
         return result;
     }
 
-    public allocLocal(type: WType): number {
-        this.localTypes.push(type);
+    public allocLocal(type: WType, param: boolean = false): number {
+        if ( !param ) {
+            this.localTypes.push(type);
+        }
         return this.localPtr++;
     }
 
@@ -79,6 +81,7 @@ export class MemoryLayout {
         this.stackPtr = 0;
         this.localPtr = 0;
         this.stackScope = [];
+        this.localTypes = [];
     }
 
     public enterInnerScope() {

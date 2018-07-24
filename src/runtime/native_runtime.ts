@@ -44,6 +44,7 @@ export class NativeRuntime extends Runtime {
         this.importObjects["system"]["memory"] = this.wasmMemory;
         this.memoryBuffer = this.wasmMemory.buffer;
         this.memory = new DataView(this.memoryBuffer);
+        this.memoryUint8Array = new Uint8Array(this.memoryBuffer);
         this.instance = null;
     }
 

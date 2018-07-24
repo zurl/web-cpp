@@ -287,7 +287,7 @@ describe('instruction integration test', function () {
     it('reference ', async function(){
         const testCode = `
 #include <stdio.h>
-        void foo(const int & b){
+        void foo(int & b){
             b = 3;
         }
         int main(){
@@ -303,7 +303,23 @@ describe('instruction integration test', function () {
         }
     `;
         const expectOutput = `133`;
-        return await TestBase.testFullCode(testCode, expectOutput, true);
+        return await TestBase.testFullCode(testCode, expectOutput, true, true);
+    })
+    it('test int64 ', async function(){
+        const testCode = `
+#include <stdio.h>
+        long long int64add(long long a, long long b){
+            return a + b;
+        }
+        int main(){
+            long long a = 21974836471230LL;
+            long long b = 21974836471233333LL;
+            printf("%ld", int64add(a, b));
+            return 0;
+        }
+    `;
+        const expectOutput = `21996811307704563`;
+        return await TestBase.testFullCode(testCode, expectOutput, true, true);
     })
 
 });

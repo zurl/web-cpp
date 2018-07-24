@@ -5,6 +5,7 @@
  */
 import {RuntimeError} from "../common/error";
 import {Runtime} from "../runtime/runtime";
+import BN = require("bn.js");
 
 export function write(this: Runtime, fd: number, ptr: number, size: number): number {
     if (fd >= this.files.length) {
@@ -20,6 +21,20 @@ export function read(this: Runtime, fd: number, ptr: number, size: number): numb
     }
     const file = this.files[fd];
     return file.read(this.memory.buffer, ptr, size);
+}
+
+export function memcpy(this: Runtime, dst: number, src: number, size: number): number {
+    const subarray = this.memoryUint8Array.slice(src, src + size);
+    this.memoryUint8Array.set(subarray, dst);
+    return size;
+}
+
+export function malloc(this: Runtime, size: number): number {
+    return this.heapAllocator.allocHeap(this, size);
+}
+
+export function free(this: Runtime, ptr: number): void {
+    return this.heapAllocator.freeHeap(this, ptr);
 }
 
 const printfBuffer = new ArrayBuffer(1000);
@@ -63,8 +78,16 @@ export function printf(this: Runtime): number {
                 printfView.setUint8(size, "%".charCodeAt(0));
                 size ++;
             } else if (chr2 === "d") {
-                const str = this.memory.getInt32(sp, true).toString();
-                sp += 4;
+                let str: string;
+                if (!isLong) {
+                    str = this.memory.getInt32(sp, true).toString();
+                    sp += 4;
+                } else {
+                    const low = new BN(this.memory.getUint32(sp, true));
+                    const high = new BN(this.memory.getInt32(sp + 4, true));
+                    str = high.shln(32).add(low).toString();
+                    sp += 8;
+                }
                 for (let j = 0; j < str.length; j++) {
                     printfView.setUint8(size, str.charCodeAt(j));
                     size++;

@@ -17,6 +17,7 @@ function compile(name, source, options = {}) {
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();
 }
+
 async function testRun(source, debug, isCpp){
     let options = { isCpp, debug };
     let result = [""];

@@ -76,7 +76,7 @@ export function writeLeb128Uint(stream: ByteStream, number: number): void {
     }
 }
 
-export function getLeb128IntLength(number: number): number {
+export function getLeb128IntLength(number: number | string): number {
     let result = 0;
     let num = new Bn(number);
     const isNeg = num.isNeg();

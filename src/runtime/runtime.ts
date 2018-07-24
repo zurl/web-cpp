@@ -5,6 +5,7 @@
  */
 import {fromBytesToString} from "../common/utils";
 import {VMFile} from "./vmfile";
+import {FastHeapAllocator, HeapAllocator} from "./allocator";
 
 export interface ImportObject {
     [module: string]: {
@@ -14,6 +15,7 @@ export interface ImportObject {
 
 export abstract class Runtime {
     public memory: DataView;
+    public memoryUint8Array: Uint8Array;
     public memoryBuffer: ArrayBuffer;
     public heapStart: number;
     public heapPointer: number;
@@ -21,18 +23,21 @@ export abstract class Runtime {
     public code: ArrayBuffer;
     public importObjects: ImportObject;
     public files: VMFile[];
+    public heapAllocator: HeapAllocator;
 
     constructor(code: ArrayBuffer,
                 importObjects: ImportObject = {},
                 memorySize: number = 1024 * 1024,
                 files: VMFile[] = []) {
         this.memoryBuffer = new ArrayBuffer(memorySize);
+        this.memoryUint8Array = new Uint8Array(this.memoryBuffer);
         this.memory = new DataView(this.memoryBuffer);
         this.heapStart = 0;
         this.heapPointer = 0;
         this.code = code;
         this.importObjects = importObjects;
         this.files = files;
+        this.heapAllocator = new FastHeapAllocator();
     }
 
     public abstract async run(): Promise<void>;

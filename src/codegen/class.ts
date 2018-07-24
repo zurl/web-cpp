@@ -23,6 +23,7 @@ import {
 } from "../common/type";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
+import {doReferenceTransform} from "./conversion";
 import {lookupPreviousDeclaration, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {declareFunction, defineFunction, parseFunctionDeclarator} from "./function";
 
@@ -58,6 +59,11 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                     declareFunction(ctx, fieldType, fieldName,
                         decl.specifiers.includes("__libcall"), node);
                 }
+                continue;
+            }
+
+            if (fieldName.charAt(0) === "#") {
+                throw new SyntaxError(`illegal operator overload`, node);
             }
 
             if (fieldType.isStatic) {
@@ -170,32 +176,32 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         }
     }
     newItem.buildFieldMap();
+    newItem.isComplete = true;
     for (const arr of delayParseList) {
         const [decl, functionType, realName] = arr;
         defineFunction(ctx, functionType, realName,
             decl.body.body, this);
     }
     ctx.scopeManager.exitScope();
-    newItem.isComplete = true;
     return newItem;
 };
 
 MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    const left = this.pointed ?
+    let left = this.pointed ?
         new UnaryExpression(this.location, "*", this.object).codegen(ctx)
         : this.object.codegen(ctx);
-    let rawType = left.type;
-    if ( rawType instanceof LeftReferenceType) {
-        rawType = rawType.elementType;
-    }
-    if ( !(rawType instanceof ClassType)) {
-        throw new SyntaxError(`only struct/class could be get member`, this);
-    }
+
+    left = doReferenceTransform(ctx, left, this);
+
     if ( !(left.isLeft && left.expr instanceof WAddressHolder)) {
         throw new InternalError(`unsupport rvalue of member expression`);
     }
 
-    const item = ctx.scopeManager.lookupFullName(rawType.fullName + "::" + this.member.name);
+    if ( !(left.type instanceof ClassType)) {
+        throw new SyntaxError(`only struct/class could be get member`, this);
+    }
+
+    const item = ctx.scopeManager.lookupFullName(left.type.fullName + "::" + this.member.name);
 
     if ( item !== null ) {
         if ( item instanceof Type ) {
@@ -209,7 +215,7 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
             };
         } else {
             item.instance = left.expr;
-            item.instanceType = rawType;
+            item.instanceType = left.type;
             return {
                 type: PrimitiveTypes.void,
                 expr: item,
@@ -219,9 +225,9 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     }
 
     // class field
-    const field = rawType.fieldMap.get(this.member.name);
+    const field = left.type.fieldMap.get(this.member.name);
     if ( !field ) {
-        throw new SyntaxError(`property ${this.member.name} does not appear on ${rawType.name}`, this);
+        throw new SyntaxError(`property ${this.member.name} does not appear on ${left.type.name}`, this);
     }
     return {
         isLeft: true,

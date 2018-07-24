@@ -54,6 +54,9 @@ export class CommandOutputFile extends VMFile {
 
     public flush(): number {
         const len = this.buffer.length;
+        if ( this.buffer.length === 0 ) {
+            return 0;
+        }
         console.log(this.buffer);
         this.buffer = "";
         return len;

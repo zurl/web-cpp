@@ -38,11 +38,12 @@ import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "
 import {WConst, WType} from "../wasm";
 import {WExpression} from "../wasm/node";
 import {WFunctionType} from "../wasm/section";
+import {KeyWords} from "./constant";
 import {CompileContext} from "./context";
 import {doFunctionOverloadResolution} from "./cpp/overload";
 import {declareFunction} from "./function";
 import {FunctionLookUpResult} from "./scope";
-import {KeyWords} from "./constant";
+import {recycleExpressionResult} from "./statement";
 
 export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: SpecifierType[], nodeForError: Node): Type {
     let resultType: Type | null = null;
@@ -83,7 +84,6 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
     }
     return resultType;
 }
-
 
 export function parseDeclarator(ctx: CompileContext, node: Declarator, resultType: Type): [Type, string] {
     if (node === null) {
@@ -199,6 +199,9 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
         if ( type instanceof ClassType && !type.isComplete) {
             throw new SyntaxError(`cannot instancelize incomplete type`, this);
         }
+        if (name.charAt(0) === "#") {
+            throw new SyntaxError(`illegal operator name`, this);
+        }
 
         // oldItemLookup
         const lastItem = lookupPreviousDeclaration(ctx, type, name, this);
@@ -268,7 +271,7 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                 new Identifier(this.location, name),
                 declarator.initializer);
             expr.isInitExpr = true;
-            expr.codegen(ctx);
+            recycleExpressionResult(ctx, this, expr.codegen(ctx));
         }
     }
 };

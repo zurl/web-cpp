@@ -134,31 +134,6 @@ CaseStatement.prototype.codegen = function(ctx: CompileContext) {
 ExpressionStatement.prototype.codegen = function(ctx: CompileContext) {
     recycleExpressionResult(ctx, this, this.expression.codegen(ctx));
 };
-
-ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
-    if ( ctx.currentFunction === null) {
-        throw new SyntaxError(`return outside function`, this);
-    }
-    // $sp = sp
-    ctx.submitStatement(
-        new WSetGlobal(WType.u32, "$sp",
-            new WGetLocal(WType.u32, ctx.currentFunction.$sp, this.location), this.location));
-
-    if (this.argument !== null) {
-        if (ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
-            throw new SyntaxError(`return type mismatch`, this);
-        }
-        const expr = this.argument.codegen(ctx);
-        expr.expr = doConversion(ctx, ctx.currentFunction.type.returnType, expr, this);
-        ctx.submitStatement(new WReturn(expr.expr.fold(), this.location));
-    } else {
-        if (!ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
-            throw new SyntaxError(`return type mismatch`, this);
-        }
-        ctx.submitStatement(new WReturn(null, this.location));
-    }
-};
-
 IfStatement.prototype.codegen = function(ctx: CompileContext) {
     const thenStatements: WStatement[] = [];
     const elseStatements: WStatement[] = [];

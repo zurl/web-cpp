@@ -32,6 +32,20 @@ export function doTypeTransfrom(type: Type): Type {
     return type;
 }
 
+export function doReferenceTransform(ctx: CompileContext, left: ExpressionResult,
+                                     node: Node) {
+
+    if ( left.type instanceof LeftReferenceType ) {
+        if ( !left.isLeft || !(left.expr instanceof WAddressHolder)) {
+            throw new SyntaxError(`reference value is not reference`, node);
+        }
+        left.type = left.type.elementType;
+        left.expr = new WAddressHolder(left.expr.createLoad(ctx, PrimitiveTypes.uint32),
+            AddressType.RVALUE, node.location);
+    }
+    return left;
+}
+
 export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
                                  node: Node, toReference = false): ExpressionResult {
 
@@ -86,16 +100,17 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
 }
 
 export function doConversion(ctx: CompileContext, dstType: Type, src: ExpressionResult,
-                             node: Node, force: boolean = false): WExpression {
+                             node: Node, force: boolean = false, toReference: boolean = false): WExpression {
 
-    src = doValueTransform(ctx, src, node, dstType instanceof LeftReferenceType);
+    const shouldToReference = toReference && (dstType instanceof LeftReferenceType);
+    src = doValueTransform(ctx, src, node, shouldToReference);
 
     if ( src.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`unsupport function name`, node);
     }
 
     if ( dstType instanceof LeftReferenceType && src.type instanceof LeftReferenceType) {
-        if( dstType.equals(src.type)){
+        if ( dstType.equals(src.type)) {
             return src.expr;
         }
     }
@@ -153,7 +168,7 @@ export function getInStackSize(size: number): number {
 }
 
 export function doValuePromote(ctx: CompileContext, src: ExpressionResult, node: Node): ExpressionResult {
-    src = doValueTransform(ctx, src, node);
+    src = doValueTransform(ctx, src, node, false);
     if ( src.type instanceof IntegerType && src.type.length < 4 ) {
         src.type = PrimitiveTypes.int32;
     }

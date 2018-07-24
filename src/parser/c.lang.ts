@@ -208,7 +208,10 @@ SingleIdentifier
     }
     
 Identifier 
-    = isFullName:'::'? namespace:(Id '::')* name:SingleIdentifier {
+    = 'operator' ope:OverloadOperator {
+        return new AST.Identifier(getLocation(), "#" + ope);
+    }
+    / isFullName:'::'? namespace:(Id '::')* name:SingleIdentifier {
         let prefix = isFullName === "::" ? "::" : "";
         name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
         return name;
@@ -526,6 +529,9 @@ Punctuator
         return new AST.Punctuator(getLocation(), text());
     }
 
+OverloadOperator
+    = '+' / '-' / '*' / '/' / '='
+
 // A.1.8 Header names
 
 HeaderName '<file name> or \\"file name\\"'
@@ -834,18 +840,21 @@ TypeSpecifier
         hasTypeSpecifier = true;
         return typeSpecifier;
     }
+    
+TypedIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
+        return identifier;
+    }
 
 StructOrUnionSpecifier
-    = structOrUnion:StructOrUnion _ identifier:Identifier? _ '{' _ declarations:StructDeclarationList _ &!'}' {
-        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
+    = structOrUnion:StructOrUnion _ identifier:TypedIdentifier? _ '{' _ declarations:StructDeclarationList _ &!'}' {
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, declarations);
     }
-    / structOrUnion:StructOrUnion _ identifier:Identifier '{' _ &!'}'{
-        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
+    / structOrUnion:StructOrUnion _ identifier:TypedIdentifier '{' _ &!'}'{
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, []);
     }
-    / structOrUnion:StructOrUnion _ identifier:Identifier {
-        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
+    / structOrUnion:StructOrUnion _ identifier:TypedIdentifier {
         return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, null);
     }
 
@@ -940,13 +949,13 @@ Declarator
     = pointer:(Pointer _)? declarator:DirectDeclarator {
         return pointer ? new AST.PointerDeclarator(getLocation(), declarator, extractOptional(pointer, 0)) : declarator;
     }
-
+ 
 DirectDeclarator
     = head:(identifier:Identifier {
         return new AST.IdentifierDeclarator(getLocation(), identifier);
     } / '(' _ declarator:Declarator _ &!')' {
         return declarator;
-    }) tail:(_ (
+    } ) tail:(_ (
         '[' _ qualifiers:TypeQualifierList? _ length:AssignmentExpression? _ &!']' {
             return {
                 location: getLocation(),

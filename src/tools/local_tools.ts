@@ -13,7 +13,8 @@ import {Impls, JsAPIMap} from "../library";
 import {link} from "../linker";
 import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
-import {CommandOutputFile, NoInputFile} from "../runtime/vmfile";
+import {NativeRuntime} from "../runtime/native_runtime";
+import {CommandOutputFile, NoInputFile, StringOutputFile} from "../runtime/vmfile";
 
 const BINARY_VERSION = 3;
 
@@ -55,7 +56,7 @@ function precompileLibrarys() {
     return objects;
 }
 
-const LibraryObjects = precompileLibrarys();
+//const LibraryObjects = precompileLibrarys();
 
 export function compileFile(sourceFileName: string): BinaryObject {
     const source = readFileSync(sourceFileName, "utf-8");
@@ -64,6 +65,15 @@ export function compileFile(sourceFileName: string): BinaryObject {
     return binary;
 }
 
-export function runFile(binary: BinaryObject, memorySize: number) {
-   return;
+export function runFile(bin: BinaryObject, memorySize: number) {
+    const importObj: any = {system: {}};
+    for (const key of Object.keys(JsAPIMap)) {
+        importObj["system"]["::" + key] = JsAPIMap[key];
+    }
+    const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
+        new NoInputFile(),
+        new CommandOutputFile(),
+        new CommandOutputFile(),
+    ]);
+    runtime.run();
 }

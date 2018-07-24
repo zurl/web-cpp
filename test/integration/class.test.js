@@ -51,14 +51,14 @@ describe('class integration test', function () {
             a, b, c, d = 20
         };
         int main(){
-            printf("%d%d%d%d", a,b,c,d);
+            printf("%d,%d,%d,%d,", a, b, c, d);
             enum A u = a;
             printf("%d", u);
             return 0;
         }
         `;
-        const expectOutput = `012200`;
-        return await TestBase.testFullCode(testCode, expectOutput);
+        const expectOutput = `0,1,2,20,0`;
+        return await TestBase.testFullCode(testCode, expectOutput, true, true);
     });
     it('test struct 2', async function() {
         const testCode = `
@@ -77,6 +77,38 @@ describe('class integration test', function () {
         }`;
         const expectOutput = `14`;
         return await TestBase.testFullCode(testCode, expectOutput);
+    });
+    it('test class cpp', async function() {
+        const testCode = `
+#include <stdio.h>
+
+        struct A{
+            static int bbb;
+            static int foo(int a){
+                return a + 1;
+            }
+            int goo(int b){
+                printf("%d,", b);
+                printf("%d,", this->d);
+                printf("%d,", this->d + b);
+                return 0;
+            }
+            int d;
+        };
+        
+        int A::bbb;
+        
+        int main(){
+            A::bbb = 3;
+            A a;
+            a.d = 2;
+            printf("%d,", A::foo(2));
+            printf("%d,", a.d);
+            printf("%d,", a.goo(2));
+            return 0;
+        }`;
+        const expectOutput = `3,2,2,2,4,0,`;
+        return await TestBase.testFullCode(testCode, expectOutput, true);
     });
 
 });

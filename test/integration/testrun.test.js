@@ -30,17 +30,31 @@ struct A{
         return 0;
     }
     int d;
+    A operator+(int c){
+        printf(" opertor + \\n");
+        A ret;
+        ret.d = this->d + c;
+        return ret;
+    }
+    A& operator=(A & a){
+        printf(" assign ctor\\n");
+        this->d = a.d;
+        return *this;
+    }
 };
 
 int A::bbb;
 
-int main(){
-    A::bbb = 3;
+A returnAObj(int b){
     A a;
-    a.d = 2;
-    //printf("%d", A::foo(2));
-    //printf("%d", a.d);
-    printf("%d", a.goo(2));
+    a.d = b;
+    return a;
+}
+
+int main(){
+    A b = returnAObj(3);
+    A q = b + 5;
+    printf("%d", q.d);
     return 0;
 }
 `;

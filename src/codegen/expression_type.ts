@@ -15,12 +15,12 @@ import {
     PrimitiveTypes,
     Type, UnresolveFunctionOverloadType, UnsignedInt64Type, UnsignedIntegerType, Variable,
 } from "../common/type";
+import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doTypeTransfrom} from "./conversion";
 import {doFunctionOverloadResolution} from "./cpp/overload";
 import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
-import {WAddressHolder} from "./address";
 /**
  *  @file
  *  @author zcy <zurl@live.com>
@@ -75,6 +75,14 @@ function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): Arithmet
 BinaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     const left = doTypeTransfrom(this.left.deduceType(ctx));
     const right = doTypeTransfrom(this.right.deduceType(ctx));
+
+    if (left instanceof ClassType) {
+        return new CallExpression(this.location,
+            new MemberExpression(this.location, this.left, false,
+                new Identifier(this.location, "#" + this.operator)),
+            [this.right]).deduceType(ctx);
+    }
+
     if ("+-*%/".includes(this.operator)) {
         if (left instanceof ArithmeticType && right instanceof ArithmeticType) {
             return arithmeticDeduce(left, right);
@@ -167,7 +175,7 @@ CallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
         throw new SyntaxError(`no matching function for ${lookUpResult.functions[0].name}`, this);
     }
 
-    return entity.type;
+    return entity.type.returnType;
 };
 
 SubscriptExpression.prototype.deduceType = function(ctx: CompileContext): Type {

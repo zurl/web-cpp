@@ -6,11 +6,11 @@
 import * as Long from "long";
 import {
     AssignmentExpression,
-    BinaryExpression,
+    BinaryExpression, CallExpression,
     CastExpression, CharacterConstant,
     ExpressionResult,
     FloatingConstant, Identifier,
-    IntegerConstant,
+    IntegerConstant, MemberExpression,
     Node,
     ParenthesisExpression, PostfixExpression, StringLiteral,
     SubscriptExpression,
@@ -24,12 +24,13 @@ import {
     PrimitiveTypes,
     Type, UnsignedCharType, UnsignedInt16Type, UnsignedInt32Type, UnsignedInt64Type,
 } from "../common/type";
-import {I32Binary, I32Unary, WLoad, WType, WUnaryOperation} from "../wasm";
+import {I32Binary, I32Unary, WCall, WLoad, WType, WUnaryOperation} from "../wasm";
 import {BinaryOperator, getOpFromStr} from "../wasm/constant";
 import {WBinaryOperation, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {doConversion, doValueTransform} from "./conversion";
+import {doConversion, doReferenceTransform, doValueTransform} from "./conversion";
+import {doFunctionOverloadResolution} from "./cpp/overload";
 import {doReferenceBinding} from "./cpp/reference";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
@@ -48,7 +49,17 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
             this.right);
     }
 
-    const left = this.left.codegen(ctx);
+    const leftType = this.left.deduceType(ctx);
+    const rightType = this.right.deduceType(ctx);
+
+    if (leftType instanceof ClassType) {
+        return new CallExpression(this.location,
+            new MemberExpression(this.location, this.left, false,
+                new Identifier(this.location, "#=")),
+            [this.right]).codegen(ctx);
+    }
+
+    let left = this.left.codegen(ctx);
     const right = this.right.codegen(ctx);
 
     // reference binding
@@ -57,15 +68,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         return left;
     }
 
-    if (!left.isLeft || !(left.expr instanceof WAddressHolder)) {
-        throw new SyntaxError(`could not assign to a right value`, this);
-    }
-
-    if ( left.type instanceof LeftReferenceType ) {
-        left.type = left.type.elementType;
-        left.expr = new WAddressHolder(left.expr.createLoad(ctx, PrimitiveTypes.uint32),
-            AddressType.RVALUE, this.location);
-    }
+    left = doReferenceTransform(ctx, left, this);
 
     if (!left.isLeft || !(left.expr instanceof WAddressHolder)) {
         throw new SyntaxError(`could not assign to a right value`, this);
@@ -75,8 +78,21 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         throw new SyntaxError(`could not assign a function name`, this);
     }
 
-    if ( left.type instanceof ArrayType || left.type instanceof ClassType) {
-        throw new SyntaxError(`currently unsupport`, this);
+    if ( left.type instanceof ArrayType) {
+        throw new SyntaxError(`unsupport array assignment`, this);
+    }
+
+    if (left.type instanceof ClassType) {
+        if (!right.isLeft || !(right.expr instanceof WAddressHolder)
+        || !right.type.equals(left.type)) {
+            throw new SyntaxError(`class assignment type mismatch`, this);
+        }
+        const leftAddr = left.expr.createLoadAddress(ctx);
+        const rightAddr = right.expr.createLoadAddress(ctx);
+        ctx.submitStatement(new WCall("::memcpy",
+            [leftAddr, rightAddr, new WConst(WType.u32, left.type.length.toString())],
+            [], this.location));
+        return left;
     }
 
     // 对于初始化表达式 支持常量初始化到data段
@@ -99,6 +115,10 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
             ctx.memory.data.setUint32(left.expr.place as number, right.expr.offset, true);
             return left;
         }
+    }
+
+    if (!this.isInitExpr && left.type.isConst) {
+        throw new SyntaxError(`could not assign to const variable`, this);
     }
 
     ctx.submitStatement(left.expr.createStore(ctx, left.type,
@@ -162,6 +182,9 @@ CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionR
 };
 
 Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    if ( this.name.charAt(0) === "#") {
+        throw new SyntaxError(`illegal operator overload`, this);
+    }
     const item = ctx.scopeManager.lookupAnyName(this.name);
     if (item === null) {
         throw new SyntaxError(`Unresolve Name ${this.name}`, this);
@@ -193,8 +216,23 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
         return this.right.codegen(ctx);
     }
 
+    const leftType = this.left.deduceType(ctx);
+    const rightType = this.right.deduceType(ctx);
+
+    if (leftType instanceof ClassType) {
+        return new CallExpression(this.location,
+            new MemberExpression(this.location, this.left, false,
+                new Identifier(this.location, "#" + this.operator)),
+            [this.right]).codegen(ctx);
+    }
+
+    if (rightType instanceof ClassType) {
+        throw new SyntaxError(`current not support right overload`, this);
+    }
+
     let left = this.left.codegen(ctx);
     let right = this.right.codegen(ctx);
+
     const dstType = this.deduceType(ctx);
     const op = getOpFromStr(this.operator, dstType.toWType());
 
