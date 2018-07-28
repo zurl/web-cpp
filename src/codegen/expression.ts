@@ -30,7 +30,7 @@ import {WBinaryOperation, WConst, WGetAddress, WMemoryLocation} from "../wasm/ex
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doReferenceTransform, doValueTransform} from "./conversion";
-import {doFunctionOverloadResolution} from "./cpp/overload";
+import {doFunctionOverloadResolution, isFunctionExists} from "./cpp/overload";
 import {doReferenceBinding} from "./cpp/reference";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
@@ -53,10 +53,21 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
     const rightType = this.right.deduceType(ctx);
 
     if (leftType instanceof ClassType) {
-        return new CallExpression(this.location,
-            new MemberExpression(this.location, this.left, false,
-                new Identifier(this.location, "#=")),
-            [this.right]).codegen(ctx);
+        const fullName = leftType.fullName + "::#=";
+        if (isFunctionExists(ctx, fullName, [rightType], leftType)) {
+            return new CallExpression(this.location,
+                new MemberExpression(this.location, this.left, false,
+                    new Identifier(this.location, "#=")),
+                [
+                    this.right]).codegen(ctx);
+        } else {
+            const len = leftType.length;
+            return new CallExpression(this.location, new Identifier(this.location, "::memcpy"), [
+                new UnaryExpression(this.location, "&", this.left),
+                new UnaryExpression(this.location, "&", this.right),
+                new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null)
+            ]).codegen(ctx);
+        }
     }
 
     let left = this.left.codegen(ctx);
@@ -80,19 +91,6 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
 
     if ( left.type instanceof ArrayType) {
         throw new SyntaxError(`unsupport array assignment`, this);
-    }
-
-    if (left.type instanceof ClassType) {
-        if (!right.isLeft || !(right.expr instanceof WAddressHolder)
-        || !right.type.equals(left.type)) {
-            throw new SyntaxError(`class assignment type mismatch`, this);
-        }
-        const leftAddr = left.expr.createLoadAddress(ctx);
-        const rightAddr = right.expr.createLoadAddress(ctx);
-        ctx.submitStatement(new WCall("::memcpy",
-            [leftAddr, rightAddr, new WConst(WType.u32, left.type.length.toString())],
-            [], this.location));
-        return left;
     }
 
     // 对于初始化表达式 支持常量初始化到data段

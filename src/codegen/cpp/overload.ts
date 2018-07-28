@@ -5,7 +5,7 @@
  */
 import {Node} from "../../common/ast";
 import {SyntaxError} from "../../common/error";
-import {FunctionEntity, FunctionType, PointerType, ReferenceType, Type} from "../../common/type";
+import {ClassType, FunctionEntity, FunctionType, PointerType, ReferenceType, Type} from "../../common/type";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult} from "../scope";
 
@@ -88,10 +88,13 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
     throw new SyntaxError(`no matching function for ${funcs.functions[0].name}`, node);
 }
 
-export function containsFunction(ctx: CompileContext, name: string, argus: Type[]): boolean {
+export function isFunctionExists(ctx: CompileContext, name: string, argus: Type[],
+                                 instanceType: ClassType | null = null): boolean {
     const lookupResult = ctx.scopeManager.lookupFullName(name);
+
     if ( !(lookupResult instanceof FunctionLookUpResult)) { return false; }
     try {
+        lookupResult.instanceType = instanceType;
         doFunctionOverloadResolution(lookupResult, argus, {} as Node);
         return true;
     } catch (e) {

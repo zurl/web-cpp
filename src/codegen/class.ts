@@ -28,6 +28,7 @@ import {CompileContext} from "./context";
 import {doReferenceTransform} from "./conversion";
 import {lookupPreviousDeclaration, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {declareFunction, defineFunction, parseFunctionDeclarator} from "./function";
+import {generateDefaultCtors} from "./cpp/lifecycle";
 
 function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: ClassBuildContext, node: Node) {
     const baseType = parseTypeFromSpecifiers(ctx, decl.specifiers, node);
@@ -215,6 +216,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         defineFunction(ctx, functionType, realName,
             body.body, this);
     }
+    generateDefaultCtors(ctx, newItem, this);
     ctx.scopeManager.exitScope();
     return newItem;
 };

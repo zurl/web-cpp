@@ -85,8 +85,10 @@ export class PointerType extends CompoundType {
     }
 
     public compatWith(type: Type): boolean {
-        return super.compatWith(type) || (
-            type instanceof ArrayType && this.elementType.compatWith(type.elementType));
+        return this.elementType.equals(PrimitiveTypes.void)
+            || (type instanceof PointerType && type.elementType.equals(PrimitiveTypes.void))
+            || super.compatWith(type) ||
+            (type instanceof ArrayType && this.elementType.compatWith(type.elementType));
     }
 }
 

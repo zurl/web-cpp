@@ -69,7 +69,7 @@ local var:  @foo@var1
 - [X] int64
 - [ ] ?:
 - [ ] bit field of struct
-- [ ] only export necessary scopeMap
+- [ ] only export necessary scopeMap / debuginfo
 - [ ] #if #elif
 - [ ] #line __line__ __file__
 - [ ] remove Long.js
@@ -77,11 +77,12 @@ local var:  @foo@var1
 ## C++ Language
 - [ ] __cxx_global_var_init
 - [ ] mangled/demangled
-- [ ] default constructor
+- [ ] default constructor / copy-constructor(use memcpy) / destructor
 - [ ] 异常处理
 - [ ] 继承
 - [X] 左值引用
 - [X] 静态成员变量
+- [ ] 形如 A a(c,d)的初始化
 - [ ] 构造函数 => 设计
 - [ ] inner scope => { }
 - [ ] DTOR => 文法中

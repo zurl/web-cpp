@@ -14,9 +14,11 @@ import {
 } from "../../common/ast";
 import {SyntaxError} from "../../common/error";
 import {InternalError} from "../../common/error";
-import {ClassType, CppFunctionType, FunctionEntity, PointerType} from "../../common/type";
+import {ClassType, CppFunctionType, FunctionEntity, FunctionType, PointerType, PrimitiveTypes} from "../../common/type";
 import {CompileContext} from "../context";
-import {containsFunction} from "./overload";
+import {FunctionLookUpResult} from "../scope";
+import {isFunctionExists} from "./overload";
+import {defineFunction} from "../function";
 
 export function getCtorStmts(ctx: CompileContext,
                              entity: FunctionEntity,
@@ -55,7 +57,7 @@ export function getCtorStmts(ctx: CompileContext,
         } else {
             if (field.type instanceof ClassType) {
                 const name = classType.fullName + "#" + classType.name;
-                if (containsFunction(ctx, name, [new PointerType(classType)])) {
+                if (isFunctionExists(ctx, name, [new PointerType(classType)])) {
                     ctorStmts.push(new ExpressionStatement(node.location,
                         new CallExpression(node.location,
                             new Identifier(node.location, name),
@@ -85,7 +87,7 @@ export function getDtorStmts(ctx: CompileContext,
             true, new Identifier(node.location, field.name));
         if (field.type instanceof ClassType) {
             const name = classType.fullName + "~" + classType.name;
-            if (containsFunction(ctx, name, [new PointerType(classType)])) {
+            if (isFunctionExists(ctx, name, [], classType)) {
                 dtorStmts.push(new ExpressionStatement(node.location,
                     new CallExpression(node.location,
                         new Identifier(node.location, name),
@@ -96,4 +98,19 @@ export function getDtorStmts(ctx: CompileContext,
     }
 
     return dtorStmts;
+}
+
+export function generateDefaultCtors(ctx: CompileContext,
+                                     classType: ClassType,
+                                     node: Node) {
+    // 1. default ctor
+    const defaultCtorRet = ctx.scopeManager
+        .lookupFullName(classType.fullName + "::$" + classType.name);
+    if ( defaultCtorRet === null || !(defaultCtorRet instanceof FunctionLookUpResult)) {
+        const shortName = "$" + classType.name;
+        const funcType = new FunctionType(shortName, PrimitiveTypes.void,
+            [new PointerType(classType)], ["this"], false);
+        defineFunction(ctx, funcType, shortName, [], node);
+    }
+
 }
