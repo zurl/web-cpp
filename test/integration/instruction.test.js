@@ -320,6 +320,25 @@ describe('instruction integration test', function () {
     `;
         const expectOutput = `21996811307704563`;
         return await TestBase.testFullCode(testCode, expectOutput, true, true);
+    });
+    it('test & ', async function(){
+        const testCode = `
+#include <stdio.h>
+        int a1[10];
+        
+        int main(){
+            int a2[10];
+            int c = 20;
+            int * b = &a1;
+            int * d = &c;
+            b[0] = 13;
+            *d += 1;
+            printf("%d,%d,%d,%d", b[0], d[0], a1[0], c);
+            return 0;
+        }
+    `;
+        const expectOutput = `13,21,13,21`;
+        return await TestBase.testFullCode(testCode, expectOutput, true, true);
     })
 
 });

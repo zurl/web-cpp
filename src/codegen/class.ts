@@ -4,17 +4,19 @@
  *  Created at 03/07/2018
  */
 import {
-    Declaration,
-    ExpressionResult, FunctionDefinition,
+    CompoundStatement,
+    ConstructorOrDestructorDeclaration,
+    Declaration, Expression,
+    ExpressionResult, FunctionDefinition, InitializerList,
     MemberExpression,
-    Node,
+    Node, ParameterList, Statement,
     StructOrUnionSpecifier, UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {
     AddressType,
     ClassField,
-    ClassType,
+    ClassType, CppFunctionType,
     FunctionType,
     LeftReferenceType,
     PointerType, PrimitiveTypes,
@@ -55,7 +57,8 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                 } else {
                     fieldType.parameterTypes = [buildCtx.classPtrType, ...fieldType.parameterTypes];
                     fieldType.parameterNames = ["this", ...fieldType.parameterNames];
-                    fieldType.isMemberFunction = true;
+                    fieldType.cppFunctionType = CppFunctionType.MemberFunction;
+                    fieldType.referenceClass = buildCtx.classType;
                     declareFunction(ctx, fieldType, fieldName,
                         decl.specifiers.includes("__libcall"), node);
                 }
@@ -80,17 +83,21 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                     fieldType, AddressType.MEMORY_EXTERN, ctx.scopeManager.getFullName(fieldName)   ,
                 ), node);
             } else {
+                let initializer = null as (Expression | null);
                 if (declarator.initializer !== null) {
                     if (!ctx.isCpp()) {
                         throw new LanguageError(`field init is only support in c++`, node);
                     }
-                    // TODO:: standard field init
-                    throw new InternalError(`no impl`);
+                    if (declarator.initializer instanceof InitializerList) {
+                        throw new SyntaxError(`unsupport initial list`, node);
+                    }
+                    initializer = declarator.initializer;
                 }
                 buildCtx.fields.push({
                     name: fieldName,
                     type: fieldType,
                     startOffset: buildCtx.curOffset,
+                    initializer,
                 });
                 if ( !buildCtx.union ) {
                     buildCtx.curOffset += fieldType.length;
@@ -142,12 +149,37 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         curOffset: 0,
     };
     newItem.isComplete = false;
-    const delayParseList: Array<[FunctionDefinition, FunctionType, string]> = [];
+    const delayParseList: Array<[CompoundStatement, FunctionType, string]> = [];
     for (const decl of this.declarations) {
         if (decl instanceof Declaration) {
             parseClassDeclartion(ctx, decl, buildCtx, this);
+        } else if (decl instanceof ConstructorOrDestructorDeclaration) {
+            if (decl.name.identifier.value !== name) {
+                throw new SyntaxError(`invaild ctor/dtor name ${decl.name.identifier.value}`, this);
+            }
+            let funcType: FunctionType;
+            if ( decl.isCtor ) {
+                const parameterTypes: Type[] = [new PointerType(newItem)], parameterNames: string[] = ["this"];
+                if ( decl.param !== null ) {
+                    const [realParameterTypes, realParameterNames] = decl.param!.codegen(ctx);
+                    parameterTypes.push(...realParameterTypes);
+                    parameterNames.push(...realParameterNames);
+                }
+                funcType = new FunctionType("#" + name, PrimitiveTypes.void, parameterTypes, parameterNames, false);
+                funcType.cppFunctionType = CppFunctionType.Constructor;
+                funcType.referenceClass = newItem;
+                funcType.initList = decl.initList!;
+            } else {
+                funcType = new FunctionType("~" + name, PrimitiveTypes.void, [], [], false);
+                funcType.cppFunctionType = CppFunctionType.Destructor;
+                funcType.referenceClass = newItem;
+            }
+            if ( decl.body !== null ) {
+                delayParseList.push([decl.body, funcType, funcType.name]);
+            } else {
+                declareFunction(ctx, funcType, funcType.name, false, this);
+            }
         } else if (decl instanceof FunctionDefinition) {
-            // TODO:: constructor
             if (!ctx.isCpp()) {
                 throw new LanguageError(`function field is only support in c++`, this);
             }
@@ -166,11 +198,12 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             } else {
                 functionType.parameterTypes = [buildCtx.classPtrType, ...functionType.parameterTypes];
                 functionType.parameterNames = ["this", ...functionType.parameterNames];
-                functionType.isMemberFunction = true;
+                functionType.cppFunctionType = CppFunctionType.MemberFunction;
+                functionType.referenceClass = newItem;
                 declareFunction(ctx, functionType, realName,
                     decl.specifiers.includes("__libcall"), this);
             }
-            delayParseList.push([decl, functionType, realName]);
+            delayParseList.push([decl.body, functionType, realName]);
         } else {
             throw new InternalError(`StructOrUnionSpecifier()`);
         }
@@ -178,9 +211,9 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     newItem.buildFieldMap();
     newItem.isComplete = true;
     for (const arr of delayParseList) {
-        const [decl, functionType, realName] = arr;
+        const [body, functionType, realName] = arr;
         defineFunction(ctx, functionType, realName,
-            decl.body.body, this);
+            body.body, this);
     }
     ctx.scopeManager.exitScope();
     return newItem;

@@ -1,5 +1,6 @@
 import {FunctionLookUpResult} from "../codegen/scope";
 import {WType} from "../wasm";
+import {ConstructorInitializeItem, Expression, InitializerListItem} from "./ast";
 import {InternalError, TypeError} from "./error";
 import {isArrayEqual} from "./utils";
 
@@ -336,13 +337,22 @@ export class DoubleType extends FloatingType {
     }
 }
 
+export enum CppFunctionType {
+    Normal,
+    Constructor,
+    Destructor,
+    MemberFunction,
+}
+
 export class FunctionType extends Type {
     public name: string;
     public returnType: Type;
     public parameterTypes: Type[];
     public parameterNames: string[];
     public variableArguments: boolean;
-    public isMemberFunction: boolean;
+    public cppFunctionType: CppFunctionType;
+    public referenceClass: ClassType | null;
+    public initList: ConstructorInitializeItem[];
 
     constructor(name: string, returnType: Type, parameterTypes: Type[],
                 parameterNames: string[], variableArguments: boolean) {
@@ -352,7 +362,9 @@ export class FunctionType extends Type {
         this.parameterTypes = parameterTypes;
         this.parameterNames = parameterNames;
         this.variableArguments = variableArguments;
-        this.isMemberFunction = false;
+        this.cppFunctionType = CppFunctionType.Normal;
+        this.referenceClass = null;
+        this.initList = [];
     }
 
     get length(): number {
@@ -381,6 +393,11 @@ export class FunctionType extends Type {
     public compatWith(type: Type): boolean {
         return type.equals(this);
     }
+
+    public isMemberFunction(): boolean {
+        return this.cppFunctionType === CppFunctionType.Destructor
+        || this.cppFunctionType === CppFunctionType.MemberFunction;
+    }
 }
 
 enum AccessControl {
@@ -393,6 +410,7 @@ export interface ClassField {
     name: string;
     type: Type;
     startOffset: number;
+    initializer: Expression | null;
 }
 
 export class ClassType extends Type {
@@ -553,25 +571,25 @@ export const PrimitiveTypes = {
 };
 PrimitiveTypes.__ccharptr.isConst = true;
 
-export const PrimitiveTypesNameMap = new Map<string[][], PrimitiveType>([
-    [[["void"]], PrimitiveTypes.void],
-    [[["bool"]], PrimitiveTypes.bool],
-    [[["char"], ["signed", "char"].sort()], PrimitiveTypes.char],
-    [[["unsigned", "char"].sort()], PrimitiveTypes.uchar],
+export const PrimitiveTypesNameMap = new Map<string[][], () => PrimitiveType>([
+    [[["void"]], () => new VoidType()],
+    [[["bool"]], () => new BoolType()],
+    [[["char"], ["signed", "char"].sort()], () => new CharType()],
+    [[["unsigned", "char"].sort()], () => new UnsignedCharType()],
     [[["short"], ["signed", "short"].sort(), ["short", "int"].sort(), ["signed", "short", "int"].sort()],
-        PrimitiveTypes.int16],
-    [[["unsigned", "short"].sort(), ["unsigned", "short", "int"].sort()], PrimitiveTypes.uint16],
-    [[["int"], ["signed"], ["signed", "int"].sort()], PrimitiveTypes.int32],
-    [[["unsigned"], ["unsigned", "int"].sort()], PrimitiveTypes.uint32],
+        () => new Int16Type()],
+    [[["unsigned", "short"].sort(), ["unsigned", "short", "int"].sort()], () => new UnsignedInt16Type()],
+    [[["int"], ["signed"], ["signed", "int"].sort()], () => new Int32Type()],
+    [[["unsigned"], ["unsigned", "int"].sort()], () => new UnsignedInt32Type()],
     [[["long"], ["signed", "long"].sort(), ["long", "int"].sort(), ["signed", "long", "int"].sort()],
-        PrimitiveTypes.int32],
-    [[["unsigned", "long"].sort(), ["unsigned", "long", "int"].sort()], PrimitiveTypes.uint32],
+        () => new Int32Type()],
+    [[["unsigned", "long"].sort(), ["unsigned", "long", "int"].sort()], () => new UnsignedInt32Type()],
     [[["long", "long"], ["signed", "long", "long"].sort(), ["long", "long", "int"].sort(),
-        ["signed", "long", "long", "int"].sort()], PrimitiveTypes.int64],
+        ["signed", "long", "long", "int"].sort()], () => new Int64Type()],
     [[["unsigned", "long", "long"].sort(), ["unsigned", "long", "long", "int"].sort()],
-        PrimitiveTypes.uint64],
-    [[["float"]], PrimitiveTypes.float],
-    [[["double"]], PrimitiveTypes.double],
+        () => new UnsignedInt64Type()],
+    [[["float"]], () => new FloatType()],
+    [[["double"]], () => new DoubleType()],
     // [[['long', 'double'].sort()],                                               PrimitiveTypes.longDouble],
     // [[['_Bool']],                                                               PrimitiveTypes._Bool]
 ]);

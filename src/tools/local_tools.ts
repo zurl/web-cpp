@@ -56,7 +56,7 @@ function precompileLibrarys() {
     return objects;
 }
 
-//const LibraryObjects = precompileLibrarys();
+// const LibraryObjects = precompileLibrarys();
 
 export function compileFile(sourceFileName: string): BinaryObject {
     const source = readFileSync(sourceFileName, "utf-8");

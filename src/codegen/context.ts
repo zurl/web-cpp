@@ -82,6 +82,7 @@ export class CompileContext {
         if (this.currentFunction == null) {
             throw new InternalError(`this.currentFunction==null`);
         }
+        this.memory.exitFunction();
         this.scopeManager.exitScope();
     }
 

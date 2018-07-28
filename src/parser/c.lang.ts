@@ -196,7 +196,7 @@ Keyword
 // A.1.3 Identifiers
 
 Id
-    = (&{ return options.preprocessing } / !Keyword) head:IdentifierNondigit tail:IdentifierPart* {
+    = (&{ return options.preprocessing } / !Keyword)head:IdentifierNondigit tail:IdentifierPart* {
         return new AST.Identifier(getLocation(), head + tail.join(''));
     }
 
@@ -215,6 +215,10 @@ Identifier
         let prefix = isFullName === "::" ? "::" : "";
         name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
         return name;
+    }
+    / '~' name:TypedefName {
+        name.identifier.name = '~' + name.identifier.name;
+        return name.identifier;
     }
 
 // ADDED
@@ -584,32 +588,15 @@ PrimaryExpression
     / '(' _ expression:Expression _ &!')' {
         return new AST.ParenthesisExpression(getLocation(), expression);
     }
-    / GenericSelection
-
-GenericSelection
-    = '_Generic' _ &!'(' _ discriminant:AssignmentExpression _ &!',' _ associations:GenericAssocList _ &!')' {
-        return new AST.GenericSelection(getLocation(), discriminant, associations);
-    }
-
-GenericAssocList
-    = head:GenericAssociation tail:(_ ',' _ GenericAssociation)* {
-        return buildList(head, tail, 3);
-    }
-
-// REORDER: 'default' / TypeName
-GenericAssociation
-    = test:('default' / TypeName) _ &!':' _ consequent:AssignmentExpression {
-        return new AST.GenericAssociation(getLocation(), test === 'default' ? null : test, consequent);
-    }
-
-// ADDED
-CompoundLiteral
-    = '(' _ typeName:TypeName _ ')' _ '{' _ initializerList:InitializerList _ ','? _ &!'}' {
-        return new AST.CompoundLiteral(getLocation(), typeName, initializerList);
-    }
+    / ConstructorCall
+    
+ConstructorCall 
+    = name:TypedefName  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+        return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || []);
+    } 
 
 PostfixExpression
-    = head:(PrimaryExpression / CompoundLiteral) tail:(_ (
+    = head:PrimaryExpression tail:(_ (
         '[' _ subscript:Expression _ &!']' {
             return {
                 type: AST.SubscriptExpression,
@@ -859,21 +846,41 @@ StructOrUnionSpecifier
     }
 
 StructOrUnion
-    = ('struct'
-    / 'union') !IdentifierPart {
+    = ('struct' / 'class' / 'union') !IdentifierPart {
         return text();
     }
 
 StructDeclarationList
-    = head:ExternalDeclaration tail:(_ ExternalDeclaration)* {
+    = head:StructDeclaration tail:(_ StructDeclaration)* {
         return buildList(head, tail, 1);
     }
 
 StructDeclaration
-    = specifierQualifiers:SpecifierQualifierList declarators:(_ StructDeclaratorList)? _ &!';' {
-        return new AST.StructDeclaration(getLocation(), specifierQualifiers, extractOptional(declarators, 1) || []);
+    = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body);
     }
-    / StaticAssertDeclaration
+    / id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null);
+    }
+    / '~' id:TypedefName _ '(' _ ')' _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body);
+    }
+    / '~' id:TypedefName _ '(' _ ')' _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null);
+    }
+    / decl:ExternalDeclaration {
+        return decl;
+    }
+    
+ConstructorInitializeList
+    = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
+         return buildList(head, tail, 1);
+    }
+
+ConstructorInitializeItem
+    = key:Identifier _ '(' _ value:AssignmentExpression _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value);
+    }
 
 SpecifierQualifierList
     = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {

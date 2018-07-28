@@ -4,8 +4,8 @@
  *  Created at 14/07/2018
  */
 import {fromBytesToString} from "../common/utils";
-import {VMFile} from "./vmfile";
 import {FastHeapAllocator, HeapAllocator} from "./allocator";
+import {VMFile} from "./vmfile";
 
 export interface ImportObject {
     [module: string]: {

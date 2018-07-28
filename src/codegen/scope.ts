@@ -276,17 +276,17 @@ export class ScopeManager {
         return item;
     }
 
-    // Member Lookuppppp
-    public isScopeActive(scopeName: string){
-
-    }
-
-    public activeScope(scopeName: string){
-
-    }
-
-    public deactiveScope(scopeName: string){
-
-    }
+    // // Member Lookuppppp
+    // public isScopeActive(scopeName: string) {
+    //
+    // }
+    //
+    // public activeScope(scopeName: string) {
+    //
+    // }
+    //
+    // public deactiveScope(scopeName: string) {
+    //
+    // }
 
 }

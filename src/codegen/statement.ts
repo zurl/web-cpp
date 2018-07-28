@@ -12,11 +12,10 @@ import {
     ReturnStatement, SwitchStatement, UnaryExpression, WhileStatement,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
-import {AddressType, FunctionEntity, IntegerType, PointerType, PrimitiveTypes} from "../common/type";
+import {AddressType, IntegerType, PrimitiveTypes} from "../common/type";
 import {I32Binary, WBinaryOperation, WConst, WType} from "../wasm";
-import {WGetLocal} from "../wasm/expression";
 import {WStatement} from "../wasm/node";
-import {WBlock, WBr, WBrIf, WDrop, WExprStatement, WIfElseBlock, WLoop, WReturn, WSetGlobal} from "../wasm/statement";
+import {WBlock, WBr, WBrIf, WDrop, WExprStatement, WIfElseBlock, WLoop} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CaseContext, CompileContext} from "./context";
 import {doConversion, doValueTransform} from "./conversion";

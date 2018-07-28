@@ -20,6 +20,14 @@ const source3=`
 
 struct A{
     static int bbb;
+    int sb = 24;
+    A() :sb(26){
+        dump_stack_info();
+        printf("ctor: %d\\n", this->sb);
+    }
+    ~A(){
+        printf("dtor\\n");
+    }
     static int foo(int a){
         return a + 1;
     }
@@ -39,6 +47,7 @@ struct A{
     A& operator=(A & a){
         printf(" assign ctor\\n");
         this->d = a.d;
+        this->sb = a.sb;
         return *this;
     }
 };
@@ -52,9 +61,14 @@ A returnAObj(int b){
 }
 
 int main(){
-    A b = returnAObj(3);
-    A q = b + 5;
-    printf("%d", q.d);
+    //A b = returnAObj(3);
+    //A q = b + 5;
+    
+    dump_stack_info();
+    dump_stack_info();
+    A w = A();
+    dump_stack_info();
+    printf("%d", w.sb);
     return 0;
 }
 `;

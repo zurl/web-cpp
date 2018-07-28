@@ -427,7 +427,7 @@ export class WConst extends WExpression {
         switch (getNativeType(this.type)) {
             case WType.i32:
                 e.writeByte(I32.const);
-                e.writeInt32(this.constant.split(".")[0]);
+                e.writeInt32(parseInt(this.constant));
                 break;
             case WType.i64:
                 e.writeByte(I64.const);
@@ -545,7 +545,7 @@ export class WGetAddress extends WExpression {
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
         } else if ( this.form === WMemoryLocation.BSS ) {
-            offset += e.getCurrentFunc().dataStart;
+            offset += e.getCurrentFunc().bssStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
@@ -557,7 +557,7 @@ export class WGetAddress extends WExpression {
         if ( this.form === WMemoryLocation.DATA ) {
             offset += e.getCurrentFunc().dataStart;
         } else if ( this.form === WMemoryLocation.BSS ) {
-            offset += e.getCurrentFunc().dataStart;
+            offset += e.getCurrentFunc().bssStart;
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }

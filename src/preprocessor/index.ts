@@ -223,8 +223,8 @@ function preprocessBlock(ctx: PreprocessContext, line: string, blockStartLine: n
             if (token === "*" && tokens[i + 1] === "/") {
                 onSkip = 0;
                 ctx.onMultiLineComment = false;
+                i++;
             }
-            i++;
             updateSourceMap(token);
             continue;
         }

@@ -71,11 +71,8 @@ export abstract class Node {
 
 export class Expression extends Node {
 
-    public parentIsStmt: boolean;
-
     constructor(location: SourceLocation) {
         super(location);
-        this.parentIsStmt = false;
     }
 
     public codegen(ctx: CompileContext): ExpressionResult {
@@ -255,39 +252,6 @@ export class ParenthesisExpression extends Expression {
     }
 }
 
-export class GenericAssociation extends Node {
-    public test: TypeName | null;
-    public consequent: Expression;
-
-    constructor(location: SourceLocation, test: TypeName | null, consequent: Expression) {
-        super(location);
-        this.test = test;
-        this.consequent = consequent;
-    }
-}
-
-export class GenericSelection extends Expression {
-    public discriminant: Expression;
-    public associations: GenericAssociation[];
-
-    constructor(location: SourceLocation, discriminant: Expression, associations: GenericAssociation[]) {
-        super(location);
-        this.discriminant = discriminant;
-        this.associations = associations;
-    }
-}
-
-export class CompoundLiteral extends Expression {
-    public typeName: TypeName;
-    public initializerList: InitializerList;
-
-    constructor(location: SourceLocation, typeName: TypeName, initializerList: InitializerList) {
-        super(location);
-        this.typeName = typeName;
-        this.initializerList = initializerList;
-    }
-}
-
 export class SubscriptExpression extends Expression {
     public array: Expression;
     public subscript: Expression;
@@ -306,6 +270,17 @@ export class CallExpression extends Expression {
     constructor(location: SourceLocation, callee: Expression, myArguments: Expression[]) {
         super(location);
         this.callee = callee;
+        this.arguments = myArguments;
+    }
+}
+
+export class ConstructorCallExpression extends Expression {
+    public name: TypedefName;
+    public arguments: Expression[];
+
+    constructor(location: SourceLocation, name: TypedefName, myArguments: Expression[]) {
+        super(location);
+        this.name = name;
         this.arguments = myArguments;
     }
 }
@@ -425,10 +400,11 @@ export class AtomicTypeSpecifier extends Node {
 export class StructOrUnionSpecifier extends Node {
     public union: boolean;
     public identifier: Identifier;
-    public declarations: Array<Declaration | FunctionDefinition> | null;
+    public declarations: Array<Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration> | null;
 
     constructor(location: SourceLocation, union: boolean,
-                identifier: Identifier, declarations: Array<Declaration | FunctionDefinition> | null) {
+                identifier: Identifier,
+                declarations: Array<Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration> | null) {
         super(location);
         this.union = union;
         this.identifier = identifier;
@@ -878,5 +854,51 @@ export class FunctionDefinition extends Node {
         this.body = body;
         this.parameterNames = [];
         this.name = "";
+    }
+}
+
+export class ConstructorOrDestructorDeclaration extends Node {
+    public isCtor: boolean;
+    public name: TypedefName;
+    public param: ParameterList | null;
+    public initList: ConstructorInitializeItem[] | null;
+    public body: CompoundStatement | null;
+
+    constructor(location: SourceLocation, isCtor: boolean, name: TypedefName, param: ParameterList | null,
+                initList: ConstructorInitializeItem[] | null, body: CompoundStatement | null) {
+        super(location);
+        this.isCtor = isCtor;
+        this.name = name;
+        this.param = param;
+        this.initList = initList;
+        this.body = body;
+    }
+}
+
+export class ConstructorInitializeItem extends Node {
+    public key: Identifier;
+    public value: Expression;
+
+    constructor(location: SourceLocation, key: Identifier, value: Expression) {
+        super(location);
+        this.key = key;
+        this.value = value;
+    }
+}
+
+export class AnanonymousExpression extends Expression {
+    public expr: ExpressionResult;
+
+    constructor(location: SourceLocation, expr: ExpressionResult) {
+        super(location);
+        this.expr = expr;
+    }
+
+    public codegen(ctx: CompileContext): ExpressionResult {
+        return this.expr;
+    }
+
+    public deduceType(ctx: CompileContext): Type {
+        return this.expr.type;
     }
 }

@@ -1,9 +1,20 @@
 import {
-    AssignmentExpression, BinaryExpression, CallExpression, CastExpression, ConditionalExpression,
+    AssignmentExpression,
+    BinaryExpression,
+    CallExpression,
+    CastExpression,
+    ConditionalExpression,
+    ConstructorCallExpression,
     FloatingConstant,
     Identifier,
-    IntegerConstant, MemberExpression,
-    ParenthesisExpression, PostfixExpression, StringLiteral, SubscriptExpression, TypeName, UnaryExpression,
+    IntegerConstant,
+    MemberExpression,
+    ParenthesisExpression,
+    PostfixExpression,
+    StringLiteral,
+    SubscriptExpression,
+    TypeName,
+    UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
@@ -254,6 +265,14 @@ ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type
     }
 };
 
+ConstructorCallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    const name = this.name.identifier.name;
+    const item = ctx.scopeManager.lookupAnyName(name);
+    if ( !(item instanceof ClassType) ) {
+        throw new SyntaxError(`constructor call must be class type`, this);
+    }
+    return item;
+};
 export function expression_type() {
     return "";
 }

@@ -33,7 +33,7 @@ export function getPrimitiveTypeFromSpecifiers(specifierStrings: string[]): Prim
     for (const [typeSpecifierStringsArray, primitiveType] of PrimitiveTypesNameMap.entries()) {
         for (const typeSpecifierStrings of typeSpecifierStringsArray) {
             if (isArrayEqual(specifierStrings, typeSpecifierStrings)) {
-                return primitiveType;
+                return primitiveType();
             }
         }
     }

@@ -78,10 +78,15 @@ export class MemoryLayout {
     }
 
     public enterFunction() {
+        this.stackScope.push(this.stackPtr);
         this.stackPtr = 0;
         this.localPtr = 0;
         this.stackScope = [];
         this.localTypes = [];
+    }
+
+    public exitFunction() {
+        this.stackPtr = this.stackScope.pop() as number;
     }
 
     public enterInnerScope() {

@@ -21,9 +21,9 @@ export interface Emitter {
 
     writeInt32(uint: number): void;
 
-    writeUint64(int: number): void;
+    writeUint64(int: string): void;
 
-    writeInt64(uint: number): void;
+    writeInt64(uint: string): void;
 
     writeFloat32(float: number): void;
 
@@ -108,11 +108,11 @@ export class WASMEmitter implements Emitter {
         writeLeb128Int(this, uint);
     }
 
-    public writeUint64(uint: number): void {
+    public writeUint64(uint: string): void {
         writeLeb128Uint(this, uint);
     }
 
-    public writeInt64(uint: number): void {
+    public writeInt64(uint: string): void {
         writeLeb128Int(this, uint);
     }
 

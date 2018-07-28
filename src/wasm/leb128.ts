@@ -24,7 +24,7 @@ export function readLeb128Int(stream: ByteStream): Bn {
     return num.fromTwos(shift);
 }
 
-export function writeLeb128Int(stream: ByteStream, number: number): void {
+export function writeLeb128Int(stream: ByteStream, number: number | string): void {
     let num = new Bn(number);
     const isNeg = num.isNeg();
     if (isNeg) {
@@ -62,7 +62,7 @@ export function readLeb128Uint(stream: ByteStream): Bn {
     return num;
 }
 
-export function writeLeb128Uint(stream: ByteStream, number: number): void {
+export function writeLeb128Uint(stream: ByteStream, number: number | string): void {
     const num = new Bn(number);
     while (true) {
         const i = num.maskn(7).toNumber();

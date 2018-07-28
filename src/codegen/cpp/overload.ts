@@ -6,6 +6,7 @@
 import {Node} from "../../common/ast";
 import {SyntaxError} from "../../common/error";
 import {FunctionEntity, FunctionType, PointerType, ReferenceType, Type} from "../../common/type";
+import {CompileContext} from "../context";
 import {FunctionLookUpResult} from "../scope";
 
 export function doStrictTypeMatch(dst: Type, src: Type): boolean {
@@ -31,7 +32,7 @@ export function doWeakTypeMatch(dst: Type, src: Type): boolean {
 export function doFunctionFilter(func: FunctionEntity, argus: Type[],
                                  funcs: FunctionLookUpResult,
                                  matcher: (dst: Type, src: Type) => boolean): boolean {
-    if (func.type.isMemberFunction) {
+    if (func.type.isMemberFunction()) {
         const first = func.type.parameterTypes[0];
         if (funcs.instanceType === null || !(first instanceof PointerType)) {
             return false;
@@ -47,8 +48,8 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
                                              argus: Type[], node: Node): FunctionEntity {
     // 1. filter parameter number
     const f1 = funcs.functions.filter((func) =>
-        (func.type.isMemberFunction && func.type.parameterTypes.length === argus.length + 1)
-        || (!func.type.isMemberFunction && func.type.parameterTypes.length === argus.length)
+        (func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length + 1)
+        || (!func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length)
         || func.type.variableArguments,
     );
 
@@ -85,4 +86,15 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
     }
 
     throw new SyntaxError(`no matching function for ${funcs.functions[0].name}`, node);
+}
+
+export function containsFunction(ctx: CompileContext, name: string, argus: Type[]): boolean {
+    const lookupResult = ctx.scopeManager.lookupFullName(name);
+    if ( !(lookupResult instanceof FunctionLookUpResult)) { return false; }
+    try {
+        doFunctionOverloadResolution(lookupResult, argus, {} as Node);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }

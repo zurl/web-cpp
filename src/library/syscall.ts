@@ -3,9 +3,9 @@
  *  @author zcy <zurl@live.com>
  *  Created at 08/07/2018
  */
+import BN = require("bn.js");
 import {RuntimeError} from "../common/error";
 import {Runtime} from "../runtime/runtime";
-import BN = require("bn.js");
 
 export function write(this: Runtime, fd: number, ptr: number, size: number): number {
     if (fd >= this.files.length) {
@@ -137,4 +137,8 @@ export function printf(this: Runtime): number {
     }
     const file = this.files[1];
     return file.write(printfBuffer.slice(0, size));
+}
+
+export function dump_stack_info(this: Runtime): void {
+    console.log("$sp = " + this.sp);
 }

@@ -325,6 +325,9 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
         if ( !expr.isLeft || !(expr.expr instanceof WAddressHolder) ) {
             throw new SyntaxError(`you could not get address of a right value `, this);
         }
+        if ( expr.type instanceof ArrayType) {
+            expr.type = expr.type.elementType;
+        }
         return {
             isLeft: false,
             type: new PointerType(expr.type),
