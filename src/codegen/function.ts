@@ -451,21 +451,15 @@ ConstructorCallExpression.prototype.codegen = function(ctx: CompileContext): Exp
     }
     const ctorName = classType.fullName + "::#" + classType.name;
     const callee = new Identifier(this.location, ctorName);
-    const objAddr = new WAddressHolder(ctx.memory.allocStack(classType.length),
-        AddressType.STACK, this.location);
-    const ptrType = new PointerType(classType);
-    const thisPtr = new AnanonymousExpression(this.location, {
-        isLeft: false,
-        expr: objAddr.createLoadAddress(ctx),
-        type: ptrType,
-    });
+    const tmpVarName = ctx.scopeManager.allocTmpVarName();
+    const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, classType,
+        AddressType.STACK, ctx.memory.allocStack(classType.length));
+    ctx.scopeManager.define(tmpVarName, tmpVar, this);
+    const thisVar = new Identifier(this.location, tmpVarName);
+    const thisPtr = new UnaryExpression(this.location, "&", thisVar);
     recycleExpressionResult(ctx, this,
         new CallExpression(this.location, callee, [thisPtr, ...this.arguments]).codegen(ctx));
-    return {
-        isLeft: true,
-        expr: objAddr,
-        type: classType,
-    };
+    return thisVar.codegen(ctx);
 };
 
 export function functions() {

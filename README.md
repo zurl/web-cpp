@@ -69,9 +69,9 @@ local var:  @foo@var1
 - [X] int64
 - [ ] `重要` ?:
 - [ ] `重要` 函数指针
+- [ ] `重要` #if #elif
 - [ ] bit field of struct
 - [ ] only export necessary scopeMap / debuginfo
-- [ ] `重要` #if #elif
 - [ ] #line __line__ __file__
 - [ ] remove Long.js
 - [ ] repeative param name detect
@@ -79,12 +79,12 @@ local var:  @foo@var1
 - [ ] __cxx_global_var_init
 - [ ] mangled/demangled
 - [X] default constructor
-- [ ] copy-constructor(use memcpy)
-- [ ] temporary object destruction
+- [X] copy-constructor(use memcpy)
+- [X] temporary object destruction
 - [X] destructor
 - [ ] 异常处理
 - [ ] 继承
-- [ ] 类型转换重载， if(object) { ... }
+- [ ] 类型转换重载， like if(object) { ... }
 - [X] 左值引用
 - [X] 静态成员变量
 - [X] 形如 A a(c,d)的初始化
@@ -92,7 +92,7 @@ local var:  @foo@var1
 - [X] inner scope => { }
 - [X] DTOR => 文法中
 - [X] ctor initialize list
-- [ ] copy-ctor
+- [X] copy-ctor
 - [X] copy-assignment-ctor
 - [ ] 访问控制
 - [X] 静态成员函数

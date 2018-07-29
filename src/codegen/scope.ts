@@ -141,6 +141,7 @@ export class ScopeManager {
     public activeScopes: Set<Scope>;
     public scopeId: number;
     public isCpp: boolean;
+    public tmpVarId: number;
 
     constructor(isCpp: boolean) {
         this.isCpp = isCpp;
@@ -148,6 +149,7 @@ export class ScopeManager {
         this.currentScope = this.root;
         this.activeScopes = new Set<Scope>([this.root]);
         this.scopeId = 0;
+        this.tmpVarId = 0;
     }
 
     public enterUnnamedScope() {
@@ -262,6 +264,10 @@ export class ScopeManager {
         return this.currentScope === this.root;
     }
 
+    public allocTmpVarName() {
+        return "$__" + this.tmpVarId++;
+    }
+
     private innerLookUp(shortName: string): Symbol | null {
         const realName = shortName.split("@")[0];
         const result = this.lookupFullName(this.currentScope.fullName
@@ -278,6 +284,7 @@ export class ScopeManager {
         }
         return item;
     }
+
 
     // // Member Lookuppppp
     // public isScopeActive(scopeName: string) {

@@ -23,17 +23,18 @@ struct A{
     int sb = 24;
     A() :sb(26){
         dump_stack_info();
-        printf("ctor: %d\\n", this->sb);
+        printf("CTOR: %d\\n", this->sb);
     }
     A(const A & b){
-        printf("copy %d\\n", b.sb);
+         printf("CCTOR %d\\n", b.sb);
         this->sb = b.sb;
     }
     A(int b){
         this->sb = b;
+        printf("CTOR: %d\\n", this->sb);
     }
     ~A(){
-        printf("dtor %d\\n", this->sb);
+        printf("DTOR %d\\n", this->sb);
     }
     static int foo(int a){
         return a + 1;
@@ -46,13 +47,13 @@ struct A{
     }
     int d;
     A operator+(int c){
-        printf(" opertor + \\n");
+        //printf(" opertor + \\n");
         A ret;
         ret.d = this->d + c;
         return ret;
     }
     A& operator=(A & a){
-        printf(" assign ctor\\n");
+        printf("ACTOR %d\\n", a.sb);
         this->d = a.d;
         this->sb = a.sb;
         return *this;
