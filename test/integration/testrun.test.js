@@ -25,11 +25,15 @@ struct A{
         dump_stack_info();
         printf("ctor: %d\\n", this->sb);
     }
+    A(const A & b){
+        printf("copy %d\\n", b.sb);
+        this->sb = b.sb;
+    }
     A(int b){
         this->sb = b;
     }
     ~A(){
-        printf("dtor\\n");
+        printf("dtor %d\\n", this->sb);
     }
     static int foo(int a){
         return a + 1;
@@ -62,12 +66,20 @@ A returnAObj(int b){
     a.d = b;
     return a;
 }
-
+A add1(A b){
+    A ret(b);
+    dump_stack_info();
+    printf("ss");
+    printf("b:%d, ret:%d\\n", b.sb, ret.sb);
+    ret.sb += 122;
+    return ret;
+}
 int main(){
     //A b = returnAObj(3);
     //A q = b + 5;
     A a(123);
-    printf("%d", a.sb);
+    A b = add1(a);
+    printf("%d, %d", a.sb, b.sb);
     dump_stack_info();
     dump_stack_info();
     A w = A();

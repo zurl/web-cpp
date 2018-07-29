@@ -31,8 +31,8 @@ export class WAddressHolder extends WExpression {
                        value: WExpression,
                        requireAlign: boolean = false): WStatement {
         let result: WStatement | null = null;
-        if ( type instanceof ArrayType || type instanceof ClassType ) {
-            throw new InternalError(`unsupport`);
+        if ( type instanceof ArrayType || type instanceof ClassType) {
+            throw new InternalError(`could not assign a array or class`);
         } else {
             const wtype = requireAlign ? getNativeType(type.toWType()) : type.toWType();
             switch (this.type) {

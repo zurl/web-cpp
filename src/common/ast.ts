@@ -466,7 +466,7 @@ export class InitDeclarator extends Node {
     }
 }
 
-export class ObjectInitializer extends Node{
+export class ObjectInitializer extends Node {
     public argus: Expression[];
 
     constructor(location: SourceLocation, argus: Expression[]) {

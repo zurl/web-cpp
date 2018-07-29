@@ -3,17 +3,30 @@
  *  @author zcy <zurl@live.com>
  *  Created at 16/06/2018
  */
+import Long = require("long");
 import {inspect} from "util";
 import {
     AnanonymousExpression,
-    CallExpression, ConstructorCallExpression,
-    Declaration, Declarator, Expression,
+    CallExpression,
+    ConstructorCallExpression,
+    Declaration,
+    Declarator,
+    Expression,
     ExpressionResult,
     FunctionDeclarator,
-    FunctionDefinition, Identifier,
-    IdentifierDeclarator, Node, ParameterList, ReturnStatement, Statement, UnaryExpression,
+    FunctionDefinition,
+    Identifier,
+    IdentifierDeclarator,
+    IntegerConstant,
+    MemberExpression,
+    Node,
+    ParameterList,
+    ReturnStatement,
+    Statement,
+    UnaryExpression,
 } from "../common/ast";
 import {assertType, SyntaxError} from "../common/error";
+import {FunctionEntity} from "../common/type";
 import {
     AddressType, ArrayType, ClassType, CppFunctionType,
     FunctionType, LeftReferenceType,
@@ -22,7 +35,6 @@ import {
     Type,
     Variable,
 } from "../common/type";
-import {FunctionEntity} from "../common/type";
 import {
     I32Binary,
     WBinaryOperation,
@@ -44,7 +56,7 @@ import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doValuePromote, getInStackSize} from "./conversion";
 import {getCtorStmts, getDtorStmts} from "./cpp/lifecycle";
-import {doFunctionOverloadResolution} from "./cpp/overload";
+import {doFunctionOverloadResolution, isFunctionExists} from "./cpp/overload";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
@@ -130,8 +142,7 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
             throw new SyntaxError(`unnamed parameter`, node);
         }
         if (type instanceof ClassType || type instanceof ArrayType ||
-            (functionEntity.type.variableArguments
-                && i === functionEntity.type.parameterTypes.length - 1)) {
+            (functionEntity.type.variableArguments)) {
             ctx.scopeManager.define(paramName, new Variable(
                 paramName, ctx.scopeManager.getFullName(paramName), ctx.fileName,
                 type, AddressType.STACK, stackParameterNow,
@@ -297,9 +308,11 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     let stackOffset = 0;
 
     if (funcType.variableArguments) {
-        for (let i = arguExprs.length - 1;
-             i > funcType.parameterTypes.length - 1; i--) {
+        for (let i = arguExprs.length - 1; i > funcType.parameterTypes.length - 1; i--) {
             const src = arguExprs[i];
+            if ( src.type instanceof ClassType ) {
+                throw new SyntaxError(`class type could not be variable arguments`, this);
+            }
             const newSrc = doValuePromote(ctx, src, this);
             stackOffset -= getInStackSize(newSrc.type.length);
             if (newSrc.expr instanceof FunctionLookUpResult) {
@@ -320,17 +333,46 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     for (let i = funcType.parameterTypes.length - 1; i >= 0; i--) {
         const dstType = funcType.parameterTypes[i];
         const src = arguExprs[i];
-        const srcExpr = doConversion(ctx, dstType, src, this, false, true).fold();
-        if (dstType instanceof ClassType || dstType instanceof ArrayType ||
-            (funcType.variableArguments
-                && i === funcType.parameterTypes.length - 1)) {
-            stackOffset -= getInStackSize(src.type.length);
-            argus.push(new WFakeExpression(
-                new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
-                    .createStore(ctx, src.type, srcExpr, true)
-                , this.location));
+        if ( dstType instanceof ClassType) {
+            const rightType = src.type;
+            const leftPtrType = new PointerType(dstType);
+            stackOffset -= getInStackSize(dstType.length);
+            const left = new AnanonymousExpression(this.location, {
+                type: leftPtrType,
+                isLeft: false,
+                expr: new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
+                    .createLoadAddress(ctx),
+            });
+            const right = new AnanonymousExpression(this.location, src);
+            const fullName = dstType.fullName + "::#" + dstType.name;
+            let expr: ExpressionResult;
+            if (isFunctionExists(ctx, fullName, [leftPtrType, rightType], null)) {
+                expr = new CallExpression(this.location,
+                        new Identifier(this.location, fullName),
+                    [left, right]).codegen(ctx);
+            } else {
+                const len = dstType.length;
+                expr = new CallExpression(this.location, new Identifier(this.location, "::memcpy"), [
+                    new UnaryExpression(this.location, "&", left),
+                    new UnaryExpression(this.location, "&", right),
+                    new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null),
+                ]).codegen(ctx);
+            }
+            if ( !(expr.expr instanceof WExpression)) {
+                throw new SyntaxError(`illegal arguments`, this);
+            }
+            argus.push(expr.expr);
         } else {
-            argus.push(srcExpr);
+            const srcExpr = doConversion(ctx, dstType, src, this, false, true).fold();
+            if (funcType.variableArguments) {
+                stackOffset -= getInStackSize(dstType.length);
+                argus.push(new WFakeExpression(
+                    new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
+                        .createStore(ctx, src.type, srcExpr, true)
+                    , this.location));
+            } else {
+                argus.push(srcExpr);
+            }
         }
     }
 

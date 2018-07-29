@@ -67,10 +67,11 @@ local var:  @foo@var1
 - [X] & array alias
 - [X] &
 - [X] int64
-- [ ] ?:
+- [ ] `重要` ?:
+- [ ] `重要` 函数指针
 - [ ] bit field of struct
 - [ ] only export necessary scopeMap / debuginfo
-- [ ] #if #elif
+- [ ] `重要` #if #elif
 - [ ] #line __line__ __file__
 - [ ] remove Long.js
 - [ ] repeative param name detect
@@ -79,30 +80,32 @@ local var:  @foo@var1
 - [ ] mangled/demangled
 - [X] default constructor
 - [ ] copy-constructor(use memcpy)
+- [ ] temporary object destruction
 - [X] destructor
 - [ ] 异常处理
 - [ ] 继承
+- [ ] 类型转换重载， if(object) { ... }
 - [X] 左值引用
 - [X] 静态成员变量
 - [X] 形如 A a(c,d)的初始化
 - [X] 构造函数 => 设计
-- [ ] inner scope => { }
+- [X] inner scope => { }
 - [X] DTOR => 文法中
 - [X] ctor initialize list
 - [ ] copy-ctor
-- [X]copy-assignment-ctor
+- [X] copy-assignment-ctor
 - [ ] 访问控制
 - [X] 静态成员函数
 - [X] 成员函数
 - [ ] 虚成员函数
 - [X] 函数重载
 - [X] 成员函数重载
-- [ ] 运算符重载 => working, binok, unary->working
+- [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [ ] using
+- [ ] namespace
 - [ ] 函数模板
 - [ ] const/override/virtual member function
 - [ ] class模板
 - [ ] new/delete
 - [ ] typeinfo
-- [ ] namespace
 - [ ] static_cast / dynamic_cast / reinterpret_cast

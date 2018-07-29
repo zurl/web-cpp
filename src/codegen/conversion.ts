@@ -8,7 +8,7 @@ import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
     AddressType,
     ArithmeticType,
-    ArrayType, FloatingType, FloatType,
+    ArrayType, ClassType, FloatingType, FloatType,
     IntegerType, LeftReferenceType,
     PointerType, PrimitiveTypes,
     Type,
@@ -62,6 +62,9 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
 
         if ( !(expr.expr instanceof WAddressHolder)) {
             throw new InternalError(`if( !(expr.expr instanceof WAddressHolder)) {`);
+        }
+        if (expr.type instanceof ClassType && !toReference){
+            throw new SyntaxError(`you should not convert a class to rvalue`, node);
         }
 
         if ( expr.type instanceof ArrayType ) {

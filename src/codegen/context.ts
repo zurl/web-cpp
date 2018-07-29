@@ -91,7 +91,7 @@ export class CompileContext {
 
     public triggerDtorsInner(node: Node) {
         let scope = this.scopeManager.currentScope;
-        while(scope.isInnerScope){
+        while (scope.isInnerScope) {
             this.triggerDtors(node, scope);
             scope = scope.parent;
         }

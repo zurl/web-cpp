@@ -65,7 +65,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
             return new CallExpression(this.location, new Identifier(this.location, "::memcpy"), [
                 new UnaryExpression(this.location, "&", this.left),
                 new UnaryExpression(this.location, "&", this.right),
-                new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null)
+                new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null),
             ]).codegen(ctx);
         }
     }

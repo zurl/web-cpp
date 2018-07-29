@@ -549,7 +549,7 @@ export class WGetAddress extends WExpression {
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
-        e.writeUint32(offset);
+        e.writeInt32(offset);
     }
 
     public length(e: Emitter): number {
@@ -561,7 +561,7 @@ export class WGetAddress extends WExpression {
         } else if ( this.form === WMemoryLocation.EXTERN ) {
             offset += e.getExternLocation(this.offsetName);
         }
-        return getLeb128UintLength(offset) + 1;
+        return getLeb128IntLength(offset) + 1;
     }
 
     public deduceType(e: Emitter): WType {
