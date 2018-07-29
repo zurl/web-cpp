@@ -1,5 +1,5 @@
 
-const {CompilerError} = require("../../dist/common/error");
+const {CompilerError,ParserError} = require("../../dist/common/error");
 const {NoInputFile, StringOutputFile} = require("../../dist/runtime/vmfile");
 const {NativeRuntime} = require("../../dist/runtime/native_runtime");
 const {Headers, Impls, JsAPIMap} = require("../../dist/library/index");
@@ -39,6 +39,9 @@ async function testRun(source, debug, isCpp){
     } catch (e) {
         if( e instanceof CompilerError){
             console.log(e.location.source);
+        }
+        if( e instanceof ParserError){
+            console.log(e.location.start.line);
         }
         throw e;
     }

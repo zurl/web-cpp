@@ -77,30 +77,32 @@ local var:  @foo@var1
 ## C++ Language
 - [ ] __cxx_global_var_init
 - [ ] mangled/demangled
-- [ ] default constructor / copy-constructor(use memcpy) / destructor
+- [X] default constructor
+- [ ] copy-constructor(use memcpy)
+- [X] destructor
 - [ ] 异常处理
 - [ ] 继承
 - [X] 左值引用
 - [X] 静态成员变量
-- [ ] 形如 A a(c,d)的初始化
-- [ ] 构造函数 => 设计
+- [X] 形如 A a(c,d)的初始化
+- [X] 构造函数 => 设计
 - [ ] inner scope => { }
-- [ ] DTOR => 文法中
-- [ ] ctor initialize list
-- [ ] copy-ctor, copy-assignment-ctor
+- [X] DTOR => 文法中
+- [X] ctor initialize list
+- [ ] copy-ctor
+- [X]copy-assignment-ctor
 - [ ] 访问控制
 - [X] 静态成员函数
 - [X] 成员函数
 - [ ] 虚成员函数
 - [X] 函数重载
 - [X] 成员函数重载
-- [ ] 运算符重载 => working
+- [ ] 运算符重载 => working, binok, unary->working
 - [ ] using
 - [ ] 函数模板
 - [ ] const/override/virtual member function
 - [ ] class模板
 - [ ] new/delete
 - [ ] typeinfo
-- [ ] 构造函数
 - [ ] namespace
 - [ ] static_cast / dynamic_cast / reinterpret_cast

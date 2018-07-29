@@ -110,5 +110,59 @@ describe('class integration test', function () {
         const expectOutput = `3,2,2,2,4,0,`;
         return await TestBase.testFullCode(testCode, expectOutput, true);
     });
-
+    it('test ctor & assign ctor', async function() {
+        const testCode = `
+#include <stdio.h>
+        
+        struct A{
+            static int bbb;
+            int sb = 24;
+            A() :sb(26){
+                printf("ctor: %d\\n", this->sb);
+            }
+            ~A(){
+                printf("dtor\\n");
+            }
+            static int foo(int a){
+                return a + 1;
+            }
+            int goo(int b){
+                printf("%d,", b);
+                printf("%d,", this->d);
+                printf("%d,", this->d + b);
+                return 0;
+            }
+            int d;
+            A operator+(int c){
+                printf("opertor + \\n");
+                A ret;
+                ret.d = this->d + c;
+                return ret;
+            }
+            A& operator=(A & a){
+                printf("assign ctor\\n");
+                this->d = a.d;
+                this->sb = a.sb;
+                return *this;
+            }
+        };
+        
+        int A::bbb;
+        
+        A returnAObj(int b){
+            A a;
+            a.d = b;
+            return a;
+        }
+        
+        int main(){
+            A b = returnAObj(3);
+            A q = b + 5;
+            A w = A();
+            printf("%d", w.sb);
+            return 0;
+        }`;
+        const expectOutput = `assign ctor\nopertor + \nassign ctor\nctor: 26\nassign ctor\n26`;
+        return await TestBase.testFullCode(testCode, expectOutput, true);
+    });
 });

@@ -9,16 +9,25 @@ import {
     Expression, ExpressionStatement,
     Identifier,
     MemberExpression,
-    Node,
+    Node, ObjectInitializer,
     Statement, UnaryExpression,
 } from "../../common/ast";
 import {SyntaxError} from "../../common/error";
 import {InternalError} from "../../common/error";
-import {ClassType, CppFunctionType, FunctionEntity, FunctionType, PointerType, PrimitiveTypes} from "../../common/type";
+import {
+    ClassType,
+    CppFunctionType,
+    FunctionEntity,
+    FunctionType,
+    PointerType,
+    PrimitiveTypes,
+    Variable,
+} from "../../common/type";
 import {CompileContext} from "../context";
-import {FunctionLookUpResult} from "../scope";
-import {isFunctionExists} from "./overload";
 import {defineFunction} from "../function";
+import {FunctionLookUpResult} from "../scope";
+import {recycleExpressionResult} from "../statement";
+import {isFunctionExists} from "./overload";
 
 export function getCtorStmts(ctx: CompileContext,
                              entity: FunctionEntity,
@@ -51,9 +60,21 @@ export function getCtorStmts(ctx: CompileContext,
                 new AssignmentExpression(node.location, "=",
                     left, initMap.get(field.name)!)));
         } else if (field.initializer !== null) {
-            ctorStmts.push(new ExpressionStatement(node.location,
-                new AssignmentExpression(node.location, "=",
-                    left, field.initializer)));
+            if (field.initializer instanceof ObjectInitializer) {
+                if (!(field.type instanceof ClassType)) {
+                    throw new SyntaxError(`only class type could apply object initializer`, node);
+                }
+                const ctorName = field.type.fullName + "::#" + field.type.name;
+                const callee = new Identifier(node.location, ctorName);
+                const thisPtr = new UnaryExpression(node.location, "&",
+                    left);
+                const expr = new CallExpression(node.location, callee, [thisPtr, ...field.initializer.argus]);
+                ctorStmts.push(new ExpressionStatement(node.location, expr));
+            } else {
+                ctorStmts.push(new ExpressionStatement(node.location,
+                    new AssignmentExpression(node.location, "=",
+                        left, field.initializer)));
+            }
         } else {
             if (field.type instanceof ClassType) {
                 const name = classType.fullName + "#" + classType.name;
@@ -100,17 +121,39 @@ export function getDtorStmts(ctx: CompileContext,
     return dtorStmts;
 }
 
+export function triggerDestructor(ctx: CompileContext, obj: Variable, node: Node) {
+    const classType = obj.type;
+    if (!(classType instanceof ClassType)) {
+        throw new InternalError(`triggerDestructor()`);
+    }
+    const fullName = classType.fullName + "::~" + classType.name;
+    const dtor = ctx.scopeManager.lookupFullName(fullName);
+    if (dtor === null) {
+        return;
+    }
+    recycleExpressionResult(ctx, node,
+        new CallExpression(node.location,
+            new MemberExpression(node.location, new Identifier(node.location, obj.name),
+                false, new Identifier(node.location, "~" + classType.name)), [],
+        ).codegen(ctx));
+
+}
+
 export function generateDefaultCtors(ctx: CompileContext,
                                      classType: ClassType,
                                      node: Node) {
     // 1. default ctor
     const defaultCtorRet = ctx.scopeManager
-        .lookupFullName(classType.fullName + "::$" + classType.name);
-    if ( defaultCtorRet === null || !(defaultCtorRet instanceof FunctionLookUpResult)) {
+        .lookupFullName(classType.fullName + "::#" + classType.name);
+    if (defaultCtorRet === null || !(defaultCtorRet instanceof FunctionLookUpResult)) {
         const shortName = "$" + classType.name;
         const funcType = new FunctionType(shortName, PrimitiveTypes.void,
             [new PointerType(classType)], ["this"], false);
         defineFunction(ctx, funcType, shortName, [], node);
     }
+
+    // 2. copy ctor
+
+    // TODO:: generate default copy constructor!
 
 }

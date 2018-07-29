@@ -216,13 +216,11 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         }
         if (bodyStatements.length > 0 && bodyStatements[bodyStatements.length - 1] instanceof WIfElseBlock) {
             // should do auto injection;
-            ctx.submitStatement(new WReturn(new WConst(
-                functionEntity.type.returnType.toWType(), "0"), node.location));
+            new ReturnStatement(node.location, null).codegen(ctx);
         }
     }
-
-    ctx.setStatementContainer(savedStatements);
     ctx.exitFunction();
+    ctx.setStatementContainer(savedStatements);
     ctx.submitFunction(new WFunction(
         functionEntity.fullName,
         returnWTypes,
@@ -375,6 +373,8 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
         throw new SyntaxError(`return outside function`, this);
     }
     // $sp = sp
+    ctx.triggerDtorsInner(this);
+
     ctx.submitStatement(
         new WSetGlobal(WType.u32, "$sp",
             new WGetLocal(WType.u32, ctx.currentFunction.$sp, this.location), this.location));

@@ -454,14 +454,24 @@ export class AlignmentSpecifier extends Node {
 
 export class InitDeclarator extends Node {
     public declarator: Declarator;
-    public initializer: Expression | InitializerList | null;
+    public initializer: Expression | ObjectInitializer| InitializerList | null;
     public isObjectDeclarator: boolean;
 
-    constructor(location: SourceLocation, declarator: Declarator, initializer: Expression | InitializerList | null) {
+    constructor(location: SourceLocation, declarator: Declarator,
+                initializer: Expression | ObjectInitializer | InitializerList | null) {
         super(location);
         this.declarator = declarator;
         this.initializer = initializer;
         this.isObjectDeclarator = true; // not function, set in syntax-check
+    }
+}
+
+export class ObjectInitializer extends Node{
+    public argus: Expression[];
+
+    constructor(location: SourceLocation, argus: Expression[]) {
+        super(location);
+        this.argus = argus;
     }
 }
 

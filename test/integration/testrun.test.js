@@ -25,6 +25,9 @@ struct A{
         dump_stack_info();
         printf("ctor: %d\\n", this->sb);
     }
+    A(int b){
+        this->sb = b;
+    }
     ~A(){
         printf("dtor\\n");
     }
@@ -63,7 +66,8 @@ A returnAObj(int b){
 int main(){
     //A b = returnAObj(3);
     //A q = b + 5;
-    
+    A a(123);
+    printf("%d", a.sb);
     dump_stack_info();
     dump_stack_info();
     A w = A();

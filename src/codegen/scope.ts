@@ -16,6 +16,7 @@ export class Scope {
     public children: Scope[];
     public map: Map<string, Symbol[]>;
     public isCpp: boolean;
+    public isInnerScope: boolean;
 
     constructor(shortName: string, parent: Scope | null, isCpp: boolean) {
         this.shortName = shortName;
@@ -29,6 +30,7 @@ export class Scope {
         this.children = [];
         this.map = new Map<string, Symbol[]>();
         this.isCpp = isCpp;
+        this.isInnerScope = false;
     }
 
     public declare(shortName: string, symbol: Symbol, node?: Node) {
@@ -150,6 +152,7 @@ export class ScopeManager {
 
     public enterUnnamedScope() {
         const newScope = new Scope("$" + this.scopeId++, this.currentScope, this.isCpp);
+        newScope.isInnerScope = true;
         this.currentScope.children.push(newScope);
         this.activeScopes.add(newScope);
         this.currentScope = newScope;

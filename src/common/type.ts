@@ -1,6 +1,6 @@
 import {FunctionLookUpResult} from "../codegen/scope";
 import {WType} from "../wasm";
-import {ConstructorInitializeItem, Expression, InitializerListItem} from "./ast";
+import {ConstructorInitializeItem, Expression, InitializerListItem, ObjectInitializer} from "./ast";
 import {InternalError, TypeError} from "./error";
 import {isArrayEqual} from "./utils";
 
@@ -412,7 +412,7 @@ export interface ClassField {
     name: string;
     type: Type;
     startOffset: number;
-    initializer: Expression | null;
+    initializer: Expression | ObjectInitializer | null;
 }
 
 export class ClassType extends Type {

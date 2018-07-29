@@ -787,9 +787,19 @@ InitDeclaratorList
     }
 
 InitDeclarator
-    = declarator:Declarator initializer:(_ '=' _ Initializer)? {
-        return new AST.InitDeclarator(getLocation(), declarator, extractOptional(initializer, 3));
+    = declarator:Declarator initializer:CppInitializer? {
+        return new AST.InitDeclarator(getLocation(), declarator, initializer || null);
     }
+    
+CppInitializer
+    = _'=' _ init:Initializer{
+        return init;
+    }
+    / _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+        console.log('gg');
+        return new AST.ObjectInitializer(getLocation(),  arguments_ || []);  
+    }
+    
 
 StorageClassSpecifier
     = ('typedef'
@@ -991,7 +1001,7 @@ DirectDeclarator
                 arguments: [false, qualifiers || [], null, true]
             };
         }
-        / '(' _ parameters:(ParameterList / IdentifierList)? _ &!')' {
+        / '(' _ parameters: ParameterList? _ ')' {
             return {
                 location: getLocation(),
                 type: AST.FunctionDeclarator,

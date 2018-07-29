@@ -4,13 +4,15 @@
  *  Created at 15/06/2018
  */
 import {SourceMapGenerator} from "source-map";
+import {Node} from "../common/ast";
 import {InternalError} from "../common/error";
 import {CompiledObject, ImportSymbol} from "../common/object";
-import {FunctionEntity} from "../common/type";
+import {ClassType, FunctionEntity, Variable} from "../common/type";
 import {WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
+import {triggerDestructor} from "./cpp/lifecycle";
 import {MemoryLayout} from "./memory";
-import {ScopeManager} from "./scope";
+import {Scope, ScopeManager} from "./scope";
 
 export interface CompileOptions {
     debug?: boolean;
@@ -78,11 +80,38 @@ export class CompileContext {
         this.currentFunction = functionEntity;
     }
 
+    public triggerDtors(node: Node, scope: Scope) {
+        for (const item of scope.map.values()) {
+            const x = item[0];
+            if (x instanceof Variable && x.type instanceof ClassType) {
+                triggerDestructor(this, x, node);
+            }
+        }
+    }
+
+    public triggerDtorsInner(node: Node) {
+        let scope = this.scopeManager.currentScope;
+        while(scope.isInnerScope){
+            this.triggerDtors(node, scope);
+            scope = scope.parent;
+        }
+        this.triggerDtors(node, scope);
+    }
+
     public exitFunction() {
         if (this.currentFunction == null) {
             throw new InternalError(`this.currentFunction==null`);
         }
         this.memory.exitFunction();
+        this.scopeManager.exitScope();
+    }
+
+    public enterScope() {
+        this.scopeManager.enterUnnamedScope();
+    }
+
+    public exitScope(node: Node) {
+        this.triggerDtors(node, this.scopeManager.currentScope);
         this.scopeManager.exitScope();
     }
 

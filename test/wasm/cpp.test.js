@@ -34,6 +34,7 @@ describe('cpp -> wasm', function () {
                 },
                 "::printf": JsAPIMap.printf,
                 "::memcpy": JsAPIMap.memcpy,
+                "::dump_stack_info": JsAPIMap.dump_stack_info,
             }
         };
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));

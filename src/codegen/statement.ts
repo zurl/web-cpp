@@ -36,9 +36,9 @@ export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: E
 }
 
 CompoundStatement.prototype.codegen = function(ctx: CompileContext) {
-    ctx.scopeManager.enterUnnamedScope();
+    ctx.enterScope();
     this.body.map((node) => node.codegen(ctx));
-    ctx.scopeManager.exitScope();
+    ctx.exitScope(this);
 };
 
 LabeledStatement.prototype.codegen = function(ctx: CompileContext) {
@@ -261,6 +261,7 @@ block{
 }
  */
 ForStatement.prototype.codegen = function(ctx: CompileContext) {
+    ctx.enterScope();
     if (this.init !== null) {
         if ( this.init instanceof Declaration) {
             this.init.codegen(ctx);
@@ -274,13 +275,16 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     const loopStatements: WStatement[] = [];
 
     const savedContainer = ctx.getStatementContainer();
-
     // <-- inner block -->
     ctx.setStatementContainer(innerBlockStatements);
     ctx.continueStack.push(ctx.blockLevel + 3);
     ctx.breakStack.push(ctx.blockLevel + 1);
     ctx.blockLevel += 3;
-    this.body.codegen(ctx);
+    if ( this.body instanceof CompoundStatement ) {
+        this.body.body.map((x) => x.codegen(ctx));
+    } else {
+        this.body.codegen(ctx);
+    }
     ctx.blockLevel += 3;
     ctx.continueStack.pop();
     ctx.breakStack.pop();
@@ -309,6 +313,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
 
     ctx.setStatementContainer(savedContainer);
     ctx.submitStatement(new WBlock(outerBlockStatements, this.location));
+    ctx.exitScope(this);
 };
 
 ContinueStatement.prototype.codegen = function(ctx: CompileContext) {

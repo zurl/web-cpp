@@ -7,7 +7,7 @@ import {
     AbstractArrayDeclarator,
     AbstractDeclarator, AbstractFunctionDeclarator, AbstractPointerDeclarator,
     ArrayDeclarator,
-    AssignmentExpression,
+    AssignmentExpression, CallExpression,
     Declaration,
     Declarator,
     EnumSpecifier,
@@ -15,14 +15,14 @@ import {
     Identifier,
     IdentifierDeclarator,
     InitializerList,
-    Node,
+    Node, ObjectInitializer,
     ParameterList,
     Pointer,
     PointerDeclarator,
     SpecifierType,
     StructOrUnionSpecifier,
     TranslationUnit,
-    TypedefName,
+    TypedefName, UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
 import {
@@ -264,14 +264,29 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
         }
 
         if (declarator.initializer != null) {
+            if ( type.isExtern) {
+                throw new SyntaxError(`extern vaiable could not have initializer`, this);
+            }
             if ( declarator.initializer instanceof InitializerList ) {
                 throw new InternalError("InitializerList not support");
             }
-            const expr = new AssignmentExpression(this.location, "=",
-                new Identifier(this.location, name),
-                declarator.initializer);
-            expr.isInitExpr = true;
-            recycleExpressionResult(ctx, this, expr.codegen(ctx));
+            if (declarator.initializer instanceof ObjectInitializer) {
+                if ( !(type instanceof ClassType)) {
+                    throw new SyntaxError(`only class type could apply object initializer`, this);
+                }
+                const ctorName = type.fullName + "::#" + type.name;
+                const callee = new Identifier(this.location, ctorName);
+                const thisPtr = new UnaryExpression(this.location, "&",
+                    new Identifier(this.location, name));
+                const expr = new CallExpression(this.location, callee, [thisPtr, ...declarator.initializer.argus]);
+                recycleExpressionResult(ctx, this, expr.codegen(ctx));
+            } else {
+                const expr = new AssignmentExpression(this.location, "=",
+                    new Identifier(this.location, name),
+                    declarator.initializer);
+                expr.isInitExpr = true;
+                recycleExpressionResult(ctx, this, expr.codegen(ctx));
+            }
         }
     }
 };

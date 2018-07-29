@@ -4,12 +4,13 @@
  *  Created at 03/07/2018
  */
 import {
+    CallExpression,
     CompoundStatement,
     ConstructorOrDestructorDeclaration,
     Declaration, Expression,
-    ExpressionResult, FunctionDefinition, InitializerList,
+    ExpressionResult, FunctionDefinition, Identifier, InitializerList,
     MemberExpression,
-    Node, ParameterList, Statement,
+    Node, ObjectInitializer, ParameterList, Statement,
     StructOrUnionSpecifier, UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
@@ -26,9 +27,9 @@ import {
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doReferenceTransform} from "./conversion";
+import {generateDefaultCtors} from "./cpp/lifecycle";
 import {lookupPreviousDeclaration, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {declareFunction, defineFunction, parseFunctionDeclarator} from "./function";
-import {generateDefaultCtors} from "./cpp/lifecycle";
 
 function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: ClassBuildContext, node: Node) {
     const baseType = parseTypeFromSpecifiers(ctx, decl.specifiers, node);
@@ -84,7 +85,7 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                     fieldType, AddressType.MEMORY_EXTERN, ctx.scopeManager.getFullName(fieldName)   ,
                 ), node);
             } else {
-                let initializer = null as (Expression | null);
+                let initializer = null as (Expression | ObjectInitializer | null);
                 if (declarator.initializer !== null) {
                     if (!ctx.isCpp()) {
                         throw new LanguageError(`field init is only support in c++`, node);
@@ -171,7 +172,8 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                 funcType.referenceClass = newItem;
                 funcType.initList = decl.initList!;
             } else {
-                funcType = new FunctionType("~" + name, PrimitiveTypes.void, [], [], false);
+                funcType = new FunctionType("~" + name, PrimitiveTypes.void,
+                    [new PointerType(newItem)], ["this"], false);
                 funcType.cppFunctionType = CppFunctionType.Destructor;
                 funcType.referenceClass = newItem;
             }
