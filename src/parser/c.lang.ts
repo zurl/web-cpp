@@ -796,7 +796,6 @@ CppInitializer
         return init;
     }
     / _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
-        console.log('gg');
         return new AST.ObjectInitializer(getLocation(),  arguments_ || []);  
     }
     
@@ -1258,9 +1257,13 @@ JumpStatement
 
 // A.2.4 External definitions
 
-TranslationUnit
+TranslationUnit 
+    = list:ExternalDeclarationList{
+        return new AST.TranslationUnit(getLocation(), list);
+    }
+ExternalDeclarationList
     = _ head:ExternalDeclaration tail:(_ ExternalDeclaration)* _ {
-        return new AST.TranslationUnit(getLocation(), buildList(head, tail, 1));
+        return buildList(head, tail, 1);
     }
 
 // REORDER: Declaration / FunctionDefinition (Don't know if necessary)
@@ -1268,6 +1271,21 @@ ExternalDeclaration
     = Declaration
     / FunctionDefinition
     / DeclarationMissingSemicolon
+    / UsingStatements
+    / 'namespace' _ name:Identifier _ '{' _ list:ExternalDeclarationList? _'}'{
+        currScope.typedefNames.set(name.name, true); 
+        return AST.NamespaceBlock(getLocation(), name, list || []);
+    }
+    
+UsingStatements 
+    = 'using' _ name:Identifier _ '=' _ decl:AbstractDeclarator _ ';'{
+        currScope.typedefNames.set(name.name, true); 
+        return new AST.UsingStatement(getLocation(), name, decl);
+    }
+    / 'using' _ 'namespace' _ name:TypedefName _ ';'{
+        currScope.typedefNames.set(name.name, true); 
+        return new AST.UsingNamespaceStatement(getLocation(), name);
+    } 
 
 FunctionDefinition 'function definition'
     = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:DeclarationList? _ body:CompoundStatement {

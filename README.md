@@ -23,6 +23,10 @@ local var:  @foo@var1
 
 # todolist
 
+## Road Map
+
+-2018.8.4 ?:, 函数指针，new，__cxx_global_var_init，namespace， using
+
 ## C language
 
 - [X] function call codegen / return codegen
@@ -67,7 +71,7 @@ local var:  @foo@var1
 - [X] & array alias
 - [X] &
 - [X] int64
-- [ ] `重要` ?:
+- [X] ?:
 - [ ] `重要` 函数指针
 - [ ] `重要` #if #elif
 - [ ] bit field of struct
@@ -76,15 +80,10 @@ local var:  @foo@var1
 - [ ] remove Long.js
 - [ ] repeative param name detect
 ## C++ Language
-- [ ] __cxx_global_var_init
-- [ ] mangled/demangled
 - [X] default constructor
 - [X] copy-constructor(use memcpy)
 - [X] temporary object destruction
 - [X] destructor
-- [ ] 异常处理
-- [ ] 继承
-- [ ] 类型转换重载， like if(object) { ... }
 - [X] 左值引用
 - [X] 静态成员变量
 - [X] 形如 A a(c,d)的初始化
@@ -94,12 +93,17 @@ local var:  @foo@var1
 - [X] ctor initialize list
 - [X] copy-ctor
 - [X] copy-assignment-ctor
-- [ ] 访问控制
 - [X] 静态成员函数
 - [X] 成员函数
-- [ ] 虚成员函数
 - [X] 函数重载
 - [X] 成员函数重载
+- [ ] __cxx_global_var_init
+- [ ] mangled/demangled
+- [ ] 异常处理
+- [ ] 继承
+- [ ] 类型转换重载， like if(object) { ... }
+- [ ] 访问控制
+- [ ] 虚成员函数
 - [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [ ] using
 - [ ] namespace

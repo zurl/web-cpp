@@ -28,7 +28,7 @@ export class NativeRuntime extends Runtime {
             for (const funcName of Object.keys(module)) {
                 const func = module[funcName] as Function;
                 module[funcName] = function() {
-                    func.apply(that, Array.from(arguments));
+                    func.apply(that, Array.from(arguments).reverse());
                 };
             }
         }

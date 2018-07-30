@@ -7,7 +7,7 @@ import Long = require("long");
 import {inspect} from "util";
 import {
     AnanonymousExpression,
-    CallExpression,
+    CallExpression, CastExpression,
     ConstructorCallExpression,
     Declaration,
     Declarator,
@@ -22,7 +22,7 @@ import {
     Node,
     ParameterList,
     ReturnStatement,
-    Statement,
+    Statement, TypeName,
     UnaryExpression,
 } from "../common/ast";
 import {assertType, SyntaxError} from "../common/error";
@@ -226,8 +226,8 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
             throw new SyntaxError(`not all path of function contains return in ${functionEntity.fullName}`, node);
         }
         if (bodyStatements.length > 0 && bodyStatements[bodyStatements.length - 1] instanceof WIfElseBlock) {
-            // should do auto injection;
-            new ReturnStatement(node.location, null).codegen(ctx);
+            // should do auto injection A FAKE INTEM;
+            new ReturnStatement(node.location, IntegerConstant.getZero()).codegen(ctx);
         }
     }
     ctx.exitFunction();

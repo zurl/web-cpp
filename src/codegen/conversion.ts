@@ -10,7 +10,7 @@ import {
     ArithmeticType,
     ArrayType, ClassType, FloatingType, FloatType,
     IntegerType, LeftReferenceType,
-    PointerType, PrimitiveTypes,
+    PointerType, PrimitiveTypes, ReferenceType,
     Type,
 } from "../common/type";
 import {getTypeConvertOpe, WType} from "../wasm/constant";
@@ -26,6 +26,9 @@ export function doTypeTransfrom(type: Type): Type {
         type = new PointerType(type.elementType);
     }
 
+    if (type instanceof ReferenceType) {
+        type = type.elementType;
+    }
     // func to pointer transform
     // TODO::
 
@@ -63,7 +66,7 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
         if ( !(expr.expr instanceof WAddressHolder)) {
             throw new InternalError(`if( !(expr.expr instanceof WAddressHolder)) {`);
         }
-        if (expr.type instanceof ClassType && !toReference){
+        if (expr.type instanceof ClassType && !toReference) {
             throw new SyntaxError(`you should not convert a class to rvalue`, node);
         }
 

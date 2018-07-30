@@ -162,7 +162,17 @@ describe('class integration test', function () {
             printf("%d", w.sb);
             return 0;
         }`;
-        const expectOutput = `assign ctor\nopertor + \nassign ctor\nctor: 26\nassign ctor\n26`;
+        const expectOutput = `dtor
+assign ctor
+opertor + 
+dtor
+assign ctor
+ctor: 26
+assign ctor
+26dtor
+dtor
+dtor
+dtor`;
         return await TestBase.testFullCode(testCode, expectOutput, true);
     });
 });

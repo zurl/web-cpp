@@ -285,7 +285,6 @@ export class ScopeManager {
         return item;
     }
 
-
     // // Member Lookuppppp
     // public isScopeActive(scopeName: string) {
     //

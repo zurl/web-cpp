@@ -7,7 +7,7 @@ import * as Long from "long";
 import {
     AssignmentExpression,
     BinaryExpression, CallExpression,
-    CastExpression, CharacterConstant,
+    CastExpression, CharacterConstant, ConditionalExpression,
     ExpressionResult,
     FloatingConstant, Identifier,
     IntegerConstant, MemberExpression,
@@ -26,7 +26,7 @@ import {
 } from "../common/type";
 import {I32Binary, I32Unary, WCall, WLoad, WType, WUnaryOperation} from "../wasm";
 import {BinaryOperator, getOpFromStr} from "../wasm/constant";
-import {WBinaryOperation, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";
+import {WBinaryOperation, WConditionalExpression, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doReferenceTransform, doValueTransform} from "./conversion";
@@ -421,30 +421,35 @@ PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionR
     return ope;
 };
 
-// ConditionalExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-//     const test = this.test.codegen(ctx);
-//     const targetType = extractRealType(this.deduceType(ctx));
-//     loadIntoStack(ctx, test);
-//     const t0 = ctx.currentBuilder.now;
-//     ctx.build(OpCode.JZ, 0);
-//     const con = this.consequent.codegen(ctx);
-//     loadIntoStack(ctx, con);
-//     convertTypeOnStack(ctx, targetType, extractRealType(con.type));
-//     const t1 = ctx.currentBuilder.now;
-//     ctx.build(OpCode.J, 0);
-//     const t2 = ctx.currentBuilder.now;
-//     ctx.currentBuilder.codeView.setUint32(t0 + 1, t2 - t0);
-//     const alt = this.alternate.codegen(ctx);
-//     loadIntoStack(ctx, alt);
-//     convertTypeOnStack(ctx, targetType, extractRealType(alt.type));
-//     const t3 = ctx.currentBuilder.now;
-//     ctx.currentBuilder.codeView.setUint32(t1 + 1, t3 - t1);
-//     return {
-//         type: targetType,
-//         form: ExpressionResultType.RVALUE,
-//         value: 0,
-//     };
-// };
+ConditionalExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    const test = doConversion(ctx, PrimitiveTypes.int32, this.test.codegen(ctx), this);
+    const targetType = this.deduceType(ctx);
+
+    const left = this.consequent.codegen(ctx);
+    const right = this.alternate.codegen(ctx);
+    if ( targetType instanceof ClassType ) {
+        const refType = new LeftReferenceType(targetType);
+        return {
+            type: refType,
+            expr: new WAddressHolder(new WConditionalExpression(
+                test,
+                doConversion(ctx, refType, left, this, false, true),
+                doConversion(ctx, refType, right, this, false, true),
+            ), AddressType.RVALUE, this.location),
+            isLeft: true,
+        };
+    } else {
+        return {
+            type: targetType,
+            expr: new WConditionalExpression(
+                test,
+                doConversion(ctx, targetType, left, this),
+                doConversion(ctx, targetType, right, this),
+            ),
+            isLeft: false,
+        };
+    }
+};
 
 export function expression() {
     return "";

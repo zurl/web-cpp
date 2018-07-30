@@ -588,3 +588,75 @@ export class WGetAddress extends WExpression {
         }
     }
 }
+
+export class WConditionalExpression extends WExpression {
+    public condition: WExpression;
+    public consequence: WExpression;
+    public alternative: WExpression;
+
+    constructor(condition: WExpression, consequence: WExpression,
+                alternative: WExpression, location?: SourceLocation) {
+        super(location);
+        this.condition = condition;
+        this.consequence = consequence;
+        this.alternative = alternative;
+    }
+
+    public deduceType(e: Emitter): WType {
+        const l = this.consequence.deduceType(e);
+        const r = this.alternative.deduceType(e);
+        if (getNativeType(l) === getNativeType(r)) {
+            return getNativeType(l);
+        } else {
+            throw new EmitError(`type mismatch at contional expression`);
+        }
+    }
+
+    public fold(): WExpression {
+        return this;
+    }
+
+    public isPure(): boolean {
+        return this.condition.isPure() && this.alternative.isPure() &&
+            this.alternative.isPure();
+    }
+
+    public emit(e: Emitter): void {
+        this.condition.emit(e);
+        e.writeByte(Control.if);
+        e.writeByte(this.deduceType(e));
+        this.consequence.emit(e);
+        e.writeByte(Control.else);
+        this.alternative.emit(e);
+        e.writeByte(Control.end);
+    }
+
+    public length(e: Emitter): number {
+        return 4 + this.condition.length(e)
+        + this.consequence.length(e)
+        + this.alternative.length(e);
+    }
+
+    public dump(e: Emitter): void {
+        e.dump(`ifexpr(`, this.location);
+        this.condition.dump(e);
+        e.dump(`){`, this.location);
+        e.changeDumpIndent(+1);
+        this.consequence.dump(e);
+        e.changeDumpIndent(-1);
+        e.dump(`}else{`);
+        e.changeDumpIndent(+1);
+        this.alternative.dump(e);
+        e.changeDumpIndent(-1);
+        e.dump(`}`);
+
+    }
+    public optimize(e: Emitter): void {
+        this.condition = this.condition.fold();
+        this.condition.optimize(e);
+        this.alternative = this.alternative.fold();
+        this.alternative.optimize(e);
+        this.consequence = this.consequence.fold();
+        this.consequence.optimize(e);
+    }
+}
