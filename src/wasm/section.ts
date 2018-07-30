@@ -4,7 +4,7 @@
  *  Created at 14/07/2018
  */
 import {SourceLocation} from "../common/ast";
-import {Control, getNativeType, SectionCode, WType} from "./constant";
+import {Control, getNativeType, OpCodes, SectionCode, WType} from "./constant";
 import {Emitter} from "./emitter";
 import {WConst} from "./expression";
 import {getLeb128UintLength} from "./leb128";
@@ -337,7 +337,7 @@ export class WImportMemory extends WImportItem {
     public emit(e: Emitter): void {
         super.emit(e);
         e.writeByte(0x02);
-        if ( this.max === null ) {
+        if (this.max === null) {
             e.writeByte(0x00);
             e.writeUint32(this.min);
         } else {
@@ -348,7 +348,7 @@ export class WImportMemory extends WImportItem {
     }
 
     public length(e: Emitter): number {
-        if ( this.max === null ) {
+        if (this.max === null) {
             return super.length(e) + 2 + getLeb128UintLength(this.min);
         } else {
             return super.length(e) + 2 + getLeb128UintLength(this.min) +
@@ -506,6 +506,58 @@ export class WGlobalSection extends WSection {
     }
 }
 
+export class WTable extends WNode {
+
+    constructor(location?: SourceLocation) {
+        super(location);
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(0x70);
+        e.writeByte(0x00);
+        e.writeUint32(10);
+    }
+
+    public length(e: Emitter): number {
+        return 2 + getLeb128UintLength(10);
+    }
+
+    public dump(e: Emitter) {
+        e.dump(`(table)`, this.location);
+    }
+}
+
+export class WTableSection extends WSection {
+
+    public tables: WTable[];
+
+    constructor(tables: WTable[], location?: SourceLocation) {
+        super(location);
+        this.tables = tables;
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(SectionCode.table);
+        e.writeUint32(this.getBodyLength(e));
+        e.writeUint32(this.tables.length);
+        this.tables.map((x) => x.emit(e));
+    }
+
+    public getBodyLength(e: Emitter): number {
+        return getLeb128UintLength(this.tables.length) +
+            getArrayLength(this.tables, (x) => x.length(e));
+    }
+
+    public length(e: Emitter): number {
+        return getLeb128UintLength(this.getBodyLength(e)) +
+            this.getBodyLength(e) + 1;
+    }
+
+    public dump(e: Emitter) {
+        e.dump(`(global)`, this.location);
+    }
+}
+
 export class WDataSegment extends WNode {
     public memIdx: number;
     public offset: WExpression;
@@ -573,6 +625,70 @@ export class WDataSection extends WSection {
         e.changeDumpIndent(-1);
         e.dump(`)`, this.location);
     }
+}
+
+export class WElement extends WNode {
+
+    public len: number;
+    public offset: WExpression;
+
+    constructor(idx: number, location?: SourceLocation) {
+        super(location);
+        this.len = idx;
+        this.offset = new WConst(WType.i32, "0", location);
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(0x00); // table idx
+        this.offset.emit(e);
+        e.writeByte(Control.end);
+        e.writeUint32(this.len);
+        for (let i = 0; i < this.len; i++) {
+            e.writeUint32(i);
+        }
+    }
+
+    public length(e: Emitter): number {
+        let len = 2 + this.offset.length(e) + getLeb128UintLength(this.len);
+        for (let i = 0; i < this.len; i++) {
+           len += getLeb128UintLength(i);
+        }
+        return len;
+    }
+
+    public dump(e: Emitter): void {
+        e.dump(`(elem)`, this.location);
+    }
+}
+
+export class WElementSection extends WSection {
+    public elems: WElement[];
+
+    constructor(len: number, location?: SourceLocation) {
+        super(location);
+        this.elems = [new WElement(len, location)];
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(SectionCode.element);
+        e.writeUint32(this.getBodyLength(e));
+        e.writeUint32(this.elems.length);
+        this.elems.map((x) => x.emit(e));
+    }
+
+    public getBodyLength(e: Emitter): number {
+        return getLeb128UintLength(this.elems.length) +
+            getArrayLength(this.elems, (x) => x.length(e));
+    }
+
+    public length(e: Emitter): number {
+        return getLeb128UintLength(this.getBodyLength(e)) +
+            this.getBodyLength(e) + 1;
+    }
+
+    public dump(e: Emitter): void {
+        e.dump(`(elem)`, this.location);
+    }
 
 }
 
@@ -594,6 +710,8 @@ export class WModule extends WNode {
     public exportSection: WExportSection;
     public codeSection: WCodeSection;
     public dataSection: WDataSection;
+    public tableSection: WTableSection;
+    public elementSection: WElementSection;
     public generateMemory: boolean;
     public functions: WFunction[];
 
@@ -620,7 +738,8 @@ export class WModule extends WNode {
         this.codeSection = new WCodeSection(config.functions, this.location);
         this.exportSection = new WExportSection(exports, this.location);
         this.dataSection = new WDataSection(config.data, this.location);
-
+        this.tableSection = new WTableSection([new WTable(this.location)], this.location);
+        this.elementSection = new WElementSection(funcTypes.length, this.location);
     }
 
     public emit(e: Emitter): void {
@@ -629,11 +748,13 @@ export class WModule extends WNode {
         this.typeSection.emit(e);
         this.importSection.emit(e);
         this.functionSection.emit(e);
+        this.tableSection.emit(e);
         if (this.generateMemory) {
             this.memorySection.emit(e);
         }
         this.globalSection.emit(e);
         this.exportSection.emit(e);
+        this.elementSection.emit(e);
         this.codeSection.emit(e);
         this.dataSection.emit(e);
     }
