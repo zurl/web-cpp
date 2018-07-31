@@ -25,7 +25,7 @@ import {
     Statement, TypeName,
     UnaryExpression,
 } from "../common/ast";
-import {assertType, SyntaxError} from "../common/error";
+import {assertType, InternalError, SyntaxError} from "../common/error";
 import {FunctionEntity} from "../common/type";
 import {
     AddressType, ArrayType, ClassType, CppFunctionType,
@@ -48,7 +48,7 @@ import {
     WType,
 } from "../wasm";
 import {getNativeType} from "../wasm/constant";
-import {WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
+import {WCallIndirect, WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WFunctionType} from "../wasm/section";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
@@ -266,38 +266,50 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
 
 CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     const callee = this.callee.codegen(ctx);
+
     if (callee.type instanceof PointerType) {
         callee.type = callee.type.elementType;
     }
 
+    let funcType: FunctionType;
+    let funcEntity: FunctionEntity | null = null;
+
     const lookUpResult = callee.expr;
-    if (!(lookUpResult instanceof FunctionLookUpResult)) {
-        throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
-    }
-
-    let entity: FunctionEntity | null = lookUpResult.functions[0];
-
-    if (ctx.isCpp()) {
-        entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
-    }
-
-    if (entity === null) {
-        throw new SyntaxError(`no matching function for ${lookUpResult.functions[0].name}`, this);
-    }
-
-    const funcType = entity.type;
     const thisPtrs: ExpressionResult[] = [];
 
-    if (funcType.isMemberFunction()) {
-        if (lookUpResult.instance === null || lookUpResult.instanceType === null) {
-            throw new SyntaxError(`call a member function must bind a object`, this);
+    if (lookUpResult instanceof FunctionLookUpResult) {
+        if (!(lookUpResult instanceof FunctionLookUpResult)) {
+            throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
         }
-        thisPtrs.push({
-            expr: lookUpResult.instance.createLoadAddress(ctx),
-            type: new PointerType(lookUpResult.instanceType),
-            isLeft: false,
-        });
+
+        let entity: FunctionEntity | null = lookUpResult.functions[0];
+
+        if (ctx.isCpp()) {
+            entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
+        }
+
+        if (entity === null) {
+            throw new SyntaxError(`no matching function for ${lookUpResult.functions[0].name}`, this);
+        }
+        funcType = entity.type;
+        funcEntity = entity;
+        if (funcType.isMemberFunction()) {
+            if (lookUpResult.instance === null || lookUpResult.instanceType === null) {
+                throw new SyntaxError(`call a member function must bind a object`, this);
+            }
+            thisPtrs.push({
+                expr: lookUpResult.instance.createLoadAddress(ctx),
+                type: new PointerType(lookUpResult.instanceType),
+                isLeft: false,
+            });
+        }
+    } else if (callee.type instanceof FunctionType) {
+        funcType = callee.type;
+    } else {
+        throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
+
     }
+
     const arguExprs = [...thisPtrs, ... this.arguments.map((x) => x.codegen(ctx))];
 
     if (funcType.parameterTypes.length > arguExprs.length) {
@@ -392,11 +404,22 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
 
     }
 
+    let funcExpr: WExpression;
+
+    if ( funcEntity === null ) {
+        callee.type = PrimitiveTypes.int32;
+        ctx.requiredWASMFuncTypes.add(funcType.toWASMEncoding()); // require by wasm
+        funcExpr = new WCallIndirect(doConversion(ctx, PrimitiveTypes.int32, callee, this),
+            funcType.toWASMEncoding(), argus, afterStatements, this.location);
+    } else {
+        funcExpr = new WCall(funcEntity.fullName, argus, afterStatements, this.location);
+    }
+
     if (funcType.returnType instanceof ClassType) {
         return {
             type: funcType.returnType,
             expr: new WAddressHolder(
-                new WCall(entity.fullName, argus, afterStatements, this.location),
+                funcExpr,
                 AddressType.RVALUE,
                 this.location),
             isLeft: true,
@@ -404,7 +427,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     } else {
         return {
             type: funcType.returnType,
-            expr: new WCall(entity.fullName, argus, afterStatements, this.location),
+            expr: funcExpr,
             isLeft: false,
         };
     }

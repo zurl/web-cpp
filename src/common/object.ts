@@ -31,6 +31,7 @@ export interface CompiledObject {
     imports: ImportSymbol[];
     exports: ExportSymbol[];
     data: ArrayBuffer;
+    requiredWASMFuncTypes: Set<string>;
 
     // debug only
     source?: string;

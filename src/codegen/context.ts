@@ -41,6 +41,7 @@ export class CompileContext {
     public switchContext: SwitchContext | null;
     public breakStack: number[];
     public continueStack: number[];
+    public requiredWASMFuncTypes: Set<string>;
 
     // result
     public functions: WFunction[];
@@ -67,6 +68,7 @@ export class CompileContext {
         this.breakStack = [];
         this.continueStack = [];
         this.blockLevel = 0;
+        this.requiredWASMFuncTypes = new Set<string>();
     }
 
     public isCpp(): boolean {
@@ -146,6 +148,7 @@ export class CompileContext {
             globalStatements: this.statementContainer,
             source: this.source,
             sourceMap: this.sourceMap,
+            requiredWASMFuncTypes: this.requiredWASMFuncTypes,
         };
     }
 }

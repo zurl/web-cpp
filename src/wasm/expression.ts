@@ -114,7 +114,6 @@ export class WCall extends WExpression {
         e.dump(`call ${this.target}`, this.location);
         this.afterStatements.map((x) => x.dump(e));
     }
-
 }
 
 export class WUnaryOperation extends WExpression {
@@ -659,4 +658,96 @@ export class WConditionalExpression extends WExpression {
         this.consequence = this.consequence.fold();
         this.consequence.optimize(e);
     }
+}
+
+
+export class WGetFunctionAddress extends WExpression{
+    public name: string;
+
+
+    constructor(name: string, location?: SourceLocation) {
+        super(location);
+        this.name = name;
+    }
+
+    public dump(e: Emitter): void {
+        e.dump(`getfuncaddr ${this.name}`);
+    }
+
+    public emit(e: Emitter): void {
+        e.writeByte(I32.const);
+        e.writeUint32(e.getFuncIdx(this.name));
+    }
+
+    public length(e: Emitter): number {
+        return 1 + getLeb128UintLength(e.getFuncIdx(this.name));
+    }
+
+    public deduceType(e: Emitter): WType {
+        return WType.i32;
+    }
+
+    public fold(): WExpression {
+        return this;
+    }
+
+    public isPure(): boolean {
+        return true;
+    }
+}
+
+export class WCallIndirect extends WExpression {
+    public target: WExpression;
+    public argument: WExpression[];
+    public afterStatements: WStatement[];
+    public typeEncoding: string;
+
+    constructor(target: WExpression, typeEncoding: string, argument: WExpression[],
+                afterStatements: WStatement[], location?: SourceLocation) {
+        super(location);
+        this.target = target;
+        this.typeEncoding = typeEncoding;
+        this.argument = argument;
+        this.afterStatements = afterStatements;
+    }
+
+    public emit(e: Emitter): void {
+        this.argument.map((x) => x.emit(e));
+        this.target.emit(e);
+        e.writeByte(Control.call_indirect);
+        e.writeByte(e.getTypeIdxFromEncoding(this.typeEncoding));
+        e.writeByte(0x00);
+        this.afterStatements.map((x) => x.emit(e));
+    }
+
+    public length(e: Emitter): number {
+        return getArrayLength(this.argument, (x) => x.length(e)) +
+            getArrayLength(this.afterStatements, (x) => x.length(e)) +
+            3 + this.target.length(e);
+    }
+
+    public deduceType(e: Emitter): WType {
+        if(this.typeEncoding.charAt(0) === "v") {
+            return WType.none;
+        } else {
+            return this.typeEncoding.charCodeAt(0) as WType;
+        }
+    }
+
+    public fold(): WExpression {
+        this.argument = this.argument.map((x) => x.fold());
+        return this;
+    }
+
+    public isPure(): boolean {
+        return false;
+    }
+
+    public dump(e: Emitter): void {
+        this.argument.map((x) => x.dump(e));
+        this.target.dump(e);
+        e.dump(`call_indirect`, this.location);
+        this.afterStatements.map((x) => x.dump(e));
+    }
+
 }

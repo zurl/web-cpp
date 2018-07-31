@@ -171,6 +171,11 @@ UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
 
 CallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     const calleeType = this.callee.deduceType(ctx);
+
+    if (calleeType instanceof PointerType && calleeType.elementType instanceof FunctionType) {
+        return calleeType.elementType.returnType;
+    }
+
     if (!(calleeType instanceof UnresolveFunctionOverloadType)) {
         throw new TypeError(`the callee is not function`, this);
     }

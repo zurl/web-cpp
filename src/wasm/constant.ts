@@ -436,6 +436,7 @@ export enum WType {
     i16 = 0x05,
     u16 = 0x06,
     none = 0x00,
+    any = 0x07,
 }
 
 export enum SectionCode {

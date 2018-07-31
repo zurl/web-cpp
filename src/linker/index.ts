@@ -39,8 +39,9 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     const functions: WFunction[] = [];
     const data: WDataSegment[] = [];
     const initFuncNames: string[] = [];
-    const externVarMap: Map<string, number> = new Map<string, number>();
-    const sourceMap: Map<string, SourceMap> = new Map<string, SourceMap>();
+    const externVarMap = new Map<string, number>();
+    const sourceMap = new Map<string, SourceMap>();
+    const requiredFuncTypes = new Set<string>();
 
     // 0. construct sourceMap
     for (const object of objects) {
@@ -49,6 +50,8 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
             sourceMap: object.sourceMap!,
             lastLine: 0,
         });
+        Array.from(object.requiredWASMFuncTypes.keys())
+            .map((x) => requiredFuncTypes.add(x));
     }
 
     const entry = [];
@@ -141,6 +144,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         ],
         data,
         generateMemory: false,
+        requiredFuncTypes: Array.from(requiredFuncTypes.keys()),
     });
 
     fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");

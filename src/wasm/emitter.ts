@@ -39,6 +39,10 @@ export interface Emitter {
 
     getFuncType(name: string): WFunctionType;
 
+    setTypeIdxFromEncoding(encoding: string, idx: number): void;
+
+    getTypeIdxFromEncoding(encoding: string): number;
+
     setCurrentFunc(func?: WFunction): void;
 
     getCurrentFunc(): WFunction;
@@ -67,6 +71,7 @@ export class WASMEmitter implements Emitter {
     public currentFunc?: WFunction;
     public externMap: Map<string, number>;
     public sourceMap?: Map<string, SourceMap>;
+    public funcTypeEncodingMap: Map<string, number>;
 
     // dump
 
@@ -88,6 +93,7 @@ export class WASMEmitter implements Emitter {
         this.externMap = new Map<string, number>();
         this.dumpIndent = 0;
         this.lastLine = 0;
+        this.funcTypeEncodingMap = new Map<string, number>();
     }
 
     public writeByte(byte: number): void {
@@ -239,6 +245,18 @@ export class WASMEmitter implements Emitter {
 
     public changeDumpIndent(delta: number): void {
         this.dumpIndent += delta;
+    }
+
+    public getTypeIdxFromEncoding(encoding: string): number {
+        const item = this.funcTypeEncodingMap.get(encoding);
+        if (!item) {
+            throw new EmitError(`unresolve type ${encoding}`);
+        }
+        return item;
+    }
+
+    public setTypeIdxFromEncoding(encoding: string, idx: number): void {
+        this.funcTypeEncodingMap.set(encoding, idx);
     }
 
 }

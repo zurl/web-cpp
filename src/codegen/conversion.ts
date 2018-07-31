@@ -8,17 +8,18 @@ import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {
     AddressType,
     ArithmeticType,
-    ArrayType, ClassType, FloatingType, FloatType,
+    ArrayType, ClassType, FloatingType, FloatType, FunctionType,
     IntegerType, LeftReferenceType,
     PointerType, PrimitiveTypes, ReferenceType,
     Type,
 } from "../common/type";
 import {getTypeConvertOpe, WType} from "../wasm/constant";
-import {WConst, WCovertOperation} from "../wasm/expression";
+import {WConst, WCovertOperation, WGetFunctionAddress} from "../wasm/expression";
 import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {FunctionLookUpResult} from "./scope";
+import {doFunctionOverloadResolution} from "./cpp/overload";
 
 export function doTypeTransfrom(type: Type): Type {
     // array to pointer transform
@@ -112,6 +113,10 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
     src = doValueTransform(ctx, src, node, shouldToReference);
 
     if ( src.expr instanceof FunctionLookUpResult) {
+        if( dstType instanceof PointerType && dstType.elementType instanceof FunctionType){
+            const item = doFunctionOverloadResolution(src.expr, dstType.elementType.parameterTypes, node);
+            return new WGetFunctionAddress(item.fullName, node.location);
+        }
         throw new SyntaxError(`unsupport function name`, node);
     }
 

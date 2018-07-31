@@ -85,10 +85,6 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         throw new SyntaxError(`could not assign to a right value`, this);
     }
 
-    if (right.expr instanceof FunctionLookUpResult) {
-        throw new SyntaxError(`could not assign a function name`, this);
-    }
-
     if ( left.type instanceof ArrayType) {
         throw new SyntaxError(`unsupport array assignment`, this);
     }

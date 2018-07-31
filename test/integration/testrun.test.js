@@ -93,25 +93,23 @@ int main(){
 const source3 = `
 #include <stdio.h>
 
-struct A{
-    int d;
-    A(int c):d(c){}
-};
+int foo(int a){
+    return a + 1;
+}
+
+int goo(int b){
+    return b + 12;
+}
 
 int main(){
-    int a = 5;
-    int b = 6;
-    int c = 8;
-    int d = (a == 5) ? b : c;
-    int e = (a == 12) ? b : c;
-    printf("%d,%d,", d, e);
-    A a0(2), a1(3);
-    printf("%d,%d,", a0.d, a1.d);
-    A a3 = (a == 5) ? a0 : a1;
-    A a4 = (a == 12) ? a0 : a1;
-    printf("%d,%d,", a3.d, a4.d);
+    int (*ptr)(int);
+    ptr = goo;
+    
+    printf("%d", ptr(12));
+    
     return 0;
 }
+
 `;
 describe('test run', function(){
     it('test run', async function(){

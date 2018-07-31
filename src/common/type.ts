@@ -1,5 +1,6 @@
 import {FunctionLookUpResult} from "../codegen/scope";
 import {WType} from "../wasm";
+import {getNativeType} from "../wasm/constant";
 import {ConstructorInitializeItem, Expression, InitializerListItem, ObjectInitializer} from "./ast";
 import {InternalError, TypeError} from "./error";
 import {isArrayEqual} from "./utils";
@@ -8,6 +9,7 @@ const MACHINE_POINTER_LENGTH = 4;
 
 export abstract class Symbol {
     public abstract isDefine(): boolean;
+
     public abstract getType(): Type;
 }
 
@@ -33,8 +35,11 @@ export abstract class Type extends Symbol {
     }
 
     public abstract toWType(): WType;
+
     public abstract toString(): string;
+
     public abstract get length(): number;
+
     public abstract toMangledName(): string;
 
     public isDefine() {
@@ -306,6 +311,7 @@ export class UnsignedInt64Type extends UnsignedIntegerType {
     public toWType() {
         return WType.u64;
     }
+
     public toMangledName(): string {
         return "ul";
     }
@@ -398,7 +404,19 @@ export class FunctionType extends Type {
 
     public isMemberFunction(): boolean {
         return this.cppFunctionType === CppFunctionType.Destructor
-        || this.cppFunctionType === CppFunctionType.MemberFunction;
+            || this.cppFunctionType === CppFunctionType.MemberFunction;
+    }
+
+    public toWASMEncoding(): string {
+        let result = "";
+        if (!(this.returnType instanceof ClassType)) {
+            result += String.fromCharCode(getNativeType(this.returnType.toWType()));
+        } else {
+            result += "v";
+        }
+        this.parameterTypes.filter((ty) => !(ty instanceof ClassType))
+            .map((ty) => result += String.fromCharCode(getNativeType(ty.toWType())));
+        return result;
     }
 }
 
@@ -438,11 +456,11 @@ export class ClassType extends Type {
 
     public buildFieldMap() {
         this.fieldMap = new Map<string, ClassField>(
-            this.fields.map( (x) => [x.name, x] as [string, ClassField]));
+            this.fields.map((x) => [x.name, x] as [string, ClassField]));
     }
 
     get length(): number {
-        if ( this.isUnion ) {
+        if (this.isUnion) {
             return Math.max(...this.fields
                 .map((field) => field.type.length));
         } else {
@@ -606,13 +624,13 @@ export enum StackStorageType {
 export function getStackStorageType(rawType: Type): StackStorageType {
     if (rawType instanceof SignedIntegerType) {
         return StackStorageType.int32;
-    } else if ( rawType instanceof UnsignedIntegerType) {
+    } else if (rawType instanceof UnsignedIntegerType) {
         return StackStorageType.uint32;
-    } else if ( rawType instanceof FloatType) {
+    } else if (rawType instanceof FloatType) {
         return StackStorageType.float32;
-    } else if ( rawType instanceof DoubleType) {
+    } else if (rawType instanceof DoubleType) {
         return StackStorageType.float64;
-    } else if ( rawType instanceof PointerType) {
+    } else if (rawType instanceof PointerType) {
         return StackStorageType.uint32;
     } else {
         throw new InternalError(`unsupport type stoarge type`);
@@ -724,8 +742,8 @@ export class UnresolveFunctionOverloadType extends Type {
         return 0;
     }
 
-    public toWType() {
-        return WType.none;
+    public toWType(): WType {
+        throw new InternalError(`UnresolveFunctionOverloadType()`);
     }
 
     public toMangledName() {
