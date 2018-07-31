@@ -25,7 +25,7 @@ local var:  @foo@var1
 
 ## Road Map
 
--2018.8.4 ?:, 函数指针，new，__cxx_global_var_init，namespace， using
+-2018.8.4 new，__cxx_global_var_init，namespace， using
 
 ## C language
 
@@ -72,7 +72,9 @@ local var:  @foo@var1
 - [X] &
 - [X] int64
 - [X] ?:
-- [ ] `重要` 函数指针
+- [X] 函数指针
+- [X] `重要` array initial list
+- [X] `重要` multi-dim array
 - [ ] `重要` #if #elif
 - [ ] bit field of struct
 - [ ] only export necessary scopeMap / debuginfo
@@ -97,19 +99,19 @@ local var:  @foo@var1
 - [X] 成员函数
 - [X] 函数重载
 - [X] 成员函数重载
-- [ ] __cxx_global_var_init
-- [ ] mangled/demangled
+- [X] __cxx_global_var_init
+- [ ] new/delete
+- [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全
+- [ ] 类型转换重载， like if(object) { ... }
 - [ ] 异常处理
 - [ ] 继承
-- [ ] 类型转换重载， like if(object) { ... }
 - [ ] 访问控制
 - [ ] 虚成员函数
-- [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [ ] using
 - [ ] namespace
 - [ ] 函数模板
 - [ ] const/override/virtual member function
 - [ ] class模板
-- [ ] new/delete
 - [ ] typeinfo
 - [ ] static_cast / dynamic_cast / reinterpret_cast
+- [ ] mangled/demangled

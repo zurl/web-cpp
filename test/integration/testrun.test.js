@@ -93,20 +93,20 @@ int main(){
 const source3 = `
 #include <stdio.h>
 
-int foo(int a){
-    return a + 1;
-}
-
-int goo(int b){
-    return b + 12;
-}
+int a[12][13];
 
 int main(){
-    int (*ptr)(int);
-    ptr = goo;
-    
-    printf("%d", ptr(12));
-    
+    for(int i = 0; i < 8; i++){
+        for(int j = 0; j < 8; j++){
+            a[i][j] = i + j;
+        }
+    }
+    for(int i = 0; i < 8; i++){
+        for(int j = 0; j < 8; j++){
+            printf("%d,", a[i][j]);
+        }
+        printf("\\n");
+    }
     return 0;
 }
 

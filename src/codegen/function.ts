@@ -54,7 +54,7 @@ import {WFunctionType} from "../wasm/section";
 import {WSetGlobal, WSetLocal} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {doConversion, doValuePromote, getInStackSize} from "./conversion";
+import {doConversion, doTypeTransfrom, doValuePromote, getInStackSize} from "./conversion";
 import {getCtorStmts, getDtorStmts} from "./cpp/lifecycle";
 import {doFunctionOverloadResolution, isFunctionExists} from "./cpp/overload";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
@@ -285,7 +285,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         let entity: FunctionEntity | null = lookUpResult.functions[0];
 
         if (ctx.isCpp()) {
-            entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
+            entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => doTypeTransfrom(x.deduceType(ctx))), this);
         }
 
         if (entity === null) {
@@ -343,7 +343,10 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
 
     for (let i = funcType.parameterTypes.length - 1; i >= 0; i--) {
-        const dstType = funcType.parameterTypes[i];
+        let dstType = funcType.parameterTypes[i];
+        if ( dstType instanceof ArrayType) {
+            dstType = new PointerType(dstType.elementType);
+        }
         const src = arguExprs[i];
         if ( dstType instanceof ClassType) {
             const rightType = src.type;

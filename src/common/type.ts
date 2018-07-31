@@ -373,6 +373,12 @@ export class FunctionType extends Type {
         this.cppFunctionType = CppFunctionType.Normal;
         this.referenceClass = null;
         this.initList = [];
+        for (let i = 0; i < this.parameterTypes.length; i++) {
+            const ty = this.parameterTypes[i];
+            if ( ty instanceof ArrayType ) {
+                this.parameterTypes[i] = new PointerType(ty.elementType);
+            }
+        }
     }
 
     get length(): number {
@@ -567,8 +573,10 @@ export class ArrayType extends Type {
     }
 
     public compatWith(type: Type): boolean {
-        return type.equals(this) || (
-            type instanceof PointerType && type.elementType.equals(this.elementType));
+        return type.equals(this)
+            || (type instanceof ArrayType && this.elementType.compatWith(type.elementType)
+            || (
+            type instanceof PointerType && type.elementType.equals(this.elementType)));
     }
 }
 

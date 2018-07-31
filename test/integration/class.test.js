@@ -173,6 +173,6 @@ assign ctor
 dtor
 dtor
 dtor`;
-        return await TestBase.testFullCode(testCode, expectOutput, true);
+        return await TestBase.testFullCode(testCode, expectOutput, true, true);
     });
 });

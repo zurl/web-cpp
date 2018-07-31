@@ -126,6 +126,10 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
         }
     }
 
+    if (dstType instanceof ArrayType){
+        dstType = new PointerType(dstType.elementType);
+    }
+
     // arithmetic conversion
     if (dstType instanceof ArithmeticType && src.type instanceof ArithmeticType) {
         const srcWType = src.type.toWType();

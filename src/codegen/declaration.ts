@@ -10,17 +10,17 @@ import {
     AssignmentExpression, CallExpression,
     Declaration,
     Declarator,
-    EnumSpecifier,
+    EnumSpecifier, Expression, ExpressionResult, ExpressionStatement,
     FunctionDeclarator,
     Identifier,
     IdentifierDeclarator,
-    InitializerList,
+    InitializerList, IntegerConstant,
     Node, ObjectInitializer,
     ParameterList,
     Pointer,
     PointerDeclarator,
     SpecifierType,
-    StructOrUnionSpecifier,
+    StructOrUnionSpecifier, SubscriptExpression,
     TranslationUnit,
     TypedefName, UnaryExpression,
 } from "../common/ast";
@@ -42,6 +42,7 @@ import {KeyWords} from "./constant";
 import {CompileContext} from "./context";
 import {doFunctionOverloadResolution} from "./cpp/overload";
 import {declareFunction} from "./function";
+import {codegen} from "./index";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
 
@@ -132,6 +133,9 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
         if ( type instanceof ReferenceType) {
             throw new SyntaxError(`there is no array of reference`, declarator);
         }
+        if ( !declarator.length ) {
+            return new ArrayType(type, 0);
+        }
         const length = declarator.length.codegen(ctx);
         if (!(length.expr instanceof WExpression)) {
             throw new SyntaxError("illegal length type", declarator);
@@ -156,6 +160,30 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
 TranslationUnit.prototype.codegen = function(ctx: CompileContext) {
     this.body.map((item) => item.codegen(ctx));
 };
+
+function initWithInitializerList(ctx: CompileContext, type: ArrayType, node: Expression,
+                                 initList: InitializerList) {
+    for (let i = 0; i < initList.items.length; i++) {
+        const item = initList.items[i];
+        if ( item.initializer instanceof Expression ) {
+            new ExpressionStatement(node.location,
+                new AssignmentExpression(node.location, "=",
+                    new SubscriptExpression(node.location,
+                        node,
+                        IntegerConstant.fromNumber(node.location, i)),
+                    item.initializer)).codegen(ctx);
+        } else {
+            if (!(type.elementType instanceof ArrayType) ) {
+                throw new SyntaxError(`illegal inner initializer list`, node);
+            }
+            initWithInitializerList(ctx, type.elementType,
+                new SubscriptExpression(node.location,
+                    node,
+                    IntegerConstant.fromNumber(node.location, i)),
+                item.initializer);
+        }
+    }
+}
 
 export function lookupPreviousDeclaration(ctx: CompileContext, type: Type, name: string, node: Node)
     : Variable | "pass" | "none" {
@@ -232,7 +260,7 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             if (type.isExtern) {
                 storageType = AddressType.MEMORY_EXTERN;
                 location = ctx.scopeManager.getFullName(name);
-            } else if (declarator.initializer !== null) {
+            } else if (declarator.initializer !== null && !(type instanceof ArrayType)) {
                 storageType = AddressType.MEMORY_DATA;
                 location = ctx.memory.allocData(type.length);
             } else {
@@ -268,9 +296,12 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                 throw new SyntaxError(`extern vaiable could not have initializer`, this);
             }
             if ( declarator.initializer instanceof InitializerList ) {
-                throw new InternalError("InitializerList not support");
-            }
-            if (declarator.initializer instanceof ObjectInitializer) {
+                if ( !(type instanceof ArrayType )) {
+                    throw new InternalError("InitializerList not support");
+                }
+                initWithInitializerList(ctx, type, new Identifier(this.location, name),
+                    declarator.initializer);
+            } else if (declarator.initializer instanceof ObjectInitializer) {
                 if ( !(type instanceof ClassType)) {
                     throw new SyntaxError(`only class type could apply object initializer`, this);
                 }

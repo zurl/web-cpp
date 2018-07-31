@@ -534,18 +534,21 @@ export class WGlobalSection extends WSection {
 
 export class WTable extends WNode {
 
-    constructor(location?: SourceLocation) {
+    public len: number;
+
+    constructor(len: number, location?: SourceLocation) {
         super(location);
+        this.len = len;
     }
 
     public emit(e: Emitter): void {
         e.writeByte(0x70);
         e.writeByte(0x00);
-        e.writeUint32(10);
+        e.writeUint32(this.len);
     }
 
     public length(e: Emitter): number {
-        return 2 + getLeb128UintLength(10);
+        return 2 + getLeb128UintLength(this.len);
     }
 
     public dump(e: Emitter) {
@@ -756,7 +759,7 @@ export class WModule extends WNode {
         }
         const funcLen = funcTypes.length;
         for (const encoding of config.requiredFuncTypes) {
-            funcTypes.push(WFunctionType.fromEncoding(encoding));
+            funcTypes.push(WFunctionType.fromEncoding(encoding, this.location));
         }
 
         this.generateMemory = config.generateMemory;
@@ -771,7 +774,7 @@ export class WModule extends WNode {
         this.codeSection = new WCodeSection(config.functions, this.location);
         this.exportSection = new WExportSection(exports, this.location);
         this.dataSection = new WDataSection(config.data, this.location);
-        this.tableSection = new WTableSection([new WTable(this.location)], this.location);
+        this.tableSection = new WTableSection([new WTable(funcLen, this.location)], this.location);
         this.elementSection = new WElementSection(funcLen, this.location);
     }
 

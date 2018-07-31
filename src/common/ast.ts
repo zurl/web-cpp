@@ -633,13 +633,11 @@ export class AbstractFunctionDeclarator extends AbstractDeclarator {
 export class InitializerListItem extends Node {
     public designators: Designator[];
     public initializer: Expression | InitializerList;
-    public offsetToParent: number;
 
     constructor(location: SourceLocation, designators: Designator[], initializer: Expression | InitializerList) {
         super(location);
         this.designators = designators;
         this.initializer = initializer;
-        this.offsetToParent = -1;
     }
 }
 
