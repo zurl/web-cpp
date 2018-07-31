@@ -18,8 +18,8 @@ import {WConst, WCovertOperation, WGetFunctionAddress} from "../wasm/expression"
 import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {FunctionLookUpResult} from "./scope";
 import {doFunctionOverloadResolution} from "./cpp/overload";
+import {FunctionLookUpResult} from "./scope";
 
 export function doTypeTransfrom(type: Type): Type {
     // array to pointer transform
@@ -113,7 +113,7 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
     src = doValueTransform(ctx, src, node, shouldToReference);
 
     if ( src.expr instanceof FunctionLookUpResult) {
-        if( dstType instanceof PointerType && dstType.elementType instanceof FunctionType){
+        if ( dstType instanceof PointerType && dstType.elementType instanceof FunctionType) {
             const item = doFunctionOverloadResolution(src.expr, dstType.elementType.parameterTypes, node);
             return new WGetFunctionAddress(item.fullName, node.location);
         }
@@ -126,7 +126,7 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
         }
     }
 
-    if (dstType instanceof ArrayType){
+    if (dstType instanceof ArrayType) {
         dstType = new PointerType(dstType.elementType);
     }
 

@@ -70,6 +70,6 @@ describe('function integration test', function () {
         }
         `;
         const expectOutput = `1322`;
-        return await TestBase.testFullCode(testCode, expectOutput, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
 });

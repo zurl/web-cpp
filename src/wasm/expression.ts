@@ -660,10 +660,8 @@ export class WConditionalExpression extends WExpression {
     }
 }
 
-
-export class WGetFunctionAddress extends WExpression{
+export class WGetFunctionAddress extends WExpression {
     public name: string;
-
 
     constructor(name: string, location?: SourceLocation) {
         super(location);
@@ -727,7 +725,7 @@ export class WCallIndirect extends WExpression {
     }
 
     public deduceType(e: Emitter): WType {
-        if(this.typeEncoding.charAt(0) === "v") {
+        if (this.typeEncoding.charAt(0) === "v") {
             return WType.none;
         } else {
             return this.typeEncoding.charCodeAt(0) as WType;

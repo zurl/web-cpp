@@ -73,13 +73,13 @@ local var:  @foo@var1
 - [X] int64
 - [X] ?:
 - [X] 函数指针
-- [X] `重要` array initial list
-- [X] `重要` multi-dim array
-- [ ] `重要` #if #elif
+- [X] array initial list
+- [X] multi-dim array
+- [ ] #if #elif
 - [ ] bit field of struct
-- [ ] only export necessary scopeMap / debuginfo
 - [ ] #line __line__ __file__
 - [ ] remove Long.js
+- [ ] debuginfo
 - [ ] repeative param name detect
 ## C++ Language
 - [X] default constructor
@@ -100,6 +100,7 @@ local var:  @foo@var1
 - [X] 函数重载
 - [X] 成员函数重载
 - [X] __cxx_global_var_init
+- [ ] implict this
 - [ ] new/delete
 - [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [ ] 类型转换重载， like if(object) { ... }

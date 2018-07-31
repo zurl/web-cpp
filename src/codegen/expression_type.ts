@@ -2,7 +2,7 @@ import {
     AssignmentExpression,
     BinaryExpression,
     CallExpression,
-    CastExpression,
+    CastExpression, CharacterConstant,
     ConditionalExpression,
     ConstructorCallExpression,
     FloatingConstant,
@@ -47,6 +47,10 @@ AssignmentExpression.prototype.deduceType = function(ctx: CompileContext): Type 
 };
 
 IntegerConstant.prototype.deduceType = function(ctx: CompileContext): Type {
+    return this.codegen(ctx).type;
+};
+
+CharacterConstant.prototype.deduceType = function(ctx: CompileContext): Type {
     return this.codegen(ctx).type;
 };
 
@@ -164,6 +168,10 @@ UnaryExpression.prototype.deduceType = function(ctx: CompileContext): Type {
         }
     } else if (this.operator === "&") {
         return new PointerType(itemType);
+    } else if (this.operator === "!" || this.operator === "~") {
+        return PrimitiveTypes.int32;
+    } else if (this.operator === "+" || this.operator === "-") {
+        return this.operand.deduceType(ctx);
     } else {
         throw new InternalError(`no imple at UnaryExpression().deduce`);
     }

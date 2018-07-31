@@ -240,7 +240,7 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
 
         // typedef
         if ( isTypedef ) {
-            if ( lastItem !== null ) {
+            if ( lastItem !== "none" ) {
                 throw new SyntaxError(`confliction of typename ${name}`, this);
             }
             ctx.scopeManager.declare(name, type, this);
@@ -318,6 +318,13 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
                 expr.isInitExpr = true;
                 recycleExpressionResult(ctx, this, expr.codegen(ctx));
             }
+        } else if ( type instanceof ClassType ) {
+            const ctorName = type.fullName + "::#" + type.name;
+            const callee = new Identifier(this.location, ctorName);
+            const thisPtr = new UnaryExpression(this.location, "&",
+                new Identifier(this.location, name));
+            const expr = new CallExpression(this.location, callee, [thisPtr]);
+            recycleExpressionResult(ctx, this, expr.codegen(ctx));
         }
     }
 };

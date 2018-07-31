@@ -146,9 +146,11 @@ export function generateDefaultCtors(ctx: CompileContext,
     const defaultCtorRet = ctx.scopeManager
         .lookupFullName(classType.fullName + "::#" + classType.name);
     if (defaultCtorRet === null || !(defaultCtorRet instanceof FunctionLookUpResult)) {
-        const shortName = "$" + classType.name;
+        const shortName = "#" + classType.name;
         const funcType = new FunctionType(shortName, PrimitiveTypes.void,
             [new PointerType(classType)], ["this"], false);
+        funcType.cppFunctionType = CppFunctionType.Constructor;
+        funcType.referenceClass = classType;
         defineFunction(ctx, funcType, shortName, [], node);
     }
 

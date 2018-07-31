@@ -28,7 +28,7 @@ export function codegen(root: Node, ctx: CompileContext) {
     const voidPtrT = new PointerType(PrimitiveTypes.void);
     // c++ runtime require memcpy
     declareFunction(ctx, new FunctionType("memcpy",
-        PrimitiveTypes.int32, [voidPtrT, voidPtrT, PrimitiveTypes.int32],
+        PrimitiveTypes.void, [voidPtrT, voidPtrT, PrimitiveTypes.uint32],
         ["dst", "src", "size"], false), "memcpy",
         true, root);
     root.codegen(ctx);

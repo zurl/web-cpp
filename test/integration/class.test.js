@@ -58,7 +58,7 @@ describe('class integration test', function () {
         }
         `;
         const expectOutput = `0,1,2,20,0`;
-        return await TestBase.testFullCode(testCode, expectOutput, true, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
     it('test struct 2', async function() {
         const testCode = `
@@ -108,7 +108,7 @@ describe('class integration test', function () {
             return 0;
         }`;
         const expectOutput = `3,2,2,2,4,0,`;
-        return await TestBase.testFullCode(testCode, expectOutput, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
     it('test ctor & assign ctor', async function() {
         const testCode = `
@@ -162,9 +162,11 @@ describe('class integration test', function () {
             printf("%d", w.sb);
             return 0;
         }`;
-        const expectOutput = `dtor
+        const expectOutput = `ctor: 26
+dtor
 assign ctor
 opertor + 
+ctor: 26
 dtor
 assign ctor
 ctor: 26
@@ -173,6 +175,6 @@ assign ctor
 dtor
 dtor
 dtor`;
-        return await TestBase.testFullCode(testCode, expectOutput, true, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
 });

@@ -32,7 +32,7 @@ export class WReturn extends WStatement {
                 throw new EmitError(`type mismatch at WReturn`);
             }
             const exprType = this.expr.deduceType(e);
-            if (exprType !== curFunc.type.returnTypes[0]) {
+            if (getNativeType(exprType) !== getNativeType(curFunc.type.returnTypes[0])) {
                 throw new EmitError(`type mismatch at WReturn`);
             }
         }

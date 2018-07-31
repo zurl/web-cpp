@@ -9,6 +9,7 @@ const {CParser} = require('../../dist/parser');
 const {codegen} = require('../../dist/codegen/index');
 const {CompileContext} = require('../../dist/codegen/context');
 const Linker = require('../../dist/linker');
+const fs = require("fs");
 
 function compile(name, source, options = {}) {
     const {code, map} = preprocess(name, source);
@@ -18,18 +19,20 @@ function compile(name, source, options = {}) {
     return ctx.toCompiledObject();
 }
 
-async function testRun(source, debug, isCpp){
-    let options = { isCpp, debug };
+const precompiledObjects = Array.from(Impls.keys()).map(x=>compile(x, Impls.get(x), {isCpp: true}));
+
+async function testRun(source, options){
+    if( !options ) options = {};
     let result = [""];
     try {
         const obj = compile('main.cpp', source, options);
-        const bin = Linker.link("main", [
-            obj
-            ], options);
+        const objs = [...precompiledObjects, obj];
+        const bin = Linker.link("main", options.linkStd ? objs : [obj], options);
         const importObj = {system: {}};
         for(const key of Object.keys(JsAPIMap)){
             importObj["system"]["::" + key] = JsAPIMap[key];
         }
+        fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
         const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
             new NoInputFile(),
             new StringOutputFile(result),
@@ -49,13 +52,13 @@ async function testRun(source, debug, isCpp){
 }
 
 
-async function testRunCompareResult(source, expectOutput, isCpp = false, debug = false){
-    const actualOutput = await testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n", debug, isCpp);
+async function testRunCompareResult(source, expectOutput, options){
+    const actualOutput = await testRun("#include<stdio.h>\nint main(){ " + source + " return 0; }\n", options);
     assert.equal(actualOutput.trim(), expectOutput.trim());
 }
 
-async function testFullCode(source, expectOutput, isCpp = false, debug = false){
-    const actualOutput = await testRun(source, debug, isCpp);
+async function testFullCode(source, expectOutput, options){
+    const actualOutput = await testRun(source, options);
     assert.equal(actualOutput.trim(), expectOutput.trim());
 }
 

@@ -398,7 +398,7 @@ export class WImportSection extends WNode {
 
     public emit(e: Emitter): void {
         e.writeByte(SectionCode.import);
-        e.writeByte(this.getBodyLength(e));
+        e.writeUint32(this.getBodyLength(e));
         e.writeUint32(this.imports.length);
         this.imports.map((x) => x.emit(e));
     }
@@ -453,7 +453,7 @@ export class WExportSection extends WSection {
 
     public emit(e: Emitter): void {
         e.writeByte(SectionCode.export);
-        e.writeByte(this.getBodyLength(e));
+        e.writeUint32(this.getBodyLength(e));
         e.writeUint32(this.functions.length);
         this.functions.map((func) => func.emit(e));
     }

@@ -63,6 +63,6 @@ describe('calculation integration test', function () {
         }
         `;
         const expectOutput = `6,8,2,3,2,3,`;
-        return await TestBase.testFullCode(testCode, expectOutput, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
 });

@@ -12,7 +12,7 @@ import {
     Declaration,
     Declarator,
     Expression,
-    ExpressionResult,
+    ExpressionResult, ExpressionStatement,
     FunctionDeclarator,
     FunctionDefinition,
     Identifier,
@@ -51,7 +51,7 @@ import {getNativeType} from "../wasm/constant";
 import {WCallIndirect, WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WFunctionType} from "../wasm/section";
-import {WSetGlobal, WSetLocal} from "../wasm/statement";
+import {WDrop, WSetGlobal, WSetLocal} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doTypeTransfrom, doValuePromote, getInStackSize} from "./conversion";
@@ -141,14 +141,21 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         if (!paramName) {
             throw new SyntaxError(`unnamed parameter`, node);
         }
-        if (type instanceof ClassType || type instanceof ArrayType ||
-            (functionEntity.type.variableArguments)) {
+        if (type instanceof ClassType || (functionEntity.type.variableArguments)) {
             ctx.scopeManager.define(paramName, new Variable(
                 paramName, ctx.scopeManager.getFullName(paramName), ctx.fileName,
                 type, AddressType.STACK, stackParameterNow,
             ), node);
             stackParameterNow += getInStackSize(type.length);
-        } else {
+        }
+    }
+    for (let i = 0; i < functionEntity.type.parameterTypes.length; i++) {
+        const type = functionEntity.type.parameterTypes[i];
+        const paramName = functionEntity.type.parameterNames[i];
+        if (!paramName) {
+            throw new SyntaxError(`unnamed parameter`, node);
+        }
+        if (!(type instanceof ClassType || (functionEntity.type.variableArguments))) {
             parameterWTypes.push(type.toWType());
             ctx.scopeManager.define(paramName, new Variable(
                 paramName, ctx.scopeManager.getFullName(paramName), ctx.fileName,
@@ -188,14 +195,14 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
                 new WGetLocal(WType.u32, functionEntity.$sp, node.location),
                 offsetNode, node.location), node.location));
 
-    if ( functionType.cppFunctionType === CppFunctionType.Constructor ) {
+    if (functionType.cppFunctionType === CppFunctionType.Constructor) {
         const ctorStmts = getCtorStmts(ctx, functionEntity, node);
         ctorStmts.map((item) => item.codegen(ctx));
     }
 
     body.map((item) => item.codegen(ctx));
 
-    if ( functionType.cppFunctionType === CppFunctionType.Destructor ) {
+    if (functionType.cppFunctionType === CppFunctionType.Destructor) {
         const dtorStmts = getDtorStmts(ctx, functionEntity, node);
         dtorStmts.map((item) => item.codegen(ctx));
     }
@@ -285,7 +292,8 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         let entity: FunctionEntity | null = lookUpResult.functions[0];
 
         if (ctx.isCpp()) {
-            entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => doTypeTransfrom(x.deduceType(ctx))), this);
+            entity = doFunctionOverloadResolution(lookUpResult,
+                this.arguments.map((x) => doTypeTransfrom(x.deduceType(ctx))), this);
         }
 
         if (entity === null) {
@@ -322,7 +330,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     if (funcType.variableArguments) {
         for (let i = arguExprs.length - 1; i > funcType.parameterTypes.length - 1; i--) {
             const src = arguExprs[i];
-            if ( src.type instanceof ClassType ) {
+            if (src.type instanceof ClassType) {
                 throw new SyntaxError(`class type could not be variable arguments`, this);
             }
             const newSrc = doValuePromote(ctx, src, this);
@@ -344,11 +352,11 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
 
     for (let i = funcType.parameterTypes.length - 1; i >= 0; i--) {
         let dstType = funcType.parameterTypes[i];
-        if ( dstType instanceof ArrayType) {
+        if (dstType instanceof ArrayType) {
             dstType = new PointerType(dstType.elementType);
         }
         const src = arguExprs[i];
-        if ( dstType instanceof ClassType) {
+        if (dstType instanceof ClassType) {
             const rightType = src.type;
             const leftPtrType = new PointerType(dstType);
             stackOffset -= getInStackSize(dstType.length);
@@ -363,7 +371,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
             let expr: ExpressionResult;
             if (isFunctionExists(ctx, fullName, [leftPtrType, rightType], null)) {
                 expr = new CallExpression(this.location,
-                        new Identifier(this.location, fullName),
+                    new Identifier(this.location, fullName),
                     [left, right]).codegen(ctx);
             } else {
                 const len = dstType.length;
@@ -373,7 +381,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
                     new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null),
                 ]).codegen(ctx);
             }
-            if ( !(expr.expr instanceof WExpression)) {
+            if (!(expr.expr instanceof WExpression)) {
                 throw new SyntaxError(`illegal arguments`, this);
             }
             argus.push(expr.expr);
@@ -390,6 +398,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
             }
         }
     }
+    argus.reverse();    // wasm call standard => push $0 first
 
     const afterStatements: WStatement[] = [];
 
@@ -409,7 +418,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
 
     let funcExpr: WExpression;
 
-    if ( funcEntity === null ) {
+    if (funcEntity === null) {
         callee.type = PrimitiveTypes.int32;
         ctx.requiredWASMFuncTypes.add(funcType.toWASMEncoding()); // require by wasm
         funcExpr = new WCallIndirect(doConversion(ctx, PrimitiveTypes.int32, callee, this),

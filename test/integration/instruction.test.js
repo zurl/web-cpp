@@ -19,7 +19,7 @@ describe('instruction integration test', function () {
         }
         `;
         const expectOutput = `1233`;
-        return await TestBase.testFullCode(testCode, expectOutput);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
     it('test const init',async function() {
         const testCode = `
@@ -224,7 +224,7 @@ describe('instruction integration test', function () {
         int *c = &b;
         `;
         try{
-            await TestBase.testRunCompareResult(testCode, '', false);
+            await TestBase.testRunCompareResult(testCode, '', {isCpp: true});
             TestBase.assert.isTrue(false);
         } catch (e) {
             if( !(e instanceof TypeError)){
@@ -252,7 +252,7 @@ describe('instruction integration test', function () {
         
         `;
         const expectOutput = `123,123,72,999,`;
-        return await TestBase.testRunCompareResult(testCode, expectOutput, false);
+        return await TestBase.testRunCompareResult(testCode, expectOutput, {isCpp: true});
     });
     it('bb sort', async function(){
         const testCode = `
@@ -282,7 +282,7 @@ describe('instruction integration test', function () {
         }
     `;
         const expectOutput = `111445`;
-        return await TestBase.testRunCompareResult(testCode, expectOutput, false);
+        return await TestBase.testRunCompareResult(testCode, expectOutput, {isCpp: true});
     });
     it('reference ', async function(){
         const testCode = `
@@ -303,7 +303,7 @@ describe('instruction integration test', function () {
         }
     `;
         const expectOutput = `133`;
-        return await TestBase.testFullCode(testCode, expectOutput, true, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     })
     it('test int64 ', async function(){
         const testCode = `
@@ -319,7 +319,7 @@ describe('instruction integration test', function () {
         }
     `;
         const expectOutput = `21996811307704563`;
-        return await TestBase.testFullCode(testCode, expectOutput, true, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
     it('test & ', async function(){
         const testCode = `
@@ -338,7 +338,7 @@ describe('instruction integration test', function () {
         }
     `;
         const expectOutput = `13,21,13,21`;
-        return await TestBase.testFullCode(testCode, expectOutput, true, true);
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     })
 
 });

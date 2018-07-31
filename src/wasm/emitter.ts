@@ -83,7 +83,7 @@ export class WASMEmitter implements Emitter {
     public sourceMapItem?: SourceMap;
 
     constructor() {
-        this.buffer = new ArrayBuffer(2000);
+        this.buffer = new ArrayBuffer(20000);
         this.view = new DataView(this.buffer);
         this.now = 0;
         this.funcIdx = new Map<string, [number, WFunctionType]>();

@@ -74,7 +74,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
     const right = this.right.codegen(ctx);
 
     // reference binding
-    if ( this.isInitExpr && left.type instanceof LeftReferenceType ) {
+    if (this.isInitExpr && left.type instanceof LeftReferenceType) {
         doReferenceBinding(ctx, left, right, this);
         return left;
     }
@@ -85,7 +85,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         throw new SyntaxError(`could not assign to a right value`, this);
     }
 
-    if ( left.type instanceof ArrayType) {
+    if (left.type instanceof ArrayType) {
         throw new SyntaxError(`unsupport array assignment`, this);
     }
 
@@ -93,7 +93,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
     if (this.isInitExpr && this.left instanceof Identifier &&
         left.expr.type === AddressType.MEMORY_DATA) {
         // int & float
-        if ( right.expr instanceof WConst &&
+        if (right.expr instanceof WConst &&
             (right.type instanceof IntegerType || right.type instanceof FloatingType)) {
             doVarInit(ctx, left.type, right.type, left.expr.place as number,
                 right.expr.constant, this);
@@ -103,7 +103,7 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         if (right.expr instanceof WGetAddress &&
             right.expr.form === WMemoryLocation.DATA &&
             right.type.equals(PrimitiveTypes.__ccharptr)) {
-            if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr)) ) {
+            if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr))) {
                 throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, this);
             }
             ctx.memory.data.setUint32(left.expr.place as number, right.expr.offset, true);
@@ -170,13 +170,13 @@ StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResul
 CharacterConstant.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     return {
         type: PrimitiveTypes.char,
-        expr: new WConst(WType.i8, this.value.charCodeAt(0).toString(), this.location),
+        expr: new WConst(WType.i32, this.value.charCodeAt(0).toString(), this.location),
         isLeft: false,
     };
 };
 
 Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    if ( this.name.charAt(0) === "#") {
+    if (this.name.charAt(0) === "#") {
         throw new SyntaxError(`illegal operator overload`, this);
     }
     const item = ctx.scopeManager.lookupAnyName(this.name);
@@ -205,7 +205,7 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
 BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     // 救救刘人语小姐姐
 
-    if ( this.operator === ",") {
+    if (this.operator === ",") {
         recycleExpressionResult(ctx, this, this.left.codegen(ctx));
         return this.right.codegen(ctx);
     }
@@ -230,14 +230,14 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     const dstType = this.deduceType(ctx);
     const op = getOpFromStr(this.operator, dstType.toWType());
 
-    if ( op === null ) {
+    if (op === null) {
         throw new InternalError(`unsupport op ${this.operator}`);
     }
 
-    if ( dstType instanceof PointerType ) {
-        if ( left.type instanceof IntegerType ) {
+    if (dstType instanceof PointerType) {
+        if (left.type instanceof IntegerType) {
             left = doValueTransform(ctx, left, this);
-            if ( left.expr instanceof FunctionLookUpResult ) {
+            if (left.expr instanceof FunctionLookUpResult) {
                 throw new InternalError(`unsupport func name`);
             }
             left = {
@@ -246,9 +246,9 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
                 expr: new WBinaryOperation(I32Binary.mul, left.expr,
                     new WConst(WType.u32, dstType.elementType.length.toString(), this.location)),
             };
-        } else if ( right.type instanceof IntegerType ) {
+        } else if (right.type instanceof IntegerType) {
             right = doValueTransform(ctx, right, this);
-            if ( right.expr instanceof FunctionLookUpResult ) {
+            if (right.expr instanceof FunctionLookUpResult) {
                 throw new InternalError(`unsupport func name`);
             }
             right = {
@@ -263,7 +263,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     let leftExpr = doConversion(ctx, dstType, left, this);
     let rightExpr = doConversion(ctx, dstType, right, this);
 
-    if ( this.operator === "&&" || this.operator === "||") {
+    if (this.operator === "&&" || this.operator === "||") {
         leftExpr = new WBinaryOperation(I32Binary.ne, leftExpr,
             new WConst(WType.i32, "0", this.location), this.location);
         rightExpr = new WBinaryOperation(I32Binary.ne, rightExpr,
@@ -283,7 +283,7 @@ BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
 };
 
 UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    if ( this.operator === "sizeof") {
+    if (this.operator === "sizeof") {
         return {
             type: PrimitiveTypes.uint32,
             expr: new WConst(WType.u32,
@@ -292,18 +292,21 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             ),
             isLeft: false,
         };
-    } else if ( this.operator === "++" || this.operator === "--") {
-        return new BinaryExpression(this.location,
-            this.operator.charAt(0),
+    } else if (this.operator === "++" || this.operator === "--") {
+        return new AssignmentExpression(this.location,
+            "=",
             this.operand,
-            IntegerConstant.getOne())
+            new BinaryExpression(this.location,
+                this.operator.charAt(0),
+                this.operand,
+                IntegerConstant.getOne()))
             .codegen(ctx);
     }
     const expr = this.operand.codegen(ctx);
     if (this.operator === "*") {
         const newExpr = doValueTransform(ctx, expr, this);
         if (newExpr.type instanceof PointerType) {
-            if ( newExpr.expr instanceof FunctionLookUpResult) {
+            if (newExpr.expr instanceof FunctionLookUpResult) {
                 throw new SyntaxError(`unsupport function name`, this);
             }
             return {
@@ -316,10 +319,10 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             throw new SyntaxError(`you could not apply * on ${expr.type.toString()} `, this);
         }
     } else if (this.operator === "&") {
-        if ( !expr.isLeft || !(expr.expr instanceof WAddressHolder) ) {
+        if (!expr.isLeft || !(expr.expr instanceof WAddressHolder)) {
             throw new SyntaxError(`you could not get address of a right value `, this);
         }
-        if ( expr.type instanceof ArrayType) {
+        if (expr.type instanceof ArrayType) {
             expr.type = expr.type.elementType;
         }
         return {
@@ -327,21 +330,21 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             type: new PointerType(expr.type),
             expr: expr.expr.createLoadAddress(ctx),
         };
-    } else if ( this.operator === "+") {
+    } else if (this.operator === "+") {
         return doValueTransform(ctx, this.operand.codegen(ctx), this);
-    } else if ( this.operator === "-") {
+    } else if (this.operator === "-") {
         return new BinaryExpression(this.location, "-",
             IntegerConstant.getZero(),
             this.operand,
         ).codegen(ctx);
-    } else if ( this.operator === "!") {
+    } else if (this.operator === "!") {
         const value = doConversion(ctx, PrimitiveTypes.int32, this.operand.codegen(ctx), this);
         return {
             type: PrimitiveTypes.int32,
             isLeft: false,
             expr: new WUnaryOperation(I32Unary.eqz, value, this.location),
         };
-    } else if ( this.operator === "~") {
+    } else if (this.operator === "~") {
         return new BinaryExpression(this.location, "^",
             IntegerConstant.getNegOne(),
             this.operand,
@@ -411,8 +414,8 @@ PostfixExpression.prototype.codegen = function(ctx: CompileContext): ExpressionR
         throw new SyntaxError(`your could not ++ a left value`, this);
     }
     recycleExpressionResult(ctx, this, new AssignmentExpression(this.location,
-         "=", this.operand, new BinaryExpression(
-             this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
+        "=", this.operand, new BinaryExpression(
+            this.location, this.decrement ? "-" : "+", this.operand, IntegerConstant.getOne(),
         )).codegen(ctx));
     return ope;
 };
@@ -423,7 +426,7 @@ ConditionalExpression.prototype.codegen = function(ctx: CompileContext): Express
 
     const left = this.consequent.codegen(ctx);
     const right = this.alternate.codegen(ctx);
-    if ( targetType instanceof ClassType ) {
+    if (targetType instanceof ClassType) {
         const refType = new LeftReferenceType(targetType);
         return {
             type: refType,

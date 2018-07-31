@@ -23,10 +23,9 @@ export function read(this: Runtime, fd: number, ptr: number, size: number): numb
     return file.read(this.memory.buffer, ptr, size);
 }
 
-export function memcpy(this: Runtime, dst: number, src: number, size: number): number {
+export function memcpy(this: Runtime, dst: number, src: number, size: number) {
     const subarray = this. memoryUint8Array.slice(src, src + size);
     this.memoryUint8Array.set(subarray, dst);
-    return size;
 }
 export function malloc(this: Runtime, size: number): number {
     return this.heapAllocator.allocHeap(this, size);
