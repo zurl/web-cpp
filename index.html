@@ -1,62 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <title>Editor</title>
-    <script src="js/materialize.min.js"></script>
-    <link rel="stylesheet" href="css/materialize.css">
-    <link rel="stylesheet" href="css/main.css">
-</head>
-<body>
-
-<div id="main-container">
-    <div id="left-container">
-        <div id="title-container">
-            <div class="title">
-                C++ Compiler in Browser
-            </div>
-            <div id="version"></div>
-
-
-        </div>
-        <div id="button-container">
-            <div class="button-area"><a class="waves-effect waves-light btn" onclick="run()">compile & run</a></div>
-            <div class="button-area"><a class="waves-effect waves-light btn" onclick="doSave()">save</a></div>
-        </div>
-    </div>
-    <div id="right-container">
-        <div id="editor-div">
-            <pre id="editor">
+<!DOCTYPE html><html lang="en"> <head> <meta charset="UTF-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"> <title>Editor</title> <script src="/web-cpp/materialize.min.a48cf30b.js"></script> <link rel="stylesheet" href="/web-cpp/materialize.3247beb3.css"> <link rel="stylesheet" href="/web-cpp/main.7f4f5120.css"> </head> <body> <div id="main-container"> <div id="left-container"> <div id="title-container"> <div class="title"> C++ Compiler in Browser </div> <div id="version"></div> </div> <div id="button-container"> <div class="button-area"><a class="waves-effect waves-light btn" onclick="run()">compile & run</a></div> <div class="button-area"><a class="waves-effect waves-light btn" onclick="doSave()">save</a></div> </div> </div> <div id="right-container"> <div id="editor-div"> <pre id="editor">
 #include "stdio.h"
 int main(){
     printf("Hello World!\n");
     return 0;
 }
-            </pre>
-        </div>
-        <div id="info-div">
-            <div class="row info-parent">
-                <div class="col s12" id="tab-div-parent">
-                    <ul class="tabs"  id="tab-div">
-                        <li class="tab col s3"><a href="#input">Input</a></li>
-                        <li class="tab col s3"><a class="active" href="#output">Output</a></li>
-                        <li class="tab col s3"><a href="#message">Message</a></li>
-                        <li class="tab col s3"><a href="#test4">Prompt</a></li>
-                    </ul>
-                </div>
-                <div class="terminal-base">
-                    <div id="input" class="tab-area col s12">
-                        <textarea id="input-ta"></textarea></div>
-                    <div id="output" class="tab-area col s12"></div>
-                    <div id="message" class="tab-area col s12"></div>
-                    <div id="test4" class="tab-area col s12">...</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<script src="js/main.js" type="text/javascript" charset="utf-8"></script>
-
-</body>
-</html>
+            </pre> </div> <div id="info-div"> <div class="row info-parent"> <div class="col s12" id="tab-div-parent"> <ul class="tabs" id="tab-div"> <li class="tab col s3"><a href="#input">Input</a></li> <li class="tab col s3"><a class="active" href="#output">Output</a></li> <li class="tab col s3"><a href="#message">Message</a></li> <li class="tab col s3"><a href="#test4">Prompt</a></li> </ul> </div> <div class="terminal-base"> <div id="input" class="tab-area col s12"> <textarea id="input-ta"></textarea></div> <div id="output" class="tab-area col s12"></div> <div id="message" class="tab-area col s12"></div> <div id="test4" class="tab-area col s12">...</div> </div> </div> </div> </div> </div> <script src="/web-cpp/main.bb71ec0d.js" type="text/javascript" charset="utf-8"></script> </body> </html>
