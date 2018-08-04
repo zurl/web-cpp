@@ -14,7 +14,7 @@ import {link} from "../linker";
 import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
 import {NativeRuntime} from "../runtime/native_runtime";
-import {CommandOutputFile, NoInputFile, StringOutputFile} from "../runtime/vmfile";
+import {CommandOutputFile, NoInputFile  } from "../runtime/vmfile";
 
 const BINARY_VERSION = 3;
 
@@ -41,27 +41,19 @@ export function loadBinaryFile(fileName: string): BinaryObject {
 
 function compile(name: string, source: string, options = {}) {
     const {code, map} = preprocess(name, source);
-    const translationUnit = CParser.parse(code, {});
+    const translationUnit = CParser.parse(code, options);
     const ctx = new CompileContext(name, options, source, map);
     codegen(translationUnit, ctx);
     return ctx.toCompiledObject();
 }
-
-function precompileLibrarys() {
-    const objects = [];
-    for (const impl of Impls.keys()) {
-        const obj = compile(impl, Impls.get(impl)!);
-        objects.push(obj);
-    }
-    return objects;
-}
+const precompiledObjects = Array.from(Impls.keys()).map((x) => compile(x, Impls.get(x)!, {isCpp: true}));
 
 // const LibraryObjects = precompileLibrarys();
 
 export function compileFile(sourceFileName: string): BinaryObject {
     const source = readFileSync(sourceFileName, "utf-8");
-    const object = compile(sourceFileName, source);
-    const binary = link("main.cpp", [object], {});
+    const object = compile(sourceFileName, source, {isCpp: true});
+    const binary = link("main.cpp", [...precompiledObjects, object], {});
     return binary;
 }
 

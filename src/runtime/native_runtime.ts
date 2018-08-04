@@ -3,6 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
+import 'babel-polyfill';
 import {RuntimeError} from "../common/error";
 import {ImportObject, Runtime} from "./runtime";
 import {VMFile} from "./vmfile";
@@ -23,11 +24,14 @@ export class NativeRuntime extends Runtime {
         this.entry = entry;
 
         // wrap importObject
-        for (const moduleName of Object.keys(this.importObjects)) {
-            const module = this.importObjects[moduleName];
+        const oldImportObject = this.importObjects;
+        this.importObjects = {};
+        for (const moduleName of Object.keys(oldImportObject)) {
+            const module = oldImportObject[moduleName];
+            this.importObjects[moduleName] = {};
             for (const funcName of Object.keys(module)) {
                 const func = module[funcName] as Function;
-                module[funcName] = function() {
+                this.importObjects[moduleName][funcName] = function() {
                     func.apply(that, Array.from(arguments));
                 };
             }
@@ -50,13 +54,14 @@ export class NativeRuntime extends Runtime {
 
     public async run(): Promise<void> {
         const asm = await WebAssembly.instantiate(this.code, this.importObjects);
+        console.log(asm);
         this.instance = asm.instance;
         const initSp = parseInt(((this.wasmMemory.buffer.byteLength - 1) / 4) + "") * 4;
         this.sp = initSp;
         asm.instance.exports["$start"]();
         this.sp = initSp;
         asm.instance.exports[this.entry]();
-        this.instance = null;
+        //this.instance = null;
         this.files.map((file) => file.flush());
     }
 

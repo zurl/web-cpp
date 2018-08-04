@@ -18,3 +18,5 @@ coverage/
 *.wasm
 *.wast
 *.wat
+ide/.cache
+ide/dist

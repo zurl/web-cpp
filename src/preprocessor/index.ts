@@ -325,7 +325,6 @@ function preprocessBlock(ctx: PreprocessContext, line: string, blockStartLine: n
     return "";
 }
 
-/* */
 function doPreprocess(fileName: string, source: string, marcoMap: Map<string, Marco>) {
     // todo:: .H buffer
     const ctx = new PreprocessContext(fileName, marcoMap);

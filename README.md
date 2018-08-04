@@ -14,12 +14,12 @@ npm run build
 npm run test
 ```
 
-## Notes
+## DEMO
+use `./cc` as local runtime (Node.js)
 
-Name Mangling
-
-global var: @var1
-local var:  @foo@var1
+```shell
+./cc run resource/testcodes/demo.cpp
+```
 
 # todolist
 
@@ -65,14 +65,14 @@ local var:  @foo@var1
 - [X] init instructions
 - [X] print sourceMap
 - [X] cc-cli
-- [X] 对局部变量取地址
+- [X] local address
 - [X] const
 - [X] malloc need
 - [X] & array alias
 - [X] &
 - [X] int64
 - [X] ?:
-- [X] 函数指针
+- [X] function pointer
 - [X] array initial list
 - [X] multi-dim array
 - [ ] #if #elif
@@ -86,19 +86,19 @@ local var:  @foo@var1
 - [X] copy-constructor(use memcpy)
 - [X] temporary object destruction
 - [X] destructor
-- [X] 左值引用
-- [X] 静态成员变量
-- [X] 形如 A a(c,d)的初始化
-- [X] 构造函数 => 设计
-- [X] inner scope => { }
-- [X] DTOR => 文法中
+- [X] left reference
+- [X] static member variable
+- [X] A a(c,d)
+- [X] ctor
+- [X] inner scope
+- [X] DTOR
 - [X] ctor initialize list
 - [X] copy-ctor
 - [X] copy-assignment-ctor
-- [X] 静态成员函数
-- [X] 成员函数
-- [X] 函数重载
-- [X] 成员函数重载
+- [X] static member function
+- [X] member function
+- [X] function overload
+- [X] member function overload
 - [X] __cxx_global_var_init
 - [ ] implict this
 - [ ] new/delete

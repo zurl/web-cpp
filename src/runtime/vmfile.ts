@@ -84,3 +84,26 @@ export class StringOutputFile extends VMFile {
         return 0;
     }
 }
+
+export class CallbackOutputFile extends VMFile {
+    public callback: (content: string) => void;
+
+
+    constructor(callback: (content: string) => void) {
+        super();
+        this.callback = callback;
+    }
+
+    public read(buffer: ArrayBuffer, offset: number, size: number): number {
+        throw new InternalError(`CommandOutputFile is not support read`);
+    }
+
+    public write(buffer: ArrayBuffer): number {
+        this.callback(fromBytesToString(new DataView(buffer), 0, buffer.byteLength));
+        return buffer.byteLength;
+    }
+
+    public flush(): number {
+        return 0;
+    }
+}
