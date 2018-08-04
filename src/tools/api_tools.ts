@@ -5,7 +5,7 @@ import {Impls, JsAPIMap} from "../library";
 import {link} from "../linker";
 import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
-import {CallbackOutputFile} from "../runtime/vmfile";
+import {CallbackOutputFile, StringInputFile} from "../runtime/vmfile";
 
 /**
  *  @file
@@ -36,4 +36,4 @@ for (const key of Object.keys(JsAPIMap)) {
 }
 
 export {NativeRuntime} from "../runtime/native_runtime";
-export {VMFile, StringOutputFile, CallbackOutputFile, NoInputFile} from "../runtime/vmfile";
+export {VMFile, StringOutputFile, StringInputFile, CallbackOutputFile, NoInputFile} from "../runtime/vmfile";

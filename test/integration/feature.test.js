@@ -71,4 +71,17 @@ describe('feature integration test', function () {
 7,8,9,10,11,12,13,14,`;
         return await TestBase.testFullCode(testCode, expectOutput);
     });
+    it('test scanf',async function() {
+        const testCode = `
+        int a;
+        int b;
+        char buffer[1024];
+        scanf("%d %d %s", &a, &b, buffer);
+        printf("%d %d %s", a, b, buffer);
+        `;
+        const expectOutput = `999 888 hahaha`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput, {
+            input: "999 888 hahaha"
+        });
+    });
 });

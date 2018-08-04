@@ -104,15 +104,21 @@ body {
 }
 
 #output, #message{
+    font-family: monospace;
+    font-size: 14px;
     padding: 10px;
     overflow: auto;
 }
 
 #input{
-    padding: 10px;
+    font-family: monospace;
+    padding: 0;
     color: white;
 }
 #input textarea{
+    font-family: monospace;
+    font-size: 14px;
+    padding: 10px;
     color: white;
     height: 100%
 }

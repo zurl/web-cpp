@@ -8,4 +8,3 @@ int puts(const char * str){
     write(1, str, len);
     return len;
 }
-

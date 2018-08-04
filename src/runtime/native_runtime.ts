@@ -54,7 +54,6 @@ export class NativeRuntime extends Runtime {
 
     public async run(): Promise<void> {
         const asm = await WebAssembly.instantiate(this.code, this.importObjects);
-        console.log(asm);
         this.instance = asm.instance;
         const initSp = parseInt(((this.wasmMemory.buffer.byteLength - 1) / 4) + "") * 4;
         this.sp = initSp;

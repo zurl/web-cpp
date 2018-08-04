@@ -6,6 +6,7 @@
 import BN = require("bn.js");
 import {RuntimeError} from "../common/error";
 import {Runtime} from "../runtime/runtime";
+import {VMFile} from "../runtime/vmfile";
 
 export function write(this: Runtime, fd: number, ptr: number, size: number): number {
     if (fd >= this.files.length) {
@@ -135,6 +136,78 @@ export function printf(this: Runtime): number {
     }
     const file = this.files[1];
     return file.write(printfBuffer.slice(0, size));
+}
+
+const inputBuffer = new ArrayBuffer(10);
+const inputView = new DataView(inputBuffer);
+
+export function getchar(this: Runtime): number {
+    if ( this.files[0].read(inputBuffer, 0, 1) === 0 ) {
+        return -1;
+    }
+    return inputView.getUint8(0);
+}
+
+const CC_0 = "0".charCodeAt(0);
+const CC_9 = "9".charCodeAt(0);
+const CC_S = " ".charCodeAt(0);
+const CC_TAB = "\t".charCodeAt(0);
+const CC_NL = "\n".charCodeAt(0);
+const CC_L = "-".charCodeAt(0);
+
+export function scanf(this: Runtime): number {
+    let result = 0;
+    let sp = this.sp;
+    let formatptr = this.memory.getUint32(sp, true);
+    sp += 4;
+    let chr = this.memory.getUint8(formatptr);
+    while ( chr !== 0) {
+        if ( chr === "%".charCodeAt(0)) {
+            formatptr ++;
+            let chr2 = String.fromCharCode(this.memory.getUint8(formatptr));
+            let isLong = false;
+            if ( chr2 === "l") {
+                isLong = true;
+                formatptr++;
+                chr2 = String.fromCharCode(this.memory.getUint8(formatptr));
+            }
+            if (chr2 === "d") {
+                let val = 0, isNeg = 0;
+                let ch = getchar.apply(this), last = 0;
+                while (ch !== -1 && !(ch >= CC_0 && ch <= CC_9)) {
+                    last = ch;
+                    ch = getchar.apply(this);
+                }
+                if ( last === CC_L) {
+                    isNeg = 1;
+                }
+                while (ch !== -1 && ch >= CC_0 && ch <= CC_9) {
+                    val = val * 10 + ch - CC_0;
+                    ch = getchar.apply(this);
+                }
+                const addr = this.memory.getInt32(sp, true);
+                sp += 4;
+                if ( isNeg ) {
+                    this.memory.setInt32(addr, -val, true);
+                } else {
+                    this.memory.setInt32(addr, val, true);
+                }
+                result ++;
+            } else if (chr2 === "s") {
+                let addr = this.memory.getInt32(sp, true);
+                let ch = getchar.apply(this);
+                while ( ch !== -1 && ch !== CC_NL && ch !== CC_S
+                && ch !== CC_TAB) {
+                    this.memory.setUint8(addr++, ch);
+                    ch = getchar.apply(this);
+                }
+                result ++;
+            }
+        }
+        formatptr ++;
+        chr = this.memory.getUint8(formatptr);
+    }
+    return result;
 }
 
 export function dump_stack_info(this: Runtime): void {

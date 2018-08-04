@@ -1,6 +1,6 @@
 
 const {CompilerError,ParserError} = require("../../dist/common/error");
-const {NoInputFile, StringOutputFile} = require("../../dist/runtime/vmfile");
+const {NoInputFile, StringInputFile, StringOutputFile} = require("../../dist/runtime/vmfile");
 const {NativeRuntime} = require("../../dist/runtime/native_runtime");
 const {Headers, Impls, JsAPIMap} = require("../../dist/library/index");
 const {assert} = require('chai');
@@ -34,7 +34,7 @@ async function testRun(source, options){
         }
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
         const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
-            new NoInputFile(),
+            new StringInputFile(options.input),
             new StringOutputFile(result),
             new StringOutputFile(result),
         ]);

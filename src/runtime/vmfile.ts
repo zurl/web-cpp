@@ -63,6 +63,36 @@ export class CommandOutputFile extends VMFile {
     }
 }
 
+export class StringInputFile extends VMFile {
+    public str: string;
+    public offset: number;
+
+    constructor(str: string) {
+        super();
+        this.str = str;
+        this.offset = 0;
+    }
+
+    public flush(): number {
+        return 0;
+    }
+
+    public read(buffer: ArrayBuffer, offset: number, size: number): number {
+        let bytes = 0;
+        for (let i = 0; i < size; i++) {
+            if (this.offset >= this.str.length) { return bytes; }
+            new DataView(buffer).setUint8(offset + i, this.str.charCodeAt(this.offset));
+            this.offset ++;
+            bytes++;
+        }
+        return bytes;
+    }
+
+    public write(buffer: ArrayBuffer): number {
+        throw new InternalError(`NoInputFile is not support write`);
+    }
+}
+
 export class StringOutputFile extends VMFile {
     public output: string[];
 
@@ -87,7 +117,6 @@ export class StringOutputFile extends VMFile {
 
 export class CallbackOutputFile extends VMFile {
     public callback: (content: string) => void;
-
 
     constructor(callback: (content: string) => void) {
         super();
