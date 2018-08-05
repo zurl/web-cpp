@@ -1,27 +1,22 @@
-import {Type} from ".";
-import {Expression, ObjectInitializer} from "../common/ast";
-import {InternalError} from "../common/error";
-import {WType} from "../wasm";
-
-enum AccessControl {
-    Public,
-    Private,
-    Protected,
-}
-
-export interface ClassField {
-    name: string;
-    type: Type;
-    startOffset: number;
-    initializer: Expression | ObjectInitializer | null;
-}
-
 /**
  *  @file
  *  @author zcy <zurl@live.com>
  *  Created at 05/08/2018
  */
 
+import {AccessControl, Type} from ".";
+import {Expression, ObjectInitializer} from "../common/ast";
+import {InternalError} from "../common/error";
+import {WType} from "../wasm";
+
+
+export interface ClassField {
+    name: string;
+    type: Type;
+    startOffset: number;
+    initializer: Expression | ObjectInitializer | null;
+    accessControl: AccessControl;
+}
 export class ClassType extends Type {
 
     public isUnion: boolean;

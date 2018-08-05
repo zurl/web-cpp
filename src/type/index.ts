@@ -41,3 +41,9 @@ export abstract class Type extends Symbol {
         return this;
     }
 }
+
+export enum AccessControl {
+    Public,
+    Private,
+    Protected,
+}

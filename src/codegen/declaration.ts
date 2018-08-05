@@ -246,7 +246,8 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
 
         // function
         if ( type instanceof FunctionType ) {
-            declareFunction(ctx, type, name, this.specifiers.includes("__libcall"), this);
+            type.name = name;
+            declareFunction(ctx, type, this.specifiers.includes("__libcall"), this);
             continue;
         }
 

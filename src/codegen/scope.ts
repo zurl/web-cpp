@@ -240,7 +240,7 @@ export class ScopeManager {
         const item = this.innerLookUp(shortName);
         if (item !== null) {
             if (item.isDefine()) {
-                throw new SyntaxError(`redefine of  ${shortName}`, node!);
+                throw new SyntaxError(`redefine of ${shortName}`, node!);
             }
             if (!item.getType().equals(symbol.getType())) {
                 throw new SyntaxError(`conflict declaration of ${shortName}`, node!);

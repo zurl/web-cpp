@@ -11,9 +11,10 @@ import {
     Node, ObjectInitializer,
     Statement, UnaryExpression,
 } from "../../common/ast";
-import {InternalError} from "../../common/error";
 import {SyntaxError} from "../../common/error";
+import {InternalError} from "../../common/error";
 import {FunctionEntity, Variable} from "../../common/symbol";
+import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
 import {CppFunctionType, FunctionType} from "../../type/function_type";
@@ -146,7 +147,8 @@ export function generateDefaultCtors(ctx: CompileContext,
             [new PointerType(classType)], ["this"], false);
         funcType.cppFunctionType = CppFunctionType.Constructor;
         funcType.referenceClass = classType;
-        defineFunction(ctx, funcType, shortName, [], node);
+        funcType.name = shortName;
+        defineFunction(ctx, funcType, [], AccessControl.Public, node);
     }
 
     // 2. copy ctor

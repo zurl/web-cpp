@@ -31,7 +31,7 @@ export function codegen(root: Node, ctx: CompileContext) {
     // c++ runtime require memcpy
     declareFunction(ctx, new FunctionType("memcpy",
         PrimitiveTypes.void, [voidPtrT, voidPtrT, PrimitiveTypes.uint32],
-        ["dst", "src", "size"], false), "memcpy",
+        ["dst", "src", "size"], false),
         true, root);
     root.codegen(ctx);
 }

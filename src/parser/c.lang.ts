@@ -859,10 +859,10 @@ InheritSpecifierList
 
 StructOrUnionSpecifier
     = structOrUnion:StructOrUnion _ identifier:TypedIdentifier _ ih:InheritSpecifierList? _ '{' _ declarations:StructDeclarationList? _ '}' {
-        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, declarations || [] , ih || []);
+        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion, identifier, declarations || [] , ih || []);
     }
     / structOrUnion:StructOrUnion _ identifier:TypedIdentifier {
-        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, null, []);
+        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion, identifier, null, []);
     }
 
 StructOrUnion

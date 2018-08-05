@@ -24,7 +24,7 @@ import {
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
-import {Type} from "../type";
+import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, PointerType, ReferenceType} from "../type/compound_type";
 import {CppFunctionType, FunctionType} from "../type/function_type";
@@ -76,15 +76,17 @@ export function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
     }
 }
 
-export function declareFunction(ctx: CompileContext, type: FunctionType, name: string, isLibCall: boolean, node: Node) {
-    type.name = name;
-    const realName = type.name + "@" + type.toMangledName();
+export function declareFunction(ctx: CompileContext, functionType: FunctionType,
+                                isLibCall: boolean, accessControl: AccessControl,
+                                node: Node) {
+    const realName = functionType.name + "@" + functionType.toMangledName();
     const fullName = ctx.scopeManager.getFullName(realName);
-    const entity = new FunctionEntity(realName, fullName, ctx.fileName, type, false, false);
+    const entity = new FunctionEntity(realName, fullName, ctx.fileName,
+        functionType, false, false, accessControl);
     if (isLibCall) {
         entity.isLibCall = true;
-        entity.name = type.name;
-        entity.fullName = ctx.scopeManager.getFullName(type.name); // libcall no overload
+        entity.name = functionType.name;
+        entity.fullName = ctx.scopeManager.getFullName(functionType.name); // libcall no overload
         const returnTypes: WType[] = [];
         const parametersTypes: WType[] = [];
         for (let i = entity.type.parameterTypes.length - 1; i >= 0; i--) {
@@ -110,16 +112,16 @@ export function declareFunction(ctx: CompileContext, type: FunctionType, name: s
             });
         }
     }
-    ctx.scopeManager.declare(name, entity, node);
+    ctx.scopeManager.declare(functionType.name, entity, node);
 }
 
 export function defineFunction(ctx: CompileContext, functionType: FunctionType,
-                               name: string, body: Array<Statement | Declaration>, node: Node) {
-
+                               body: Array<Statement | Declaration>, accessControl: AccessControl,
+                               node: Node) {
     const realName = functionType.name + "@" + functionType.toMangledName();
     const fullName = ctx.scopeManager.getFullName(realName);
     const functionEntity = new FunctionEntity(realName, fullName,
-        ctx.fileName, functionType, false, true);
+        ctx.fileName, functionType, false, true, accessControl);
     ctx.scopeManager.define(realName, functionEntity, node);
     ctx.enterFunction(functionEntity);
 
@@ -262,7 +264,7 @@ FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
     if (functionType == null) {
         throw new SyntaxError(`illegal function definition`, this);
     }
-    defineFunction(ctx, functionType, functionType.name, this.body.body, this);
+    defineFunction(ctx, functionType, this.body.body, AccessControl.Public, this);
 };
 
 CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {

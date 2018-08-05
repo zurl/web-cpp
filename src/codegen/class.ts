@@ -16,7 +16,7 @@ import {
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
 import {
-    Type,
+    AccessControl, Type,
 } from "../type";
 import {ClassField, ClassType} from "../type/class_type";
 import {PointerType} from "../type/compound_type";
@@ -48,19 +48,20 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
             }
 
             if (fieldType instanceof FunctionType ) {
+                fieldType.name = fieldName;
                 if (!ctx.isCpp()) {
                     throw new LanguageError(`function field is only support in c++`, node);
                 }
                 if ( fieldType.isStatic ) {
-                    declareFunction(ctx, fieldType, fieldName,
-                        decl.specifiers.includes("__libcall"), node);
+                    declareFunction(ctx, fieldType,
+                        decl.specifiers.includes("__libcall"), AccessControl.Public, node);
                 } else {
                     fieldType.parameterTypes = [buildCtx.classPtrType, ...fieldType.parameterTypes];
                     fieldType.parameterNames = ["this", ...fieldType.parameterNames];
                     fieldType.cppFunctionType = CppFunctionType.MemberFunction;
                     fieldType.referenceClass = buildCtx.classType;
-                    declareFunction(ctx, fieldType, fieldName,
-                        decl.specifiers.includes("__libcall"), node);
+                    declareFunction(ctx, fieldType,
+                        decl.specifiers.includes("__libcall"), AccessControl.Public, node);
                 }
                 continue;
             }
@@ -98,6 +99,7 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                     type: fieldType,
                     startOffset: buildCtx.curOffset,
                     initializer,
+                    accessControl: buildCtx.accessControl,
                 });
                 if ( !buildCtx.union ) {
                     buildCtx.curOffset += fieldType.length;
@@ -113,6 +115,7 @@ interface ClassBuildContext {
     classPtrType: PointerType;
     fields: ClassField[];
     curOffset: number;
+    accessControl: AccessControl;
 }
 
 StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
@@ -132,7 +135,8 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             throw new SyntaxError(`redefine of ${name}`, this);
         }
     }
-    const newItem = new ClassType(name, ctx.scopeManager.getFullName(name), ctx.fileName, [], this.union);
+    const newItem = new ClassType(name, ctx.scopeManager.getFullName(name),
+        ctx.fileName, [], this.typeName === "union");
     if ( this.declarations === null) {
         // incomplete definition;
         newItem.isComplete = false;
@@ -144,12 +148,14 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     const buildCtx: ClassBuildContext = {
         classType: newItem,
         classPtrType: new PointerType(newItem),
-        union: this.union,
+        union: this.typeName === "union",
         fields: newItem.fields,
         curOffset: 0,
+        accessControl: this.typeName === "struct" ?
+            AccessControl.Public : AccessControl.Private,
     };
     newItem.isComplete = false;
-    const delayParseList: Array<[CompoundStatement, FunctionType, string]> = [];
+    const delayParseList: Array<[CompoundStatement, FunctionType]> = [];
     for (const decl of this.declarations) {
         if (decl instanceof Declaration) {
             parseClassDeclartion(ctx, decl, buildCtx, this);
@@ -176,9 +182,9 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                 funcType.referenceClass = newItem;
             }
             if ( decl.body !== null ) {
-                delayParseList.push([decl.body, funcType, funcType.name]);
+                delayParseList.push([decl.body, funcType]);
             } else {
-                declareFunction(ctx, funcType, funcType.name, false, this);
+                declareFunction(ctx, funcType, false, AccessControl.Public, this);
             }
         } else if (decl instanceof FunctionDefinition) {
             if (!ctx.isCpp()) {
@@ -192,21 +198,26 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             if (functionType == null) {
                 throw new SyntaxError(`illegal function definition`, this);
             }
-            const realName = functionType.name;
             if (functionType.isStatic) {
-                declareFunction(ctx, functionType, realName,
-                    decl.specifiers.includes("__libcall"), this);
+                declareFunction(ctx, functionType,
+                    decl.specifiers.includes("__libcall"), AccessControl.Public, this);
             } else {
                 functionType.parameterTypes = [buildCtx.classPtrType, ...functionType.parameterTypes];
                 functionType.parameterNames = ["this", ...functionType.parameterNames];
                 functionType.cppFunctionType = CppFunctionType.MemberFunction;
                 functionType.referenceClass = newItem;
-                declareFunction(ctx, functionType, realName,
-                    decl.specifiers.includes("__libcall"), this);
+                declareFunction(ctx, functionType,
+                    decl.specifiers.includes("__libcall"), AccessControl.Public, this);
             }
-            delayParseList.push([decl.body, functionType, realName]);
+            delayParseList.push([decl.body, functionType]);
         } else if ( decl instanceof AccessControlLabel) {
-            // TODO:: do nothing
+            if ( decl.label === "public" ) {
+                buildCtx.accessControl = AccessControl.Public;
+            } else if ( decl.label === "protected") {
+                buildCtx.accessControl = AccessControl.Protected;
+            } else {
+                buildCtx.accessControl = AccessControl.Private;
+            }
         } else {
             throw new InternalError(`StructOrUnionSpecifier()`);
         }
@@ -214,9 +225,9 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     newItem.buildFieldMap();
     newItem.isComplete = true;
     for (const arr of delayParseList) {
-        const [body, functionType, realName] = arr;
-        defineFunction(ctx, functionType, realName,
-            body.body, this);
+        const [body, functionType] = arr;
+        defineFunction(ctx, functionType,
+            body.body, AccessControl.Public, this);
     }
     generateDefaultCtors(ctx, newItem, this);
     ctx.scopeManager.exitScope();

@@ -411,17 +411,17 @@ export class InheritSpecifier extends Node {
 }
 
 export class StructOrUnionSpecifier extends Node {
-    public union: boolean;
+    public typeName: string;
     public identifier: Identifier;
     public declarations: ClassDirectives[] | null;
     public inherits: InheritSpecifier[];
 
-    constructor(location: SourceLocation, union: boolean,
+    constructor(location: SourceLocation, typeName: string,
                 identifier: Identifier,
                 declarations: ClassDirectives[] | null,
                 inherits: InheritSpecifier[]) {
         super(location);
-        this.union = union;
+        this.typeName = typeName;
         this.identifier = identifier;
         this.declarations = declarations;
         this.inherits = inherits;

@@ -4,7 +4,7 @@
  *  Created at 05/08/2018
  */
 
-import {Type} from "../type";
+import {AccessControl, Type} from "../type";
 import {FunctionType} from "../type/function_type";
 
 export abstract class Symbol {
@@ -63,6 +63,7 @@ export class FunctionEntity extends Symbol {
     public fullName: string;
     public fileName: string;
     public type: FunctionType;
+    public accessControl: AccessControl;
 
     public isLibCall: boolean;
     public hasDefine: boolean;
@@ -70,7 +71,8 @@ export class FunctionEntity extends Symbol {
     public $sp: number;
 
     constructor(name: string, fullName: string, fileName: string,
-                type: FunctionType, isLibCall: boolean, isDefine: boolean) {
+                type: FunctionType, isLibCall: boolean, isDefine: boolean,
+                accessControl: AccessControl) {
         super();
         this.name = name;
         this.fullName = fullName;
@@ -82,6 +84,7 @@ export class FunctionEntity extends Symbol {
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
             .reduce((x, y) => x + y, 0);
+        this.accessControl = accessControl;
     }
 
     public isDefine(): boolean {

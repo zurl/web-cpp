@@ -117,3 +117,4 @@ use `./cc` as local runtime (Node.js)
 - [ ] static_cast / dynamic_cast / reinterpret_cast
 - [ ] mangled/demangled
 - [ ] virtual inheriant
+- [ ] seperate define class function
