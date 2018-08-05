@@ -25,24 +25,18 @@ import {
     TypedefName, UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
-import {
-    AddressType,
-    ArrayType,
-    ClassType,
-    FunctionType,
-    IntegerType, LeftReferenceType, PointerType,
-    PrimitiveTypes, ReferenceType, Type, Variable,
-} from "../common/type";
-import {FunctionEntity} from "../common/type";
-import {getPrimitiveTypeFromSpecifiers, isTypeQualifier, isTypeSpecifier} from "../common/utils";
-import {WConst, WType} from "../wasm";
+import {AddressType, Variable} from "../common/symbol";
+import {getPrimitiveTypeFromSpecifiers, isTypeSpecifier} from "../common/utils";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
+import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
+import {FunctionType} from "../type/function_type";
+import {IntegerType, PrimitiveTypes} from "../type/primitive_type";
+import {WConst} from "../wasm";
 import {WExpression} from "../wasm/node";
-import {WFunctionType} from "../wasm/section";
 import {KeyWords} from "./constant";
 import {CompileContext} from "./context";
-import {doFunctionOverloadResolution} from "./cpp/overload";
 import {declareFunction} from "./function";
-import {codegen} from "./index";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
 
@@ -82,6 +76,9 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
     }
     if (stringNodes.indexOf("static") !== -1) {
         resultType.isStatic = true;
+    }
+    if (stringNodes.indexOf("virtual") !== -1) {
+        resultType.isVirtual = true;
     }
     return resultType;
 }

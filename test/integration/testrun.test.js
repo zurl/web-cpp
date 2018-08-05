@@ -95,13 +95,18 @@ const source3 = `
 class A{
     int a;
     A(int b): a(b){}
-    bool operator!(){
-        return !a;
+    virtual void foo(){
+        printf("base\\n");
     }
+};
+
+class B: public A
+{
+int a;
 };
 int main(){
     A a(5), b(0);
-    printf("%d %d", !a, !b);
+    a.foo();
     return 0;
 }
 `;

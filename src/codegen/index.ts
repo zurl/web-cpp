@@ -4,7 +4,9 @@
  *  Created at 15/06/2018
  */
 import {Node} from "../common/ast";
-import {FunctionType, PointerType, PrimitiveTypes} from "../common/type";
+import {PointerType} from "../type/compound_type";
+import {FunctionType} from "../type/function_type";
+import {PrimitiveTypes} from "../type/primitive_type";
 import {classes} from "./class";
 import {CompileContext} from "./context";
 import {declaration} from "./declaration";

@@ -5,7 +5,10 @@
  */
 import {Node} from "../../common/ast";
 import {SyntaxError} from "../../common/error";
-import {ClassType, FunctionEntity, FunctionType, PointerType, ReferenceType, Type} from "../../common/type";
+import {FunctionEntity} from "../../common/symbol";
+import {Type} from "../../type";
+import {ClassType} from "../../type/class_type";
+import {PointerType, ReferenceType} from "../../type/compound_type";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult} from "../scope";
 

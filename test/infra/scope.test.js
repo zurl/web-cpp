@@ -1,7 +1,9 @@
 
-const {AddressType, PrimitiveTypes} = require("../../dist/common/type");
+const {PrimitiveTypes} = require("../../dist/type/primitive_type");
+const {ClassType} = require("../../dist/type/class_type");
+const {FunctionType} = require("../../dist/type/function_type");
+const {AddressType, Variable, FunctionEntity} = require("../../dist/common/symbol");
 const {ScopeManager} = require("../../dist/codegen/scope");
-const {ClassType, Variable, FunctionEntity, FunctionType} = require("../../dist/common/type");
 const {assert} = require("chai");
 
 function arrayEqual(x, y){

@@ -17,13 +17,20 @@ import {
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
+import {AddressType} from "../common/symbol";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
+import {ArrayType, LeftReferenceType, PointerType} from "../type/compound_type";
 import {
-    AddressType, ArrayType, CharType, ClassType, DoubleType, FloatingType, FloatType,
-    FunctionEntity, Int16Type, Int32Type, Int64Type, IntegerType, LeftReferenceType,
-    PointerType,
-    PrimitiveTypes,
-    Type, UnsignedCharType, UnsignedInt16Type, UnsignedInt32Type, UnsignedInt64Type,
-} from "../common/type";
+    CharType,
+    DoubleType, FloatingType,
+    FloatType, Int16Type,
+    Int32Type,
+    Int64Type, IntegerType,
+    PrimitiveTypes, UnsignedCharType, UnsignedInt16Type,
+    UnsignedInt32Type,
+    UnsignedInt64Type,
+} from "../type/primitive_type";
 import {I32Binary, I32Unary, WCall, WLoad, WType, WUnaryOperation} from "../wasm";
 import {BinaryOperator, getOpFromStr} from "../wasm/constant";
 import {WBinaryOperation, WConditionalExpression, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";

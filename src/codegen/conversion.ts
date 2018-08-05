@@ -5,14 +5,12 @@
  */
 import {ExpressionResult, Node} from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
-import {
-    AddressType,
-    ArithmeticType,
-    ArrayType, ClassType, FloatingType, FloatType, FunctionType,
-    IntegerType, LeftReferenceType,
-    PointerType, PrimitiveTypes, ReferenceType,
-    Type,
-} from "../common/type";
+import {AddressType} from "../common/symbol";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
+import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
+import {FunctionType} from "../type/function_type";
+import {ArithmeticType, FloatType, IntegerType, PrimitiveTypes} from "../type/primitive_type";
 import {getTypeConvertOpe, WType} from "../wasm/constant";
 import {WConst, WCovertOperation, WGetFunctionAddress} from "../wasm/expression";
 import {WExpression} from "../wasm/node";

@@ -1,9 +1,9 @@
 import * as Long from "long";
 import {CompileContext} from "../codegen/context";
 import {FunctionLookUpResult} from "../codegen/scope";
+import {Type} from "../type";
 import {WExpression} from "../wasm/node";
 import {InternalError} from "./error";
-import {Type} from "./type";
 
 export type SpecifierType =
     string
@@ -399,18 +399,32 @@ export class AtomicTypeSpecifier extends Node {
 
 type ClassDirectives = Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration | AccessControlLabel;
 
+export class InheritSpecifier extends Node {
+    public accessControl: string;
+    public className: TypedefName;
+
+    constructor(location: SourceLocation, accessControl: string, className: TypedefName) {
+        super(location);
+        this.accessControl = accessControl;
+        this.className = className;
+    }
+}
+
 export class StructOrUnionSpecifier extends Node {
     public union: boolean;
     public identifier: Identifier;
     public declarations: ClassDirectives[] | null;
+    public inherits: InheritSpecifier[];
 
     constructor(location: SourceLocation, union: boolean,
                 identifier: Identifier,
-                declarations: ClassDirectives[] | null) {
+                declarations: ClassDirectives[] | null,
+                inherits: InheritSpecifier[]) {
         super(location);
         this.union = union;
         this.identifier = identifier;
         this.declarations = declarations;
+        this.inherits = inherits;
     }
 }
 

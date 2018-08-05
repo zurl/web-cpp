@@ -14,15 +14,14 @@ import {
     StructOrUnionSpecifier, UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
+import {AddressType, Variable} from "../common/symbol";
 import {
-    AddressType,
-    ClassField,
-    ClassType, CppFunctionType,
-    FunctionType,
-    PointerType, PrimitiveTypes,
     Type,
-    Variable,
-} from "../common/type";
+} from "../type";
+import {ClassField, ClassType} from "../type/class_type";
+import {PointerType} from "../type/compound_type";
+import {CppFunctionType, FunctionType} from "../type/function_type";
+import {PrimitiveTypes} from "../type/primitive_type";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doReferenceTransform} from "./conversion";

@@ -5,24 +5,19 @@
  */
 import {
     AssignmentExpression, CallExpression,
-    CompoundStatement,
     Expression, ExpressionStatement,
     Identifier,
     MemberExpression,
     Node, ObjectInitializer,
     Statement, UnaryExpression,
 } from "../../common/ast";
-import {SyntaxError} from "../../common/error";
 import {InternalError} from "../../common/error";
-import {
-    ClassType,
-    CppFunctionType,
-    FunctionEntity,
-    FunctionType,
-    PointerType,
-    PrimitiveTypes,
-    Variable,
-} from "../../common/type";
+import {SyntaxError} from "../../common/error";
+import {FunctionEntity, Variable} from "../../common/symbol";
+import {ClassType} from "../../type/class_type";
+import {PointerType} from "../../type/compound_type";
+import {CppFunctionType, FunctionType} from "../../type/function_type";
+import {PrimitiveTypes} from "../../type/primitive_type";
 import {CompileContext} from "../context";
 import {defineFunction} from "../function";
 import {FunctionLookUpResult} from "../scope";

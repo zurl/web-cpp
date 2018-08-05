@@ -6,7 +6,9 @@
 
 import {Node} from "../common/ast";
 import {LanguageError, SyntaxError} from "../common/error";
-import {ClassType, FunctionEntity, Symbol, Type, Variable} from "../common/type";
+import {FunctionEntity, Symbol, Variable} from "../common/symbol";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
 import {WAddressHolder} from "./address";
 
 export class Scope {

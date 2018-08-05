@@ -9,10 +9,11 @@ import {
     CompoundStatement, ContinueStatement, Declaration, DoWhileStatement, ExpressionResult,
     ExpressionStatement, ForStatement, GotoStatement,
     IfStatement, LabeledStatement, Node,
-    ReturnStatement, SwitchStatement, UnaryExpression, WhileStatement,
+    SwitchStatement, UnaryExpression, WhileStatement,
 } from "../common/ast";
 import {SyntaxError} from "../common/error";
-import {AddressType, IntegerType, PrimitiveTypes} from "../common/type";
+import {AddressType} from "../common/symbol";
+import {IntegerType, PrimitiveTypes} from "../type/primitive_type";
 import {I32Binary, WBinaryOperation, WConst, WType} from "../wasm";
 import {WStatement} from "../wasm/node";
 import {WBlock, WBr, WBrIf, WDrop, WExprStatement, WIfElseBlock, WLoop} from "../wasm/statement";

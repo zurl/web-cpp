@@ -100,20 +100,20 @@ use `./cc` as local runtime (Node.js)
 - [X] function overload
 - [X] member function overload
 - [X] __cxx_global_var_init
-- [ ] public/private/ protect, (syntax ok, todo)
+- [ ] public/private/ protect, 访问控制 (syntax ok, todo)
 - [X] implict this
 - [ ] new/delete
+- [ ] using
+- [ ] namespace
 - [X] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [ ] 类型转换重载， like if(object) { ... }
 - [ ] 异常处理
 - [ ] 继承
-- [ ] 访问控制
 - [ ] 虚成员函数
-- [ ] using
-- [ ] namespace
 - [ ] 函数模板
 - [ ] const/override/virtual member function
 - [ ] class模板
 - [ ] typeinfo
 - [ ] static_cast / dynamic_cast / reinterpret_cast
 - [ ] mangled/demangled
+- [ ] virtual inheriant

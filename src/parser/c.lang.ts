@@ -845,16 +845,24 @@ TypedIdentifier
         if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
         return identifier;
     }
+    
+InheritSpecifier
+    = lb:AccessControlLabels? _ className:TypedefName{
+        return new AST.InheritSpecifier(getLocation(), lb || "", className);
+    }
+    
+InheritSpecifierList 
+    = ':' _ head:InheritSpecifier tail:(_ ',' _ InheritSpecifier)* {
+        return buildList(head, tail, 1);
+    }
+
 
 StructOrUnionSpecifier
-    = structOrUnion:StructOrUnion _ identifier:TypedIdentifier? _ '{' _ declarations:StructDeclarationList _ &!'}' {
-        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, declarations);
-    }
-    / structOrUnion:StructOrUnion _ identifier:TypedIdentifier '{' _ &!'}'{
-        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, []);
+    = structOrUnion:StructOrUnion _ identifier:TypedIdentifier _ ih:InheritSpecifierList? _ '{' _ declarations:StructDeclarationList? _ '}' {
+        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, declarations || [] , ih || []);
     }
     / structOrUnion:StructOrUnion _ identifier:TypedIdentifier {
-        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, null);
+        return new AST.StructOrUnionSpecifier(getLocation(), structOrUnion === 'union', identifier, null, []);
     }
 
 StructOrUnion

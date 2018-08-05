@@ -5,7 +5,10 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError, InternalError} from "../common/error";
-import {AddressType, ArrayType, ClassType, Type} from "../common/type";
+import {AddressType} from "../common/symbol";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
+import {ArrayType} from "../type/compound_type";
 import {I32Binary, WBinaryOperation, WConst, WLoad, WStore, WType} from "../wasm";
 import {getNativeType} from "../wasm/constant";
 import {Emitter} from "../wasm/emitter";

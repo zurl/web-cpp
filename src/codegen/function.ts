@@ -4,37 +4,31 @@
  *  Created at 16/06/2018
  */
 import Long = require("long");
-import {inspect} from "util";
 import {
     AnonymousExpression,
-    CallExpression, CastExpression,
+    CallExpression,
     ConstructorCallExpression,
     Declaration,
     Declarator,
-    Expression,
-    ExpressionResult, ExpressionStatement,
+    ExpressionResult,
     FunctionDeclarator,
     FunctionDefinition,
     Identifier,
     IdentifierDeclarator,
     IntegerConstant,
-    MemberExpression,
     Node,
     ParameterList,
     ReturnStatement,
-    Statement, TypeName,
+    Statement,
     UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
-import {FunctionEntity} from "../common/type";
-import {
-    AddressType, ArrayType, ClassType, CppFunctionType,
-    FunctionType, LeftReferenceType,
-    PointerType,
-    PrimitiveTypes, ReferenceType,
-    Type,
-    Variable,
-} from "../common/type";
+import {AddressType, FunctionEntity, Variable} from "../common/symbol";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
+import {ArrayType, PointerType, ReferenceType} from "../type/compound_type";
+import {CppFunctionType, FunctionType} from "../type/function_type";
+import {PrimitiveTypes} from "../type/primitive_type";
 import {
     I32Binary,
     WBinaryOperation,

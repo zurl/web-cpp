@@ -5,10 +5,10 @@
  */
 import {ExpressionResult, Node} from "../../common/ast";
 import {InternalError} from "../../common/error";
-import {LeftReferenceType, PrimitiveTypes} from "../../common/type";
+import {LeftReferenceType} from "../../type/compound_type";
+import {PrimitiveTypes} from "../../type/primitive_type";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
-import {doConversion} from "../conversion";
 import {FunctionLookUpResult} from "../scope";
 
 export function doReferenceBinding(ctx: CompileContext, dst: ExpressionResult,

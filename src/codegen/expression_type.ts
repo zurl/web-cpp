@@ -17,16 +17,19 @@ import {
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
+import {FunctionEntity, Variable} from "../common/symbol";
+import {Type} from "../type";
+import {ClassType} from "../type/class_type";
+import {ArrayType, LeftReferenceType, PointerType} from "../type/compound_type";
+import {FunctionType, UnresolvedFunctionOverloadType} from "../type/function_type";
 import {
-    ArithmeticType, ArrayType, ClassType, FloatingType, FunctionEntity,
-    FunctionType, Int64Type,
-    IntegerType,
-    LeftReferenceType,
-    PointerType,
+    ArithmeticType,
+    FloatingType,
+    Int64Type, IntegerType,
     PrimitiveTypes,
-    Type, UnresolveFunctionOverloadType, UnsignedInt64Type, UnsignedIntegerType, Variable,
-} from "../common/type";
-import {WAddressHolder} from "./address";
+    UnsignedInt64Type,
+    UnsignedIntegerType,
+} from "../type/primitive_type";
 import {CompileContext} from "./context";
 import {doTypeTransfrom} from "./conversion";
 import {doFunctionOverloadResolution} from "./cpp/overload";
@@ -65,7 +68,7 @@ StringLiteral.prototype.deduceType = function(ctx: CompileContext): Type {
 Identifier.prototype.deduceType = function(ctx: CompileContext): Type {
     const item = this.codegen(ctx);
     if ( item.expr instanceof FunctionLookUpResult ) {
-        return new UnresolveFunctionOverloadType(item.expr);
+        return new UnresolvedFunctionOverloadType(item.expr);
     } else {
         return item.type;
     }
@@ -184,7 +187,7 @@ CallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
         return calleeType.elementType.returnType;
     }
 
-    if (!(calleeType instanceof UnresolveFunctionOverloadType)) {
+    if (!(calleeType instanceof UnresolvedFunctionOverloadType)) {
         throw new TypeError(`the callee is not function`, this);
     }
     const lookUpResult = calleeType.functionLookupResult;
@@ -236,7 +239,7 @@ MemberExpression.prototype.deduceType = function(ctx: CompileContext): Type {
             return item.type;
         } else {
             item.instanceType = rawType;
-            return new UnresolveFunctionOverloadType(item);
+            return new UnresolvedFunctionOverloadType(item);
         }
     }
     const field = rawType.fieldMap.get(this.member.name);
