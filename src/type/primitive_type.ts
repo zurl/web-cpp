@@ -232,10 +232,7 @@ export const PrimitiveTypes = {
     uint64: new UnsignedInt64Type(),
     float: new FloatType(),
     double: new DoubleType(),
-    __ccharptr: new PointerType(new CharType()),
-    __charptr: new PointerType(new CharType()),
 };
-PrimitiveTypes.__ccharptr.isConst = true;
 
 export const PrimitiveTypesNameMap = new Map<string[][], () => PrimitiveType>([
     [[["void"]], () => new VoidType()],

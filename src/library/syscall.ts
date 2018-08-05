@@ -213,3 +213,7 @@ export function scanf(this: Runtime): number {
 export function dump_stack_info(this: Runtime): void {
     console.log("$sp = " + this.sp);
 }
+
+export function time(this: Runtime, ptr: number): number {
+    return Math.round((new Date()).getTime() / 1000);
+}

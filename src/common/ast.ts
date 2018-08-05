@@ -13,6 +13,9 @@ export type SpecifierType =
     | TypedefName
     | AlignmentSpecifier;
 
+export type ExternalDeclartions
+    = FunctionDefinition | Declaration | UsingStatement | UsingNamespaceStatement | NameSpaceBlockStatement;
+
 export interface ExpressionResult {
     type: Type;
     expr: WExpression | FunctionLookUpResult;
@@ -273,11 +276,13 @@ export class CallExpression extends Expression {
 export class ConstructorCallExpression extends Expression {
     public name: TypedefName;
     public arguments: Expression[];
+    public isNew: boolean;
 
-    constructor(location: SourceLocation, name: TypedefName, myArguments: Expression[]) {
+    constructor(location: SourceLocation, name: TypedefName, myArguments: Expression[], isNew: boolean) {
         super(location);
         this.name = name;
         this.arguments = myArguments;
+        this.isNew = isNew;
     }
 }
 
@@ -845,9 +850,9 @@ export class ReturnStatement extends Statement {
 }
 
 export class TranslationUnit extends Node {
-    public body: Array<FunctionDefinition | Declaration>;
+    public body: ExternalDeclartions[];
 
-    constructor(location: SourceLocation, body: Array<FunctionDefinition | Declaration>) {
+    constructor(location: SourceLocation, body: ExternalDeclartions[]) {
         super(location);
         this.body = body;
     }
@@ -929,5 +934,47 @@ export class AccessControlLabel extends Node {
     constructor(location: SourceLocation, label: string) {
         super(location);
         this.label = label;
+    }
+}
+
+export class UsingStatement extends Node {
+    public name: TypedefName;
+    public type: AbstractDeclarator;
+
+    constructor(location: SourceLocation, name: TypedefName, type: AbstractDeclarator) {
+        super(location);
+        this.name = name;
+        this.type = type;
+    }
+}
+
+export class UsingNamespaceStatement extends Node {
+    public namespace: TypedefName;
+
+    constructor(location: SourceLocation, namespace: TypedefName) {
+        super(location);
+        this.namespace = namespace;
+    }
+}
+
+export class NameSpaceBlockStatement extends Node {
+    public namespace: TypedefName;
+    public statements: ExternalDeclartions[];
+
+    constructor(location: SourceLocation, namespace: TypedefName, statements: ExternalDeclartions[]) {
+        super(location);
+        this.namespace = namespace;
+        this.statements = statements;
+    }
+}
+
+export class DeleteStatement extends Node {
+    public expr: Expression;
+    public isArrayDelete: boolean;
+
+    constructor(location: SourceLocation, expr: Expression, isArrayDelete: boolean) {
+        super(location);
+        this.expr = expr;
+        this.isArrayDelete = isArrayDelete;
     }
 }

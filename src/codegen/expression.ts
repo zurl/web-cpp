@@ -46,6 +46,10 @@ ParenthesisExpression.prototype.codegen = function(ctx: CompileContext): Express
     return this.expression.codegen(ctx);
 };
 
+const __ccharptr = new PointerType(new CharType());
+const __charptr = new PointerType(new CharType());
+__charptr.isConst = true;
+
 AssignmentExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     if (this.operator !== "=") {
         const ope = this.operator.split("=")[0];
@@ -109,8 +113,8 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
         // const char
         if (right.expr instanceof WGetAddress &&
             right.expr.form === WMemoryLocation.DATA &&
-            right.type.equals(PrimitiveTypes.__ccharptr)) {
-            if (!(left.type.equals(PrimitiveTypes.__charptr)) && !(left.type.equals(PrimitiveTypes.__ccharptr))) {
+            right.type.equals(__ccharptr)) {
+            if (!(left.type.equals(__charptr)) && !(left.type.equals(__ccharptr))) {
                 throw new SyntaxError(`unsupport init from ${left.type} to ${right.type}`, this);
             }
             ctx.memory.data.setUint32(left.expr.place as number, right.expr.offset, true);
@@ -168,7 +172,7 @@ StringLiteral.prototype.codegen = function(ctx: CompileContext): ExpressionResul
     const expr = new WGetAddress(WMemoryLocation.DATA, this.location);
     expr.offset = ctx.memory.allocString(this.value);
     return {
-        type: PrimitiveTypes.__ccharptr,
+        type: __ccharptr,
         expr,
         isLeft: false,
     };
@@ -189,7 +193,7 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     const item = ctx.scopeManager.lookupAnyName(this.name);
     if (item === null) {
         const thisPtr = ctx.scopeManager.lookupShortName("this");
-        if ( thisPtr !== null) {
+        if (thisPtr !== null) {
             try {
                 return new MemberExpression(this.location, new Identifier(this.location, "this"),
                     true, this).codegen(ctx);
@@ -317,7 +321,7 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
         const item = ctx.scopeManager.lookupFullName(
             leftType.fullName + "::#" + this.operator,
         );
-        if ( item != null) {
+        if (item != null) {
             return new CallExpression(this.location,
                 new MemberExpression(this.location, this.operand, false,
                     new Identifier(this.location, "#" + this.operator)),

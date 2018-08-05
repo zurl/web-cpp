@@ -180,6 +180,15 @@ Keyword
     / 'void'
     / 'volatile'
     / 'while'
+    / 'class'
+    / 'new'
+    / 'delete'
+    / 'operator'
+    / 'override'
+    / 'template'
+    / 'typename'
+    / 'namespace'
+    / 'using'
     / '_Alignas'
     / '_Alignof'
     / '_Atomic'
@@ -593,9 +602,11 @@ PrimaryExpression
     }
     / ConstructorCall
     
+NewSpecifier = 'new'
+    
 ConstructorCall 
-    = name:TypedefName  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
-        return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || []);
+    = isNew:NewSpecifier? _ name:TypedefName  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+        return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || [], isNew === "new");
     } 
 
 PostfixExpression
@@ -1185,6 +1196,7 @@ Statement
     / CompoundStatement
     / LabeledStatement
     / ExpressionStatement
+    / DeleteStatement
 
 // ADDED
 CaseStatement
@@ -1272,6 +1284,14 @@ JumpStatement
     }
     / 'return' !IdentifierPart _ argument:Expression? _ &!';' {
         return new AST.ReturnStatement(getLocation(), argument);
+    }
+
+DeleteStatement
+    = 'delete' _ expr:AssignmentExpression ';' {
+        return new AST.DeleteStatement(getLocation(), expr, false);
+    }
+    / 'delete[]' _ expr:AssignmentExpression ';' {
+        return new AST.DeleteStatement(getLocation(), expr, true);
     }
 
 // A.2.4 External definitions

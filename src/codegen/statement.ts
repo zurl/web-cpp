@@ -5,14 +5,17 @@
  */
 
 import {
-    BreakStatement, CaseStatement,
-    CompoundStatement, ContinueStatement, Declaration, DoWhileStatement, ExpressionResult,
-    ExpressionStatement, ForStatement, GotoStatement,
-    IfStatement, LabeledStatement, Node,
+    AssignmentExpression,
+    BreakStatement, CallExpression, CaseStatement,
+    CompoundStatement, ContinueStatement, Declaration, DeleteStatement, DoWhileStatement, ExpressionResult,
+    ExpressionStatement, ForStatement, GotoStatement, Identifier,
+    IfStatement, LabeledStatement, MemberExpression, Node,
     SwitchStatement, UnaryExpression, WhileStatement,
 } from "../common/ast";
-import {SyntaxError} from "../common/error";
-import {AddressType} from "../common/symbol";
+import {LanguageError, SyntaxError} from "../common/error";
+import {AddressType, Variable} from "../common/symbol";
+import {ClassType} from "../type/class_type";
+import {PointerType} from "../type/compound_type";
 import {IntegerType, PrimitiveTypes} from "../type/primitive_type";
 import {I32Binary, WBinaryOperation, WConst, WType} from "../wasm";
 import {WStatement} from "../wasm/node";
@@ -23,10 +26,10 @@ import {doConversion, doValueTransform} from "./conversion";
 import {FunctionLookUpResult} from "./scope";
 
 export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: ExpressionResult) {
-    if ( expr.expr instanceof FunctionLookUpResult) {
+    if (expr.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`illegal function name`, node);
     }
-    if ( expr.isLeft && expr.expr.isPure()) {
+    if (expr.isLeft && expr.expr.isPure()) {
         return;
     }
     if (expr.type.equals(PrimitiveTypes.void)) {
@@ -56,11 +59,11 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     const savedStatementContainer = ctx.getStatementContainer();
     const mockContainer: WStatement[] = [];
     ctx.setStatementContainer(mockContainer);
-    ctx.switchContext = { cases: [] };
-    if ( mockContainer.length !== 0 ) {
+    ctx.switchContext = {cases: []};
+    if (mockContainer.length !== 0) {
         throw new SyntaxError(`illegal content in switch out side all case`, this);
     }
-    if ( !(this.body instanceof CompoundStatement)) {
+    if (!(this.body instanceof CompoundStatement)) {
         throw new SyntaxError(`switch body must be compoundstatement`, this);
     }
     const caseCount = this.body.body.filter((x) => x instanceof CaseStatement).length;
@@ -69,12 +72,12 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.blockLevel += caseCount;
     this.body.codegen(ctx);
     const defaultBranches = ctx.switchContext.cases.filter((x) => x.value === null);
-    if ( defaultBranches.length > 1 ) {
+    if (defaultBranches.length > 1) {
         throw new SyntaxError(`only 1 default case is support`, this);
     }
-    if ( defaultBranches.length === 1) {
+    if (defaultBranches.length === 1) {
         for (let i = 0; i < ctx.switchContext.cases.length; i++) {
-            if ( ctx.switchContext.cases[i].value === null) {
+            if (ctx.switchContext.cases[i].value === null) {
                 defaultBreakLevel = i;
                 break;
             }
@@ -83,7 +86,7 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     const tmpVarLoc = ctx.memory.allocStack(4);
     const tmpVarPtr = new WAddressHolder(tmpVarLoc, AddressType.STACK, this.location);
     const cond = doValueTransform(ctx, this.discriminant.codegen(ctx), this);
-    if ( !(cond.type instanceof IntegerType) || cond.expr instanceof FunctionLookUpResult) {
+    if (!(cond.type instanceof IntegerType) || cond.expr instanceof FunctionLookUpResult) {
         throw new SyntaxError(`illegal switch cond type`, this);
     }
     ctx.setStatementContainer(savedStatementContainer);
@@ -92,7 +95,7 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     const condExpr = tmpVarPtr.createLoad(ctx, cond.type);
     for (let i = 0; i < ctx.switchContext.cases.length; i++) {
         const val = ctx.switchContext.cases[i].value;
-        if ( val !== null) {
+        if (val !== null) {
             currentBlock.body.push(new WBrIf(i, new WBinaryOperation(
                 I32Binary.eq,
                 condExpr,
@@ -110,24 +113,24 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
 };
 
 CaseStatement.prototype.codegen = function(ctx: CompileContext) {
-    if ( ctx.switchContext === null ) {
+    if (ctx.switchContext === null) {
         throw new SyntaxError(`case out of switch`, this);
     }
-    const caseCtx: CaseContext = { value: null, statements: [] };
+    const caseCtx: CaseContext = {value: null, statements: []};
     ctx.switchContext.cases.push(caseCtx);
-    if ( this.test !== null ) {
+    if (this.test !== null) {
         const expr = this.test.codegen(ctx);
         if (expr.expr instanceof FunctionLookUpResult) {
             throw new SyntaxError(`func name not support`, this);
         }
         expr.expr = expr.expr.fold();
-        if ( !(expr.expr instanceof WConst) || !(expr.type instanceof IntegerType)) {
+        if (!(expr.expr instanceof WConst) || !(expr.type instanceof IntegerType)) {
             throw new SyntaxError(`case value must be integer or enum`, this);
         }
         caseCtx.value = expr.expr;
     }
     ctx.setStatementContainer(caseCtx.statements);
-    ctx.blockLevel --;
+    ctx.blockLevel--;
     this.body.codegen(ctx);
 };
 
@@ -144,15 +147,15 @@ IfStatement.prototype.codegen = function(ctx: CompileContext) {
 
     const savedContainer = ctx.getStatementContainer();
     ctx.setStatementContainer(thenStatements);
-    ctx.blockLevel ++;
+    ctx.blockLevel++;
     this.consequent.codegen(ctx);
-    if ( this.alternate !== null) {
+    if (this.alternate !== null) {
         ctx.setStatementContainer(elseStatements);
         this.alternate.codegen(ctx);
     }
     ctx.setStatementContainer(savedContainer);
-    ctx.blockLevel --;
-    if ( this.alternate !== null) {
+    ctx.blockLevel--;
+    if (this.alternate !== null) {
         ctx.submitStatement(new WIfElseBlock(condition.expr.fold(), thenStatements,
             elseStatements, this.location));
     } else {
@@ -235,7 +238,7 @@ DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
     // <-- loop -->
     ctx.setStatementContainer(doWhileLoop);
     ctx.submitStatement(new WBlock(doWhileBlock, this.location));
-    const condition =  this.test.codegen(ctx);
+    const condition = this.test.codegen(ctx);
     condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
     ctx.submitStatement(new WBrIf(0, condition.expr.fold(), this.location));
@@ -264,7 +267,7 @@ block{
 ForStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.enterScope();
     if (this.init !== null) {
-        if ( this.init instanceof Declaration) {
+        if (this.init instanceof Declaration) {
             this.init.codegen(ctx);
         } else {
             recycleExpressionResult(ctx, this, this.init.codegen(ctx));
@@ -281,7 +284,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.continueStack.push(ctx.blockLevel + 3);
     ctx.breakStack.push(ctx.blockLevel + 1);
     ctx.blockLevel += 3;
-    if ( this.body instanceof CompoundStatement ) {
+    if (this.body instanceof CompoundStatement) {
         this.body.body.map((x) => x.codegen(ctx));
     } else {
         this.body.codegen(ctx);
@@ -293,7 +296,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
 
     // <-- loop -->
     ctx.setStatementContainer(loopStatements);
-    if ( this.test !== null) {
+    if (this.test !== null) {
         const condition = new UnaryExpression(this.location,
             "!", this.test).codegen(ctx);
         condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
@@ -301,7 +304,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
         ctx.submitStatement(new WBrIf(1, condition.expr.fold(), this.location));
     }
     ctx.submitStatement(new WBlock(innerBlockStatements, this.location));
-    if ( this.update !== null) {
+    if (this.update !== null) {
         recycleExpressionResult(ctx, this, this.update.codegen(ctx));
     }
     ctx.submitStatement(new WBr(0, this.location));
@@ -318,7 +321,7 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
 };
 
 ContinueStatement.prototype.codegen = function(ctx: CompileContext) {
-    if ( ctx.continueStack.length === 0 ) {
+    if (ctx.continueStack.length === 0) {
         throw new SyntaxError(`continue is not in while/do-while/for`, this);
     }
     const item = ctx.continueStack[ctx.continueStack.length - 1];
@@ -326,11 +329,52 @@ ContinueStatement.prototype.codegen = function(ctx: CompileContext) {
 };
 
 BreakStatement.prototype.codegen = function(ctx: CompileContext) {
-    if ( ctx.breakStack.length === 0 ) {
+    if (ctx.breakStack.length === 0) {
         throw new SyntaxError(`break is not in while/do-while/for`, this);
     }
     const item = ctx.breakStack[ctx.breakStack.length - 1];
     ctx.submitStatement(new WBr(ctx.blockLevel - item, this.location));
+};
+
+DeleteStatement.prototype.codegen = function(ctx: CompileContext) {
+    if (!ctx.isCpp()) {
+        throw new LanguageError(`delete is only support in c++`, this);
+    }
+    const rightType = this.expr.deduceType(ctx);
+    if (!(rightType instanceof PointerType)) {
+        throw new SyntaxError(`you could only delete pointer`, this);
+    }
+    if (this.isArrayDelete) {
+        new ExpressionStatement(this.location, new CallExpression(
+            this.location, new Identifier(this.location, "free"),
+            [this.expr],
+        )).codegen(ctx);
+    } else {
+        if (rightType.elementType instanceof ClassType) {
+            const tmpVarName = ctx.scopeManager.allocTmpVarName();
+            const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, rightType,
+                AddressType.STACK, ctx.memory.allocStack(rightType.length));
+            ctx.scopeManager.define(tmpVarName, tmpVar, this);
+
+            new AssignmentExpression(this.location, "=",
+                new Identifier(this.location, tmpVarName), this.expr).codegen(ctx);
+
+            new ExpressionStatement(this.location, new CallExpression(this.location,
+                new MemberExpression(this.location, new Identifier(this.location, tmpVarName),
+                    true, new Identifier(this.location, "~" + rightType.elementType.name)),
+                [])).codegen(ctx);
+
+            new ExpressionStatement(this.location, new CallExpression(this.location,
+                new Identifier(this.location, "::free"), [
+                    new Identifier(this.location, tmpVarName),
+                ])).codegen(ctx);
+        } else {
+            new ExpressionStatement(this.location, new CallExpression(
+                this.location, new Identifier(this.location, "::free"),
+                [this.expr],
+            )).codegen(ctx);
+        }
+    }
 };
 
 export function statement() {

@@ -5,11 +5,11 @@
  */
 import Long = require("long");
 import {
-    AnonymousExpression,
-    CallExpression,
+    AnonymousExpression, AssignmentExpression,
+    CallExpression, CastExpression,
     ConstructorCallExpression,
     Declaration,
-    Declarator,
+    Declarator, Expression,
     ExpressionResult,
     FunctionDeclarator,
     FunctionDefinition,
@@ -19,7 +19,7 @@ import {
     Node,
     ParameterList,
     ReturnStatement,
-    Statement,
+    Statement, TypedefName,
     UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, SyntaxError} from "../common/error";
@@ -482,15 +482,34 @@ ConstructorCallExpression.prototype.codegen = function(ctx: CompileContext): Exp
     }
     const ctorName = classType.fullName + "::#" + classType.name;
     const callee = new Identifier(this.location, ctorName);
-    const tmpVarName = ctx.scopeManager.allocTmpVarName();
-    const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, classType,
-        AddressType.STACK, ctx.memory.allocStack(classType.length));
-    ctx.scopeManager.define(tmpVarName, tmpVar, this);
-    const thisVar = new Identifier(this.location, tmpVarName);
-    const thisPtr = new UnaryExpression(this.location, "&", thisVar);
-    recycleExpressionResult(ctx, this,
-        new CallExpression(this.location, callee, [thisPtr, ...this.arguments]).codegen(ctx));
-    return thisVar.codegen(ctx);
+    if ( this.isNew ) {
+        const ptrType = new PointerType(classType);
+        const tmpVarName = ctx.scopeManager.allocTmpVarName();
+        const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, ptrType,
+            AddressType.STACK, ctx.memory.allocStack(ptrType.length));
+        ctx.scopeManager.define(tmpVarName, tmpVar, this);
+        const mallocExpr = new CallExpression(this.location, new Identifier(this.location, "::malloc"),
+            [IntegerConstant.fromNumber(this.location, classType.length)]).codegen(ctx);
+        mallocExpr.type = ptrType;
+        const assignExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, tmpVarName),
+            new AnonymousExpression(this.location, mallocExpr)).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignExpr);
+        const ctorExpr = new CallExpression(this.location, callee, [
+            new Identifier(this.location, tmpVarName), ...this.arguments]).codegen(ctx);
+        recycleExpressionResult(ctx, this, ctorExpr);
+        return new Identifier(this.location, tmpVarName).codegen(ctx);
+    } else {
+        const tmpVarName = ctx.scopeManager.allocTmpVarName();
+        const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, classType,
+            AddressType.STACK, ctx.memory.allocStack(classType.length));
+        ctx.scopeManager.define(tmpVarName, tmpVar, this);
+        const thisVar = new Identifier(this.location, tmpVarName);
+        const thisPtr = new UnaryExpression(this.location, "&", thisVar);
+        recycleExpressionResult(ctx, this,
+            new CallExpression(this.location, callee, [thisPtr, ...this.arguments]).codegen(ctx));
+        return thisVar.codegen(ctx);
+    }
 };
 
 export function functions() {

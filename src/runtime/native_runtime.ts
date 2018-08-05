@@ -11,11 +11,13 @@ export class NativeRuntime extends Runtime {
     public wasmMemory: WebAssembly.Memory;
     public instance: WebAssembly.Instance | null;
     public entry: string;
+    public options: RuntimeOptions;
 
     constructor(options: RuntimeOptions) {
         super(options);
         const that = this;
         this.entry = options.entry;
+        this.options = options;
 
         // wrap importObject
         const oldImportObject = this.importObjects;
@@ -46,10 +48,12 @@ export class NativeRuntime extends Runtime {
     }
 
     public async run(): Promise<void> {
+        this.heapStart = this.heapPointer = this.options.heapStart;
         const asm = await WebAssembly.instantiate(this.code, this.importObjects);
         this.instance = asm.instance;
         const initSp = parseInt(((this.wasmMemory.buffer.byteLength - 1) / 4) + "") * 4;
         this.sp = initSp;
+        this.heapAllocator.init(this);
         asm.instance.exports["$start"]();
         this.sp = initSp;
         asm.instance.exports[this.entry]();

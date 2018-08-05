@@ -46,7 +46,7 @@ async function run() {
         showMessage("compiler", "downloading compiler");
         isFirst = false;
     }
-    const {NativeRuntime, importObj,StringInputFile, compileFile,CompilerError, CallbackOutputFile} = await import("../../src/tools/api_tools");
+    const {NativeRuntime, importObj,StringInputFile, compileFile,CompilerError, CallbackOutputFile} = await import("../../src/tools/compiler");
     showMessage("compiler", "cc -o main main.cpp");
     try {
         const obj = compileFile("main.cpp", editor.getValue());

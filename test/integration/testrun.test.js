@@ -114,6 +114,13 @@ B(int a, int b): A(a), d(b){}
 int main(){
     B a(5, 7), b(0, 3);
     a.foo();
+    //B c = new B(5, 7);
+    B *c = new B(1, 2);
+    printf("%d,", (int) c);
+    B *d = new B(1, 2);
+    delete c;
+    delete d;
+    printf("%d,", (int) d);
     return 0;
 }
 `;
