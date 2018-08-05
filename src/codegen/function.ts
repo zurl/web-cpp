@@ -6,7 +6,7 @@
 import Long = require("long");
 import {inspect} from "util";
 import {
-    AnanonymousExpression,
+    AnonymousExpression,
     CallExpression, CastExpression,
     ConstructorCallExpression,
     Declaration,
@@ -360,13 +360,13 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
             const rightType = src.type;
             const leftPtrType = new PointerType(dstType);
             stackOffset -= getInStackSize(dstType.length);
-            const left = new AnanonymousExpression(this.location, {
+            const left = new AnonymousExpression(this.location, {
                 type: leftPtrType,
                 isLeft: false,
                 expr: new WAddressHolder(stackOffset, AddressType.GLOBAL_SP, this.location)
                     .createLoadAddress(ctx),
             });
-            const right = new AnanonymousExpression(this.location, src);
+            const right = new AnonymousExpression(this.location, src);
             const fullName = dstType.fullName + "::#" + dstType.name;
             let expr: ExpressionResult;
             if (isFunctionExists(ctx, fullName, [leftPtrType, rightType], null)) {

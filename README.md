@@ -100,6 +100,7 @@ use `./cc` as local runtime (Node.js)
 - [X] function overload
 - [X] member function overload
 - [X] __cxx_global_var_init
+- [ ] public/private/ protect, (syntax ok, todo)
 - [ ] implict this
 - [ ] new/delete
 - [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全

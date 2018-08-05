@@ -397,14 +397,16 @@ export class AtomicTypeSpecifier extends Node {
     }
 }
 
+type ClassDirectives = Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration | AccessControlLabel;
+
 export class StructOrUnionSpecifier extends Node {
     public union: boolean;
     public identifier: Identifier;
-    public declarations: Array<Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration> | null;
+    public declarations: ClassDirectives[] | null;
 
     constructor(location: SourceLocation, union: boolean,
                 identifier: Identifier,
-                declarations: Array<Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration> | null) {
+                declarations: ClassDirectives[] | null) {
         super(location);
         this.union = union;
         this.identifier = identifier;
@@ -894,7 +896,7 @@ export class ConstructorInitializeItem extends Node {
     }
 }
 
-export class AnanonymousExpression extends Expression {
+export class AnonymousExpression extends Expression {
     public expr: ExpressionResult;
 
     constructor(location: SourceLocation, expr: ExpressionResult) {
@@ -908,5 +910,14 @@ export class AnanonymousExpression extends Expression {
 
     public deduceType(ctx: CompileContext): Type {
         return this.expr.type;
+    }
+}
+
+export class AccessControlLabel extends Node {
+    public label: string;
+
+    constructor(location: SourceLocation, label: string) {
+        super(location);
+        this.label = label;
     }
 }

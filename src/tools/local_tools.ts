@@ -24,17 +24,19 @@ export function saveBinaryFile(fileName: string, binary: BinaryObject) {
     writeFileSync(fileName, JSON.stringify({
         version: BINARY_VERSION,
         enrty: binary.entry,
+        heapStart: binary.heapStart,
         code,
     }));
 }
 
 export function loadBinaryFile(fileName: string): BinaryObject {
     const json = JSON.parse(readFileSync(fileName, "utf-8"));
-    const {entry} = json;
+    const {entry, heapStart} = json;
     const binary = Buffer.from(json.code, "base64") as any;
     return {
         binary,
         entry,
+        heapStart,
         fileName,
     };
 }
@@ -62,10 +64,17 @@ export function runFile(bin: BinaryObject, memorySize: number) {
     for (const key of Object.keys(JsAPIMap)) {
         importObj["system"]["::" + key] = JsAPIMap[key];
     }
-    const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
-        new NoInputFile(),
-        new CommandOutputFile(),
-        new CommandOutputFile(),
-    ]);
+    const runtime = new NativeRuntime({
+            importObjects: importObj,
+            code: bin.binary,
+            memorySize: 10,
+            entry: bin.entry,
+            heapStart: bin.heapStart,
+            files: [
+                new NoInputFile(),
+                new CommandOutputFile(),
+                new CommandOutputFile(),
+            ],
+        });
     runtime.run();
 }

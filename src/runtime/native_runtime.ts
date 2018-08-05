@@ -3,10 +3,8 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-import 'babel-polyfill';
-import {RuntimeError} from "../common/error";
-import {ImportObject, Runtime} from "./runtime";
-import {VMFile} from "./vmfile";
+import "babel-polyfill";
+import {Runtime, RuntimeOptions} from "./runtime";
 
 export class NativeRuntime extends Runtime {
 
@@ -14,14 +12,10 @@ export class NativeRuntime extends Runtime {
     public instance: WebAssembly.Instance | null;
     public entry: string;
 
-    constructor(code: ArrayBuffer,
-                memorySize: number,
-                entry: string,
-                importObjects?: ImportObject,
-                files?: VMFile[]) {
-        super(code, importObjects, 0, files);
+    constructor(options: RuntimeOptions) {
+        super(options);
         const that = this;
-        this.entry = entry;
+        this.entry = options.entry;
 
         // wrap importObject
         const oldImportObject = this.importObjects;
@@ -36,11 +30,10 @@ export class NativeRuntime extends Runtime {
                 };
             }
         }
-
         this.wasmMemory = new WebAssembly.Memory(
             {
                 initial: 1,
-                maximum: memorySize,
+                maximum: options.memorySize,
             });
         if (!this.importObjects.hasOwnProperty("system")) {
             this.importObjects["system"] = {};
@@ -60,7 +53,7 @@ export class NativeRuntime extends Runtime {
         asm.instance.exports["$start"]();
         this.sp = initSp;
         asm.instance.exports[this.entry]();
-        //this.instance = null;
+        // this.instance = null;
         this.files.map((file) => file.flush());
     }
 

@@ -3,10 +3,8 @@ import * as Long_ from "long";
 import * as PegJs from "pegjs";
 import * as CTree_ from "../common/ast";
 import {Node, SpecifierType} from "../common/ast";
-import {CompilerError, SyntaxError, TypeError} from "../common/error";
+import {SyntaxError, TypeError} from "../common/error";
 import CGrammar from "./c.lang";
-import {PegjsError} from "pegjs";
-import {SourceLocation} from "../common/ast";
 
 const storageClassSpecifierStringToEnum = [
     "typedef", "extern", "static", "_Thread_local", "auto", "register",

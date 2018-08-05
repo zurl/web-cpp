@@ -147,7 +147,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         requiredFuncTypes: Array.from(requiredFuncTypes.keys()),
     });
 
-    //fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");
+    // fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");
 
     const emitter = new WASMEmitter();
     emitter.externMap = externVarMap;
@@ -159,8 +159,12 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         dumper.sourceMap = sourceMap;
         mod.dump(dumper);
     }
+
+    const heapStart = (parseInt((bssNow + 1) / 4 as any) + 1) * 4;
+
     return {
         fileName,
+        heapStart,
         entry: entry[0],
         sourceMap,
         binary: emitter.buffer.slice(0, emitter.now),

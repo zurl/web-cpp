@@ -4,13 +4,13 @@
  *  Created at 03/07/2018
  */
 import {
-    CallExpression,
+    AccessControlLabel,
     CompoundStatement,
     ConstructorOrDestructorDeclaration,
     Declaration, Expression,
-    ExpressionResult, FunctionDefinition, Identifier, InitializerList,
+    ExpressionResult, FunctionDefinition, InitializerList,
     MemberExpression,
-    Node, ObjectInitializer, ParameterList, Statement,
+    Node, ObjectInitializer,
     StructOrUnionSpecifier, UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
@@ -19,7 +19,6 @@ import {
     ClassField,
     ClassType, CppFunctionType,
     FunctionType,
-    LeftReferenceType,
     PointerType, PrimitiveTypes,
     Type,
     Variable,
@@ -195,7 +194,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                 throw new SyntaxError(`illegal function definition`, this);
             }
             const realName = functionType.name;
-            if ( functionType.isStatic ) {
+            if (functionType.isStatic) {
                 declareFunction(ctx, functionType, realName,
                     decl.specifiers.includes("__libcall"), this);
             } else {
@@ -207,6 +206,8 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                     decl.specifiers.includes("__libcall"), this);
             }
             delayParseList.push([decl.body, functionType, realName]);
+        } else if ( decl instanceof AccessControlLabel) {
+            // TODO:: do nothing
         } else {
             throw new InternalError(`StructOrUnionSpecifier()`);
         }

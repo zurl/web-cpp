@@ -48,6 +48,7 @@ export interface BinaryObject {
     fileName: string;
     entry: string;
     binary: ArrayBuffer;
+    heapStart: number;
 
     // debug only
     sourceMap?: Map<string, SourceMap>;

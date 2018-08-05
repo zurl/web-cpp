@@ -1,6 +1,5 @@
-
 const {CompilerError} = require("../../dist/common/error");
-const {NoInputFile, StringInputFile, StringOutputFile} = require("../../dist/runtime/vmfile");
+const {NoInputFile, CommandOutputFile, StringInputFile, StringOutputFile} = require("../../dist/runtime/vmfile");
 const {NativeRuntime} = require("../../dist/runtime/native_runtime");
 const {Headers, Impls, JsAPIMap} = require("../../dist/library/index");
 const {assert} = require('chai');
@@ -33,11 +32,18 @@ async function testRun(source, options){
             importObj["system"]["::" + key] = JsAPIMap[key];
         }
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
-        const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
-            new StringInputFile(options.input),
-            new StringOutputFile(result),
-            new StringOutputFile(result),
-        ]);
+        const runtime = new NativeRuntime({
+            importObjects: importObj,
+            code: bin.binary,
+            memorySize: 10,
+            entry: bin.entry,
+            heapStart: bin.heapStart,
+            files: [
+                new StringInputFile(options.input),
+                new StringOutputFile(result),
+                new StringOutputFile(result),
+            ],
+        });
         await runtime.run();
     } catch (e) {
         if( e instanceof CompilerError){

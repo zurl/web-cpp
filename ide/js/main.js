@@ -3,6 +3,8 @@ import * as Ace from "./ace/ace";
 import * as AceMonokai from "./ace/theme-monokai"
 import * as AceCCpp from "./ace/mode-c_cpp";
 import {version} from "./version";
+import {NativeRuntime} from "../../src/runtime/native_runtime";
+import {CommandOutputFile, NoInputFile} from "../../src/runtime/vmfile";
 
 const messageDiv = document.getElementById("message");
 const outputDiv = document.getElementById("output");
@@ -55,11 +57,18 @@ async function run() {
             return;
         }
         showMessage("runtime", "run main");
-        const runtime = new NativeRuntime(obj.binary, 10, obj.entry, importObj, [
-            new StringInputFile(inputTa.value),
-            new CallbackOutputFile(x => showOutput(x)),
-            new CallbackOutputFile(x => showOutput(x)),
-        ]);
+        const runtime = new NativeRuntime({
+            importObjects: importObj,
+            code: obj.binary,
+            memorySize: 10,
+            entry: obj.entry,
+            heapStart: obj.heapStart,
+            files: [
+                new StringInputFile(inputTa.value),
+                new CallbackOutputFile(x => showOutput(x)),
+                new CallbackOutputFile(x => showOutput(x)),
+            ],
+        });
         tabdiv.select("output");
         await runtime.run();
         showMessage("runtime", "code return with code 0");

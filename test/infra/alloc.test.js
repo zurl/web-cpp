@@ -18,7 +18,12 @@ describe('heap allocator', function () {
     it('it should be works', function () {
         const allocator = new LinkedHeapAllocator();
         const buffer = new ArrayBuffer(1000);
-        const vm = new Runtime();
+        const vm = new Runtime({
+            heapStart: 0
+        });
+        vm.memoryBuffer = buffer;
+        vm.memory = new DataView(buffer);
+        vm.memoryUint8Array = new Uint8Array(buffer);
         vm.sp = 10000;
         vm.heapStart = 100;
         vm.heapPointer = 100;
@@ -51,7 +56,12 @@ describe('heap allocator', function () {
     it('fast heap alloc', function () {
         const allocator = new FastHeapAllocator();
         const buffer = new ArrayBuffer(10000);
-        const vm = new Runtime();
+        const vm = new Runtime({
+            heapStart: 0
+        });
+        vm.memoryBuffer = buffer;
+        vm.memory = new DataView(buffer);
+        vm.memoryUint8Array = new Uint8Array(buffer);
         vm.sp = 10000;
         vm.heapStart = 100;
         vm.heapPointer = 100;

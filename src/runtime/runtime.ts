@@ -13,6 +13,15 @@ export interface ImportObject {
     };
 }
 
+export interface RuntimeOptions {
+    code: ArrayBuffer;
+    heapStart: number;
+    importObjects: ImportObject;
+    memorySize: number;
+    files: VMFile[];
+    entry: string;
+}
+
 export abstract class Runtime {
     public memory: DataView;
     public memoryUint8Array: Uint8Array;
@@ -25,18 +34,15 @@ export abstract class Runtime {
     public files: VMFile[];
     public heapAllocator: HeapAllocator;
 
-    constructor(code: ArrayBuffer,
-                importObjects: ImportObject = {},
-                memorySize: number = 1024 * 1024,
-                files: VMFile[] = []) {
-        this.memoryBuffer = new ArrayBuffer(memorySize);
+    constructor(options: RuntimeOptions) {
+        this.memoryBuffer = new ArrayBuffer(0);
         this.memoryUint8Array = new Uint8Array(this.memoryBuffer);
         this.memory = new DataView(this.memoryBuffer);
-        this.heapStart = 0;
-        this.heapPointer = 0;
-        this.code = code;
-        this.importObjects = importObjects;
-        this.files = files;
+        this.heapStart = options.heapStart;
+        this.heapPointer = options.heapStart;
+        this.code = options.code;
+        this.importObjects = options.importObjects;
+        this.files = options.files;
         this.heapAllocator = new FastHeapAllocator();
     }
 

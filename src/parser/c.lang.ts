@@ -864,6 +864,8 @@ StructDeclarationList
         return buildList(head, tail, 1);
     }
 
+AccessControlLabels = 'public' / 'private' / 'protect'
+
 StructDeclaration
     = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body);
@@ -876,6 +878,9 @@ StructDeclaration
     }
     / '~' id:TypedefName _ '(' _ ')' _ ';'{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null);
+    }
+    / label:AccessControlLabels _ ':' {
+        return new AST.AccessControlLabel(getLocation(), label); 
     }
     / decl:ExternalDeclaration {
         return decl;

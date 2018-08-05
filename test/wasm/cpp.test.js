@@ -30,11 +30,18 @@ describe('cpp -> wasm', function () {
         };
         Object.keys(JsAPIMap).map(key => importObj.system["::" + key] = JsAPIMap[key]);
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
-        const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
-            new NoInputFile(),
-            new CommandOutputFile(),
-            new CommandOutputFile()
-        ]);
+        const runtime = new NativeRuntime({
+            importObjects: importObj,
+            code: bin.binary,
+            memorySize: 10,
+            entry: bin.entry,
+            heapStart: bin.heapStart,
+            files: [
+                new NoInputFile(),
+                new CommandOutputFile(),
+                new CommandOutputFile(),
+            ],
+        });
         return await runtime.run();
     });
 });
