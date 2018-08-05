@@ -101,9 +101,9 @@ use `./cc` as local runtime (Node.js)
 - [X] member function overload
 - [X] __cxx_global_var_init
 - [ ] public/private/ protect, (syntax ok, todo)
-- [ ] implict this
+- [X] implict this
 - [ ] new/delete
-- [ ] 运算符重载 => working, bin->ok, unary->working, syntax不全
+- [X] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [ ] 类型转换重载， like if(object) { ... }
 - [ ] 异常处理
 - [ ] 继承

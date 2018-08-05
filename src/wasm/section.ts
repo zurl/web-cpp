@@ -800,6 +800,7 @@ export class WModule extends WNode {
     }
 
     public dump(e: Emitter): void {
+        this.functionSection.emit(e);
         this.codeSection.dump(e);
     }
 

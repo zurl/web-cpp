@@ -181,7 +181,17 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     }
     const item = ctx.scopeManager.lookupAnyName(this.name);
     if (item === null) {
-        throw new SyntaxError(`Unresolve Name ${this.name}`, this);
+        const thisPtr = ctx.scopeManager.lookupShortName("this");
+        if ( thisPtr !== null) {
+            try {
+                return new MemberExpression(this.location, new Identifier(this.location, "this"),
+                    true, this).codegen(ctx);
+            } catch (e) {
+                throw new SyntaxError(`Unresolve Name ${this.name}`, this);
+            }
+        } else {
+            throw new SyntaxError(`Unresolve Name ${this.name}`, this);
+        }
     }
     if (item instanceof Type) {
         throw new SyntaxError(`${this.name} expect to be variable, but it is a type :)`, this);
@@ -292,7 +302,23 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
             ),
             isLeft: false,
         };
-    } else if (this.operator === "++" || this.operator === "--") {
+    }
+
+    const leftType = this.operand.deduceType(ctx);
+
+    if (leftType instanceof ClassType) {
+        const item = ctx.scopeManager.lookupFullName(
+            leftType.fullName + "::#" + this.operator,
+        );
+        if ( item != null) {
+            return new CallExpression(this.location,
+                new MemberExpression(this.location, this.operand, false,
+                    new Identifier(this.location, "#" + this.operator)),
+                []).codegen(ctx);
+        }
+    }
+
+    if (this.operator === "++" || this.operator === "--") {
         return new AssignmentExpression(this.location,
             "=",
             this.operand,

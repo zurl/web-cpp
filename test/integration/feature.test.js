@@ -95,4 +95,31 @@ describe('feature integration test', function () {
             input: "0"
         });
     });
+    it('test implicit this', async function () {
+        const testCode = `
+#include "stdio.h"
+        class A{
+            int a;
+            A(int b): a(b){}
+            bool operator<(const A & t){
+                return a < t.a;
+            }
+            bool operator!(){
+                return !a;
+            }
+        };
+        int main(){
+            A a(5), b(0);
+            if( a < b ){
+                printf("111\\n");
+            } else {
+                 printf("222\\n");
+            }
+            printf("%d %d\\n", !a, !b);
+            return 0;
+        }
+        `;
+        const expectOutput = `222\n0 1\n`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
 });

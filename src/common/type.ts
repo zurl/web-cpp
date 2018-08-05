@@ -619,7 +619,7 @@ export const PrimitiveTypesNameMap = new Map<string[][], () => PrimitiveType>([
     [[["float"]], () => new FloatType()],
     [[["double"]], () => new DoubleType()],
     // [[['long', 'double'].sort()],                                               PrimitiveTypes.longDouble],
-    // [[['_Bool']],                                                               PrimitiveTypes._Bool]
+    [[["bool"]], () => PrimitiveTypes.bool],
 ]);
 
 export enum StackStorageType {

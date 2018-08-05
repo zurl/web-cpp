@@ -534,7 +534,10 @@ Punctuator
     }
 
 OverloadOperator
-    = '+' / '-' / '*' / '/' / '%' / '&'  / '<' / '>' / '<=' / '>=' / '==' / '!=' / AssignmentOperator
+    = '+' / '-' / '*' / '/' / '%' / '&' / '<' / '>' / '<=' / '>=' / '==' / '!=' 
+    / '|' / '^' / '!' / '~' / '&&' / '||' / '>>' / '<<' / '++' / '--' 
+    /'()' / '[]' / '->' 
+    / AssignmentOperator
 
 // A.1.8 Header names
 
@@ -821,7 +824,7 @@ TypeSpecifier
     / 'double'
     / 'signed'
     / 'unsigned'
-    / '_Bool'
+    / 'bool'
     / '_Complex') !IdentifierPart {
         return text();
     }
