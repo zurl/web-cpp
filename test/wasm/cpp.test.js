@@ -26,17 +26,9 @@ describe('cpp -> wasm', function () {
         const bin = TestBase.Linker.link("main", [obj], {});
         const importObj = {
             system: {
-                "::putInt": function(x){
-                    console.log(x);
-                },
-                "::putChar": function(ctx){
-                    console.log(String.fromCharCode(x));
-                },
-                "::printf": JsAPIMap.printf,
-                "::memcpy": JsAPIMap.memcpy,
-                "::dump_stack_info": JsAPIMap.dump_stack_info,
             }
         };
+        Object.keys(JsAPIMap).map(key => importObj.system["::" + key] = JsAPIMap[key]);
         fs.writeFileSync('test.wasm', new Uint8Array(bin.binary));
         const runtime = new NativeRuntime(bin.binary, 10, bin.entry, importObj, [
             new NoInputFile(),

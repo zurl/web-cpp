@@ -534,7 +534,7 @@ Punctuator
     }
 
 OverloadOperator
-    = '+' / '-' / '*' / '/' / '='
+    = '+' / '-' / '*' / '/' / '%' / '&'  / '<' / '>' / '<=' / '>=' / '==' / '!=' / AssignmentOperator
 
 // A.1.8 Header names
 

@@ -84,4 +84,15 @@ describe('feature integration test', function () {
             input: "999 888 hahaha"
         });
     });
+    it('test getchar',async function() {
+        const testCode = `
+        int a = getchar();
+        int b = getchar();
+        printf("%d %d", a, b);
+        `;
+        const expectOutput = `48 -1`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput, {
+            input: "0"
+        });
+    });
 });

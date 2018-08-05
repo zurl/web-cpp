@@ -28,6 +28,7 @@ export class CompilerError extends Error {
     public name: string;
     public node: Node;
     public location: SourceLocation;
+    public errorLine: string;
     constructor(message: string, node: Node) {
         super(message);
         this.name = this.constructor.name;
@@ -41,6 +42,11 @@ export class CompilerError extends Error {
                 new Position(0, 0, 0),
             );
         }
+        this.errorLine = "";
+    }
+
+    public toString() {
+        return `${this.name}: ${this.message} at ${this.location.start.line}:${this.location.start.column}`;
     }
 }
 
@@ -57,19 +63,6 @@ export class PreprocessingError extends CompilerError {
 }
 
 export class PreprocessError extends Error {
-}
-
-export class ParserError extends Error {
-    public pegError: PegjsError;
-    public name: string;
-    public location: SourceLocation;
-
-    constructor(pegError: PegjsError) {
-        super(pegError.message);
-        this.pegError = pegError;
-        this.name = pegError.name;
-        this.location = pegError.location as any;
-    }
 }
 
 export function assertType<T extends Node>(object: Node | Node[], type: { new(...args: any[]): T }) {

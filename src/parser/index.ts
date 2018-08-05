@@ -3,8 +3,10 @@ import * as Long_ from "long";
 import * as PegJs from "pegjs";
 import * as CTree_ from "../common/ast";
 import {Node, SpecifierType} from "../common/ast";
-import {ParserError, TypeError} from "../common/error";
+import {CompilerError, SyntaxError, TypeError} from "../common/error";
 import CGrammar from "./c.lang";
+import {PegjsError} from "pegjs";
+import {SourceLocation} from "../common/ast";
 
 const storageClassSpecifierStringToEnum = [
     "typedef", "extern", "static", "_Thread_local", "auto", "register",
@@ -92,7 +94,9 @@ function wrapPegParser(parser: any) {
                 return parser.parse(source, options);
             } catch (e) {
                 if (e instanceof parser.SyntaxError) {
-                    throw new ParserError(e);
+                    throw new SyntaxError(e.message, {
+                        location: e.location as any,
+                    } as Node);
                 } else {
                     throw e;
                 }
