@@ -3,8 +3,6 @@ import * as Ace from "./ace/ace";
 import * as AceMonokai from "./ace/theme-monokai"
 import * as AceCCpp from "./ace/mode-c_cpp";
 import {version} from "./version";
-import {NativeRuntime} from "../../src/runtime/native_runtime";
-import {CommandOutputFile, NoInputFile} from "../../src/runtime/vmfile";
 
 const messageDiv = document.getElementById("message");
 const outputDiv = document.getElementById("output");
