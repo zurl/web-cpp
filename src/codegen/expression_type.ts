@@ -242,7 +242,7 @@ MemberExpression.prototype.deduceType = function(ctx: CompileContext): Type {
             return new UnresolvedFunctionOverloadType(item);
         }
     }
-    const field = rawType.fieldMap.get(this.member.name);
+    const field = rawType.getField(this.member.name);
     if ( !field ) {
         throw new SyntaxError(`property ${this.member.name} does not appear on ${rawType.name}`, this);
     }

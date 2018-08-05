@@ -25,6 +25,15 @@ import {FunctionLookUpResult} from "../scope";
 import {recycleExpressionResult} from "../statement";
 import {isFunctionExists} from "./overload";
 
+function testMatchClassName(fullName: string, classFullName: string, anyName: string) {
+    if (anyName.slice(0, 2) === "::") {
+        return fullName === anyName;
+    }
+    const tokens = classFullName.split("::");
+    const scopeName = tokens.slice(0, tokens.length - 1).join("::");
+    return (scopeName + "::" + anyName) === fullName;
+}
+
 export function getCtorStmts(ctx: CompileContext,
                              entity: FunctionEntity,
                              node: Node): Statement[] {
@@ -36,17 +45,71 @@ export function getCtorStmts(ctx: CompileContext,
     const classType = entity.type.referenceClass;
     const initList = entity.type.initList;
     const initMap = new Map<string, Expression>();
-    const ctorStmts = [] as Statement[];
+    const baseCtorStmts = [] as Statement[];
 
     // prepreprocess initList
     for (const initItem of initList) {
-        const key = initItem.key.value;
-        if (classType.fieldMap.get(key) !== undefined) {
-            initMap.set(key, initItem.value);
+        if (initItem.key instanceof Identifier) {
+            const key = initItem.key.name;
+            if (initItem.value.length !== 1) {
+                throw new SyntaxError(`the number of argument to init `
+                + key + ` is incorrect, exepct 1, actual ${initItem.value.length}`, node);
+            }
+            if (classType.getField(key) !== null) {
+                initMap.set(key, initItem.value[0]);
+            } else {
+                throw new SyntaxError(`unknown field ${key} in class ${classType.name}`, node);
+            }
         } else {
-            throw new SyntaxError(`unknown field ${key} in class ${classType.name}`, node);
+            let hasFound = false;
+            for (let i = 0; i < classType.inheritance.length; i++) {
+                if (testMatchClassName(
+                    classType.inheritance[i].classType.fullName,
+                    classType.fullName,
+                    initItem.key.identifier.name)) {
+                    const baseType = classType.inheritance[i].classType;
+                    const fullName = baseType.fullName + "::#" + baseType.name;
+                    const nret = ctx.scopeManager.lookupFullName(fullName);
+                    if (nret === null || !(nret instanceof FunctionLookUpResult)) {
+                        throw new SyntaxError(`the base class ${initItem.key.identifier.name}` +
+                            ` construtor parameters mismatch`, node);
+                    }
+                    baseCtorStmts[i] = new ExpressionStatement(node.location,
+                        new CallExpression(node.location,
+                            new Identifier(node.location, fullName),
+                            [
+                                new Identifier(node.location, "this"),
+                                ...initItem.value,
+                            ]));
+                    hasFound = true;
+                }
+            }
+            if (!hasFound) {
+                throw new SyntaxError(`class ${initItem.key.identifier.name}` +
+                    ` is not base class of ${classType.name}`, node);
+            }
         }
     }
+
+    // default base class init
+    for (let i = 0; i < classType.inheritance.length; i++) {
+        if ( !baseCtorStmts[i]) {
+            const baseType = classType.inheritance[i].classType;
+            const fullName = baseType.fullName + "::#" + baseType.name;
+            const nret = ctx.scopeManager.lookupFullName(fullName);
+            if (nret === null || !(nret instanceof FunctionLookUpResult)) {
+                throw new SyntaxError(`the base class ${baseType.name}` +
+                    ` contains not constructor`, node);
+            }
+            baseCtorStmts[i] = new ExpressionStatement(node.location,
+                new CallExpression(node.location,
+                    new Identifier(node.location, fullName),
+                    [
+                        new Identifier(node.location, "this"),
+                    ]));
+        }
+    }
+    const ctorStmts = [ ...baseCtorStmts ] as Statement[];
 
     for (const field of classType.fields) {
         const left = new MemberExpression(node.location, new Identifier(node.location, "this"),
@@ -114,6 +177,18 @@ export function getDtorStmts(ctx: CompileContext,
         }
     }
 
+    for (const item of classType.inheritance) {
+        const fullName = item.classType.fullName + "::~" + item.classType.name;
+        const nret = ctx.scopeManager.lookupFullName(fullName);
+        if (nret !== null) {
+            dtorStmts.push(new ExpressionStatement(node.location,
+                new CallExpression(node.location,
+                    new MemberExpression(node.location, new Identifier(node.location, "this"),
+                        true, new Identifier(node.location, "~" + item.classType.name)),
+                    [])));
+        }
+    }
+
     return dtorStmts;
 }
 
@@ -141,14 +216,52 @@ export function generateDefaultCtors(ctx: CompileContext,
     // 1. default ctor
     const defaultCtorRet = ctx.scopeManager
         .lookupFullName(classType.fullName + "::#" + classType.name);
-    if (defaultCtorRet === null || !(defaultCtorRet instanceof FunctionLookUpResult)) {
+    if (defaultCtorRet === null) {
+        const body = [] as Statement[];
+        for (const item of classType.inheritance) {
+            const fullName = item.classType.fullName + "::#" + item.classType.name;
+            const nret = ctx.scopeManager.lookupFullName(fullName);
+            if (nret === null) {
+                throw new SyntaxError(`the parent class ${item.classType.toString()} contains no default ctor`, node);
+            } else {
+                body.push(new ExpressionStatement(node.location,
+                    new CallExpression(node.location,
+                        new Identifier(node.location, fullName),
+                        [new Identifier(node.location, "this")])));
+            }
+        }
         const shortName = "#" + classType.name;
         const funcType = new FunctionType(shortName, PrimitiveTypes.void,
             [new PointerType(classType)], ["this"], false);
         funcType.cppFunctionType = CppFunctionType.Constructor;
         funcType.referenceClass = classType;
         funcType.name = shortName;
-        defineFunction(ctx, funcType, [], AccessControl.Public, node);
+        defineFunction(ctx, funcType, body, AccessControl.Public, node);
+    }
+
+    // 2. default dtor
+    const defaultDtorRet = ctx.scopeManager
+        .lookupFullName(classType.fullName + "::~" + classType.name);
+    if (defaultDtorRet === null) {
+        const body = [] as Statement[];
+        for (const item of classType.inheritance) {
+            const fullName = item.classType.fullName + "::~" + item.classType.name;
+            const nret = ctx.scopeManager.lookupFullName(fullName);
+            if (nret !== null) {
+                body.push(new ExpressionStatement(node.location,
+                    new CallExpression(node.location,
+                        new MemberExpression(node.location, new Identifier(node.location, "this"),
+                            true, new Identifier(node.location, "~" + item.classType.name)),
+                        [])));
+            }
+        }
+        const shortName = "~" + classType.name;
+        const funcType = new FunctionType(shortName, PrimitiveTypes.void,
+            [new PointerType(classType)], ["this"], false);
+        funcType.cppFunctionType = CppFunctionType.Destructor;
+        funcType.referenceClass = classType;
+        funcType.name = shortName;
+        defineFunction(ctx, funcType, body, AccessControl.Public, node);
     }
 
     // 2. copy ctor

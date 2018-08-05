@@ -899,11 +899,14 @@ StructDeclaration
     
 ConstructorInitializeList
     = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
-         return buildList(head, tail, 1);
+         return buildList(head, tail, 3);
     }
 
 ConstructorInitializeItem
-    = key:Identifier _ '(' _ value:AssignmentExpression _ ')' {
+    = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value);
+    }
+    / key:TypedefName _ '(' _ value:ArgumentExpressionList _ ')' {
         return new AST.ConstructorInitializeItem(getLocation(), key, value);
     }
 

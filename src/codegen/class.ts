@@ -16,9 +16,9 @@ import {
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
 import {
-    AccessControl, Type,
+    AccessControl, getAccessControlFromString, Type,
 } from "../type";
-import {ClassField, ClassType} from "../type/class_type";
+import {ClassField, ClassType, Inheritance} from "../type/class_type";
 import {PointerType} from "../type/compound_type";
 import {CppFunctionType, FunctionType} from "../type/function_type";
 import {PrimitiveTypes} from "../type/primitive_type";
@@ -28,40 +28,41 @@ import {doReferenceTransform} from "./conversion";
 import {generateDefaultCtors} from "./cpp/lifecycle";
 import {lookupPreviousDeclaration, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {declareFunction, defineFunction, parseFunctionDeclarator} from "./function";
+import {FunctionLookUpResult} from "./scope";
 
 function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: ClassBuildContext, node: Node) {
     const baseType = parseTypeFromSpecifiers(ctx, decl.specifiers, node);
     for (const declarator of decl.initDeclarators) {
-        if ( declarator.declarator === null) {
+        if (declarator.declarator === null) {
             throw new InternalError(`unsupport bit field`);
         } else {
             const [fieldType, fieldName] = parseDeclarator(ctx, declarator.declarator, baseType);
 
             const lastItem = lookupPreviousDeclaration(ctx, fieldType, fieldName, node);
 
-            if ( lastItem === "pass" ) {
+            if (lastItem === "pass") {
                 throw new SyntaxError(`redeclartion of field ${fieldName}`, node);
             }
 
-            if ( lastItem !== "none" ) {
+            if (lastItem !== "none") {
                 throw new SyntaxError(`redefinition of field ${fieldName}`, node);
             }
 
-            if (fieldType instanceof FunctionType ) {
+            if (fieldType instanceof FunctionType) {
                 fieldType.name = fieldName;
                 if (!ctx.isCpp()) {
                     throw new LanguageError(`function field is only support in c++`, node);
                 }
-                if ( fieldType.isStatic ) {
+                if (fieldType.isStatic) {
                     declareFunction(ctx, fieldType,
-                        decl.specifiers.includes("__libcall"), AccessControl.Public, node);
+                        decl.specifiers.includes("__libcall"), buildCtx.accessControl, node);
                 } else {
                     fieldType.parameterTypes = [buildCtx.classPtrType, ...fieldType.parameterTypes];
                     fieldType.parameterNames = ["this", ...fieldType.parameterNames];
                     fieldType.cppFunctionType = CppFunctionType.MemberFunction;
                     fieldType.referenceClass = buildCtx.classType;
                     declareFunction(ctx, fieldType,
-                        decl.specifiers.includes("__libcall"), AccessControl.Public, node);
+                        decl.specifiers.includes("__libcall"), buildCtx.accessControl, node);
                 }
                 continue;
             }
@@ -81,7 +82,7 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                 // 类体内的声明不是定义，且可以声明拥有不完整类型（异于 void）的成员，包含该成员的声明所在的类型
                 ctx.scopeManager.declare(fieldName, new Variable(
                     fieldName, ctx.scopeManager.getFullName(fieldName), ctx.fileName,
-                    fieldType, AddressType.MEMORY_EXTERN, ctx.scopeManager.getFullName(fieldName)   ,
+                    fieldType, AddressType.MEMORY_EXTERN, ctx.scopeManager.getFullName(fieldName),
                 ), node);
             } else {
                 let initializer = null as (Expression | ObjectInitializer | null);
@@ -101,7 +102,7 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                     initializer,
                     accessControl: buildCtx.accessControl,
                 });
-                if ( !buildCtx.union ) {
+                if (!buildCtx.union) {
                     buildCtx.curOffset += fieldType.length;
                 }
             }
@@ -120,13 +121,13 @@ interface ClassBuildContext {
 
 StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     let name = this.identifier.name;
-    if ( ! ctx.isCpp() ) {
+    if (!ctx.isCpp()) {
         name = "$" + name;
     }
     const oldItem = ctx.scopeManager.lookupShortName(name);
-    if ( oldItem !== null ) {
-        if ( this.declarations === null ) {
-            if ( oldItem instanceof ClassType ) {
+    if (oldItem !== null) {
+        if (this.declarations === null) {
+            if (oldItem instanceof ClassType) {
                 return oldItem;
             } else {
                 throw new SyntaxError(`conflict type of ${name}`, this);
@@ -135,9 +136,24 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             throw new SyntaxError(`redefine of ${name}`, this);
         }
     }
+    const inheritance = [] as Inheritance[];
+    for (const item of this.inherits) {
+        const accessControl = getAccessControlFromString(item.accessControl);
+        const classType = ctx.scopeManager.lookupAnyName(item.className.identifier.name);
+        if (!(classType instanceof ClassType)) {
+            throw new SyntaxError(`you could not inherit type ${classType}, which is not a class type`, this);
+        }
+        if (!classType.isComplete) {
+            throw new SyntaxError(`you could not inherit type ${classType}, which is incomplete`, this);
+        }
+        inheritance.push({
+            classType,
+            accessControl,
+        });
+    }
     const newItem = new ClassType(name, ctx.scopeManager.getFullName(name),
-        ctx.fileName, [], this.typeName === "union");
-    if ( this.declarations === null) {
+        ctx.fileName, [], this.typeName === "union", inheritance);
+    if (this.declarations === null) {
         // incomplete definition;
         newItem.isComplete = false;
         ctx.scopeManager.declare(name, newItem, this);
@@ -150,7 +166,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         classPtrType: new PointerType(newItem),
         union: this.typeName === "union",
         fields: newItem.fields,
-        curOffset: 0,
+        curOffset: newItem.objectSize,
         accessControl: this.typeName === "struct" ?
             AccessControl.Public : AccessControl.Private,
     };
@@ -160,13 +176,13 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         if (decl instanceof Declaration) {
             parseClassDeclartion(ctx, decl, buildCtx, this);
         } else if (decl instanceof ConstructorOrDestructorDeclaration) {
-            if (decl.name.identifier.value !== name) {
-                throw new SyntaxError(`invaild ctor/dtor name ${decl.name.identifier.value}`, this);
+            if (decl.name.identifier.name !== name) {
+                throw new SyntaxError(`invaild ctor/dtor name ${decl.name.identifier.name}`, this);
             }
             let funcType: FunctionType;
-            if ( decl.isCtor ) {
+            if (decl.isCtor) {
                 const parameterTypes: Type[] = [new PointerType(newItem)], parameterNames: string[] = ["this"];
-                if ( decl.param !== null ) {
+                if (decl.param !== null) {
                     const [realParameterTypes, realParameterNames] = decl.param!.codegen(ctx);
                     parameterTypes.push(...realParameterTypes);
                     parameterNames.push(...realParameterNames);
@@ -181,10 +197,10 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                 funcType.cppFunctionType = CppFunctionType.Destructor;
                 funcType.referenceClass = newItem;
             }
-            if ( decl.body !== null ) {
+            if (decl.body !== null) {
                 delayParseList.push([decl.body, funcType]);
             } else {
-                declareFunction(ctx, funcType, false, AccessControl.Public, this);
+                declareFunction(ctx, funcType, false, buildCtx.accessControl, this);
             }
         } else if (decl instanceof FunctionDefinition) {
             if (!ctx.isCpp()) {
@@ -200,29 +216,23 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             }
             if (functionType.isStatic) {
                 declareFunction(ctx, functionType,
-                    decl.specifiers.includes("__libcall"), AccessControl.Public, this);
+                    decl.specifiers.includes("__libcall"), buildCtx.accessControl, this);
             } else {
                 functionType.parameterTypes = [buildCtx.classPtrType, ...functionType.parameterTypes];
                 functionType.parameterNames = ["this", ...functionType.parameterNames];
                 functionType.cppFunctionType = CppFunctionType.MemberFunction;
                 functionType.referenceClass = newItem;
                 declareFunction(ctx, functionType,
-                    decl.specifiers.includes("__libcall"), AccessControl.Public, this);
+                    decl.specifiers.includes("__libcall"), buildCtx.accessControl, this);
             }
             delayParseList.push([decl.body, functionType]);
-        } else if ( decl instanceof AccessControlLabel) {
-            if ( decl.label === "public" ) {
-                buildCtx.accessControl = AccessControl.Public;
-            } else if ( decl.label === "protected") {
-                buildCtx.accessControl = AccessControl.Protected;
-            } else {
-                buildCtx.accessControl = AccessControl.Private;
-            }
+        } else if (decl instanceof AccessControlLabel) {
+            buildCtx.accessControl = getAccessControlFromString(decl.label);
         } else {
             throw new InternalError(`StructOrUnionSpecifier()`);
         }
     }
-    newItem.buildFieldMap();
+    newItem.initialize();
     newItem.isComplete = true;
     for (const arr of delayParseList) {
         const [body, functionType] = arr;
@@ -241,47 +251,40 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
 
     left = doReferenceTransform(ctx, left, this);
 
-    if ( !(left.isLeft && left.expr instanceof WAddressHolder)) {
+    if (!(left.isLeft && left.expr instanceof WAddressHolder)) {
         throw new InternalError(`unsupport rvalue of member expression`);
     }
 
-    if ( !(left.type instanceof ClassType)) {
+    if (!(left.type instanceof ClassType)) {
         throw new SyntaxError(`only struct/class could be get member`, this);
     }
 
-    const item = ctx.scopeManager.lookupFullName(left.type.fullName + "::" + this.member.name);
+    const item = left.type.getMember(ctx, this.member.name);
 
-    if ( item !== null ) {
-        if ( item instanceof Type ) {
-            throw new SyntaxError(`illegal type member expression`, this);
-        } else if (item instanceof Variable) {
-            // static field
-            return {
-                type: item.type,
-                expr: new WAddressHolder(item.location, item.addressType, this.location),
-                isLeft: true,
-            };
-        } else {
-            item.instance = left.expr;
-            item.instanceType = left.type;
-            return {
-                type: PrimitiveTypes.void,
-                expr: item,
-                isLeft: false,
-            };
-        }
+    if ( item === null ) {
+        throw new SyntaxError(`name ${this.member.name} is not on class ${left.type.name}`, this);
+    } else if (item instanceof Variable) {
+        // static field
+        return {
+            type: item.type,
+            expr: new WAddressHolder(item.location, item.addressType, this.location),
+            isLeft: true,
+        };
+    } else if (item instanceof FunctionLookUpResult) {
+        item.instance = left.expr;
+        item.instanceType = left.type;
+        return {
+            type: PrimitiveTypes.void,
+            expr: item,
+            isLeft: false,
+        };
+    } else {
+        return {
+            isLeft: true,
+            type: item.type,
+            expr: left.expr.makeOffset(item.startOffset),
+        };
     }
-
-    // class field
-    const field = left.type.fieldMap.get(this.member.name);
-    if ( !field ) {
-        throw new SyntaxError(`property ${this.member.name} does not appear on ${left.type.name}`, this);
-    }
-    return {
-        isLeft: true,
-        type: field.type,
-        expr: left.expr.makeOffset(field.startOffset),
-    };
 };
 
 export function classes() {

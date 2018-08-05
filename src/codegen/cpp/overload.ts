@@ -40,7 +40,7 @@ export function doFunctionFilter(func: FunctionEntity, argus: Type[],
         if (funcs.instanceType === null || !(first instanceof PointerType)) {
             return false;
         }
-        return first.elementType.equals(funcs.instanceType) &&
+        return first.elementType.compatWith(funcs.instanceType) &&
             func.type.parameterTypes.slice(1).every((t, i) => matcher(t, argus[i]));
     } else {
         return func.type.parameterTypes.every((t, i) => matcher(t, argus[i]));

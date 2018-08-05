@@ -8,6 +8,7 @@ import {InternalError} from "../common/error";
 import {WType} from "../wasm";
 import {Type} from "./index";
 import {PrimitiveTypes} from "./primitive_type";
+import {ClassType} from "./class_type";
 
 const MACHINE_POINTER_LENGTH = 4;
 
@@ -132,7 +133,8 @@ export class ArrayType extends Type {
     public compatWith(type: Type): boolean {
         return type.equals(this)
             || (type instanceof ArrayType && this.elementType.compatWith(type.elementType)
-                || (
-                    type instanceof PointerType && type.elementType.equals(this.elementType)));
+                || (type instanceof PointerType && type.elementType.equals(this.elementType)))
+            || (this.elementType instanceof ClassType && type instanceof PointerType
+                && type.elementType.compatWith(this.elementType));
     }
 }

@@ -259,6 +259,9 @@ export class ScopeManager {
     }
 
     public getFullName(shortName: string) {
+        if (shortName.slice(0, 2) === "::") {
+            return shortName;
+        }
         return this.currentScope.fullName + "::" + shortName;
     }
 

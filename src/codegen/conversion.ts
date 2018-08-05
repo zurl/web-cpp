@@ -148,6 +148,12 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
         if ( dstElem.equals(PrimitiveTypes.void) || srcElem.equals(dstElem)) {
             return src.expr;
         }
+        if ( dstElem instanceof ClassType && srcElem instanceof ClassType ) {
+            // son to parent;
+            if ( srcElem.isSubClassOf(dstElem) ) {
+                return src.expr;
+            }
+        }
     }
 
     // 0 to pointer

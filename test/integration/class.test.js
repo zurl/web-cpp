@@ -177,4 +177,36 @@ dtor
 dtor`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
+
+    it('test inheritance',async function() {
+        const testCode = `
+#include "stdio.h"
+        class A{
+            int a;
+            A(int a): a(a){}
+            virtual void foo(){
+                printf("base\\n");
+            }
+            ~A() {
+                printf("~A(%d)\\n", a);
+            }
+        };
+        
+        class B: public A
+        {
+        int d;
+        B(int a, int b): A(a), d(b){}
+         ~B() {
+                printf("~B(%d)\\n", d);
+            }
+        };
+        int main(){
+            B a(5, 7), b(0, 3);
+            a.foo();
+            return 0;
+        }
+        `;
+        const expectOutput = `base\n~B(7)\n~A(5)\n~B(3)\n~A(0)`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
 });

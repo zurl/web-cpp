@@ -91,10 +91,6 @@ export class Identifier extends Expression {
         super(location);
         this.name = name;
     }
-
-    get value() {
-        return this.name;
-    }
 }
 
 export class Constant extends Expression {
@@ -900,10 +896,10 @@ export class ConstructorOrDestructorDeclaration extends Node {
 }
 
 export class ConstructorInitializeItem extends Node {
-    public key: Identifier;
-    public value: Expression;
+    public key: Identifier | TypedefName;
+    public value: Expression[];
 
-    constructor(location: SourceLocation, key: Identifier, value: Expression) {
+    constructor(location: SourceLocation, key: Identifier | TypedefName, value: Expression[]) {
         super(location);
         this.key = key;
         this.value = value;

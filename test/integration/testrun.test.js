@@ -94,18 +94,25 @@ const source3 = `
 #include "stdio.h"
 class A{
     int a;
-    A(int b): a(b){}
+    A(int a): a(a){}
     virtual void foo(){
         printf("base\\n");
+    }
+    ~A() {
+        printf("~A()\\n");
     }
 };
 
 class B: public A
 {
-int a;
+int d;
+B(int a, int b): A(a), d(b){}
+ ~B() {
+        printf("~B()\\n");
+    }
 };
 int main(){
-    A a(5), b(0);
+    B a(5, 7), b(0, 3);
     a.foo();
     return 0;
 }
