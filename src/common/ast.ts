@@ -274,10 +274,10 @@ export class CallExpression extends Expression {
 }
 
 export class ConstructorCallExpression extends Expression {
-    public name: TypedefName;
+    public name: TypedefName | string;
     public arguments: Expression[];
 
-    constructor(location: SourceLocation, name: TypedefName, myArguments: Expression[]) {
+    constructor(location: SourceLocation, name: TypedefName | string, myArguments: Expression[]) {
         super(location);
         this.name = name;
         this.arguments = myArguments;
@@ -398,7 +398,7 @@ export class AtomicTypeSpecifier extends Node {
 
 type ClassDirectives = Declaration | FunctionDefinition | ConstructorOrDestructorDeclaration | AccessControlLabel;
 
-export class InheritSpecifier extends Node {
+export class BaseSpecifier extends Node {
     public accessControl: string;
     public className: TypedefName;
 
@@ -413,12 +413,12 @@ export class ClassSpecifier extends Node {
     public typeName: string;
     public identifier: Identifier;
     public declarations: ClassDirectives[] | null;
-    public inherits: InheritSpecifier[];
+    public inherits: BaseSpecifier[];
 
     constructor(location: SourceLocation, typeName: string,
                 identifier: Identifier,
                 declarations: ClassDirectives[] | null,
-                inherits: InheritSpecifier[]) {
+                inherits: BaseSpecifier[]) {
         super(location);
         this.typeName = typeName;
         this.identifier = identifier;
@@ -966,7 +966,7 @@ export class NameSpaceBlock extends Node {
     }
 }
 
-export class DeleteStatement extends Statement {
+export class DeleteExpression extends Expression {
     public expr: Expression;
     public isArrayDelete: boolean;
 
@@ -990,6 +990,7 @@ export class NewExpression extends Expression {
     public name: TypeName;
     public arguments: Expression[];
     public placement: Expression | null;
+    public arraySize: Expression | null;
 
     constructor(location: SourceLocation, name: TypeName,
                 arguments_: Expression[], placement: Expression | null) {
@@ -997,19 +998,11 @@ export class NewExpression extends Expression {
         this.name = name;
         this.arguments = arguments_;
         this.placement = placement;
-    }
-}
-
-export class NewArrayExpression extends Expression {
-    public name: TypeName;
-    public size: Expression;
-    public placement: Expression | null;
-
-    constructor(location: SourceLocation, name: TypeName,
-                size: Expression, placement: Expression | null) {
-        super(location);
-        this.name = name;
-        this.size = size;
-        this.placement = placement;
+        this.arraySize = null;
+        // do array transform
+        if (this.name.declarator instanceof AbstractArrayDeclarator) {
+            this.arraySize = this.name.declarator.length;
+            this.name.declarator = null;
+        }
     }
 }

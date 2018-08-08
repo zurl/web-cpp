@@ -4,7 +4,7 @@
   "description": "a c++ compiler in typescript",
   "main": "index.js",
   "scripts": {
-    "build": "node build/build_library.js && tsc",
+    "build": "node build/build_library.js && node build/build_parser.js && tsc",
     "test": "mocha test/**/*.test.js",
     "lint": "tslint -c tslint.json 'src/**/*.ts'",
     "coverage": "nyc --reporter=lcov --reporter=text mocha test/**/*.test.js",

@@ -166,6 +166,30 @@ describe('feature integration test', function () {
         const expectOutput = `123412341234`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
-
+    it('test new delete array', async function () {
+        const testCode = `
+#include <stdio.h>
+        class A{
+            A(){
+                printf("A()\\n");
+            }
+            ~A(){
+                printf("~A()\\n");
+            }
+        };
+        int main(){
+            int size = 3;
+            A * a = new A[size];
+            delete[] a;
+            int *b = new int[20];
+            delete[] b;
+            int *d = new int[20];
+            delete[] d;
+            return 0;
+        }
+        `;
+        const expectOutput = `A()\nA()\nA()\n~A()\n~A()\n~A()`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
 
 });

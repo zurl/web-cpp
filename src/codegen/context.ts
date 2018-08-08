@@ -7,8 +7,10 @@ import {SourceMapGenerator} from "source-map";
 import {Node} from "../common/ast";
 import {InternalError} from "../common/error";
 import {CompiledObject, ImportSymbol} from "../common/object";
-import {FunctionEntity, Variable} from "../common/symbol";
+import {AddressType, FunctionEntity, Variable} from "../common/symbol";
+import {Type} from "../type";
 import {ClassType} from "../type/class_type";
+import {PrimitiveTypes} from "../type/primitive_type";
 import {WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
 import {triggerDestructor} from "./cpp/lifecycle";
@@ -151,5 +153,14 @@ export class CompileContext {
             sourceMap: this.sourceMap,
             requiredWASMFuncTypes: this.requiredWASMFuncTypes,
         };
+    }
+
+    public allocTmpVar(type: Type, node: Node): [string, Variable] {
+        const varName = this.scopeManager.allocTmpVarName();
+        const varEntity = new Variable(varName, varName, node.location.fileName, type,
+            AddressType.STACK, this.memory.allocStack(type.length));
+        this.scopeManager.define(varName, varEntity, node);
+        return [varName, varEntity];
+
     }
 }

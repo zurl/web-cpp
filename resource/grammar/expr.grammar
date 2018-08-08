@@ -16,31 +16,20 @@ ConditionalExpression
     / LogicalOrExpression
 
 
-PlacementExpression
-    = '(' _  item:AssignmentExpression _ ')' {
-        return item;
-    }
-
-ConstructorCall
-    = 'new' !IdentifierPart _ name:TypeNameNoBrace _ placement:PlacementExpression? _ '(' _ arguments_:ArgumentExpressionList? _ ')' {
-        return new AST.NewExpression(getLocation(), name, arguments_ || [], placement || null);
-    }
-    / 'new' !IdentifierPart _ name:TypeNameNoBrace _ placement:PlacementExpression? _  '[' _ size:AssignmentExpression _ ']' {
-        return new AST.newArrayExpression(getLocation(), name, size, placement || null);
-    }
-    / name:TypedefName  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+ConstructorCallExpression
+    = name:(TypedefName / PrimitiveTypeSpecifier)  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
         return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || []);
     }
 
 PostfixExpression
-    = head:PrimaryExpression tail:(_ (
+    = head:( PrimaryExpression / ConstructorCallExpression ) tail:(_ (
         '[' _ subscript:Expression _ &!']' {
             return {
                 type: AST.SubscriptExpression,
                 arguments: [subscript]
             };
         }
-        / '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+        / '(' _ arguments_:ArgumentExpressionList? _ ')' {
             return {
                 type: AST.CallExpression,
                 arguments: [arguments_ || []]
@@ -77,10 +66,12 @@ UnaryExpression
     / operator:'sizeof' !IdentifierPart _ operand:UnaryExpression {
         return new AST.UnaryExpression(getLocation(), operator, operand);
     }
-    / operator:('sizeof' / '_Alignof') _ '(' _ operand:TypeName _ &!')' {
+    / operator:'sizeof' _ '(' _ operand:TypeName _ ')' {
         return new AST.UnaryExpression(getLocation(), operator, operand);
     }
     / PostfixExpression
+    / NewExpression
+    / DeleteExpression
 
 CastExpression
     = '(' _ typeName:TypeName _ ')' _ operand:CastExpression {
@@ -138,16 +129,41 @@ LogicalOrExpression
         return buildBinaryExpression(head, tail);
     }
 
-
 ConstantExpression
     = ConditionalExpression
 
-
 PrimaryExpression
     = Identifier
-    / ConstructorCall
     / Constant
     / StringLiteral
     / '(' _ expression:Expression _ &!')' {
         return new AST.ParenthesisExpression(getLocation(), expression);
+    }
+
+
+
+NewPlacement
+    = '(' _  item:AssignmentExpression _ ')' {
+        return item;
+    }
+
+NewInitializer
+    = '(' _ arguments_:ArgumentExpressionList? _ ')' {
+        return arguments_;
+    }
+
+NewExpression
+    = '::'? 'new' !IdentifierPart _ placement:NewPlacement? _ type:NewTypeName _ initializer:NewInitializer?{
+        return new AST.NewExpression(getLocation(), type, initializer || [], placement || null);
+    }
+    / '::'? 'new' !IdentifierPart _ placement:NewPlacement? _ '(' _ name:TypeName _ ')' _ initializer:NewInitializer?{
+        return new AST.NewExpression(getLocation(), type, initializer || [], placement || null);
+    }
+
+DeleteExpression
+    = 'delete' _ expr:AssignmentExpression {
+        return new AST.DeleteExpression(getLocation(), expr, false);
+    }
+    / 'delete[]' _ expr:AssignmentExpression {
+        return new AST.DeleteExpression(getLocation(), expr, true);
     }

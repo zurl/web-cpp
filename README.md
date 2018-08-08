@@ -2,10 +2,13 @@
 [![Build Status](https://www.travis-ci.org/zurl/web-cpp.svg?branch=master)](https://www.travis-ci.org/zurl/web-cpp)
 [![Coverage Status](https://coveralls.io/repos/github/zurl/web-cpp/badge.svg)](https://coveralls.io/github/zurl/web-cpp)
 
-
 a experimental c++ compiler in typescript
 
+online demo => [zurl.github.com/web-cpp](zurl.github.com/web-cpp)
+
 ## usage
+
+1. build web-cpp compiler itself
 
 ```shell
 npm install
@@ -13,6 +16,16 @@ npm install -g typescript nyc mocha
 npm run build
 npm run test
 ```
+
+2. build the web-cpp online ide
+
+```shell
+npm install -g parcel
+npm run build
+cd ide
+parcel build index.html
+```
+
 
 ## DEMO
 use `./cc` as local runtime (Node.js)
@@ -105,12 +118,10 @@ use `./cc` as local runtime (Node.js)
 - [X] implict this
 - [ ] public/private/ protect, 访问控制 (syntax ok, todo)
 - [X] new/delete
-- [ ] new array []
+- [X] new array []
 - [X] using
 - [X] namespace
 - [ ] 类型转换重载， like if(object) { ... }
-
-
 - [ ] 异常处理
 - [ ] 虚成员函数
 - [ ] 函数模板

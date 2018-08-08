@@ -6,7 +6,6 @@ Statement
     / CompoundStatement
     / LabeledStatement
     / ExpressionStatement
-    / DeleteStatement
     / UsingStatements
 
 // ADDED
@@ -24,20 +23,20 @@ LabeledStatement
         return new AST.LabeledStatement(getLocation(), label, body);
     }
 
-LeftBrace
+ScopeStart
     = '{' {
         enterScope();
         return getLocation();
     }
 
-RightBrace
+ScopeEnd
     = &!'}' {
         exitScope();
         return getLocation();
     }
 
 CompoundStatement
-    = left:LeftBrace _ body:BlockItemList? _ right:RightBrace {
+    = left:ScopeStart _ body:BlockItemList? _ right:ScopeEnd {
         return new AST.CompoundStatement(getLocation(), left, right, body || []);
     }
 
@@ -95,14 +94,6 @@ JumpStatement
     }
     / 'return' !IdentifierPart _ argument:Expression? _ &!';' {
         return new AST.ReturnStatement(getLocation(), argument);
-    }
-
-DeleteStatement
-    = 'delete' _ expr:AssignmentExpression ';' {
-        return new AST.DeleteStatement(getLocation(), expr, false);
-    }
-    / 'delete[]' _ expr:AssignmentExpression ';' {
-        return new AST.DeleteStatement(getLocation(), expr, true);
     }
 
 

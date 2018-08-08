@@ -9,20 +9,20 @@ import {
     CallExpression, CastExpression, CompoundStatement,
     ConstructorCallExpression,
     Declaration,
-    Declarator, Expression,
+    Declarator, DeleteExpression, Expression,
     ExpressionResult, ExpressionStatement, ForStatement,
     FunctionDeclarator,
     FunctionDefinition,
     Identifier,
     IdentifierDeclarator, InitDeclarator,
-    IntegerConstant, NewArrayExpression, NewExpression,
+    IntegerConstant, MemberExpression, NewExpression,
     Node,
     ParameterList,
-    ReturnStatement, SpecifierType,
-    Statement, TypedefName,
+    ReturnStatement,
+    Statement,
     UnaryExpression,
 } from "../common/ast";
-import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
+import {assertType,  LanguageError, SyntaxError} from "../common/error";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
 import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
@@ -485,10 +485,7 @@ ConstructorCallExpression.prototype.codegen = function(ctx: CompileContext): Exp
     }
     const ctorName = classType.fullName + "::#" + classType.name;
     const callee = new Identifier(this.location, ctorName);
-    const tmpVarName = ctx.scopeManager.allocTmpVarName();
-    const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, classType,
-        AddressType.STACK, ctx.memory.allocStack(classType.length));
-    ctx.scopeManager.define(tmpVarName, tmpVar, this);
+    const [tmpVarName] = ctx.allocTmpVar(classType, this);
     const thisVar = new Identifier(this.location, tmpVarName);
     const thisPtr = new UnaryExpression(this.location, "&", thisVar);
     recycleExpressionResult(ctx, this,
@@ -519,78 +516,149 @@ NewExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResul
         throw new LanguageError(`new is noly support in c++`, this);
     }
     const ptrType = this.deduceType(ctx);
-    if (!(ptrType instanceof PointerType && ptrType.elementType instanceof ClassType)) {
-        throw new SyntaxError(`new expression call must be class type`, this);
+    if (!(ptrType instanceof PointerType)) {
+        throw new SyntaxError(`new must be pointer`, this);
     }
-    const classType = ptrType.elementType;
-    const ctorName = classType.fullName + "::#" + classType.name;
-    const callee = new Identifier(this.location, ctorName);
-    const tmpVarName = ctx.scopeManager.allocTmpVarName();
-    const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, ptrType,
-        AddressType.STACK, ctx.memory.allocStack(ptrType.length));
-    ctx.scopeManager.define(tmpVarName, tmpVar, this);
-    const mallocExpr = new CallExpression(this.location, new Identifier(this.location, "::malloc"),
-        [IntegerConstant.fromNumber(this.location, classType.length)]).codegen(ctx);
-    mallocExpr.type = ptrType;
-    const assignExpr = new AssignmentExpression(this.location, "=",
-        new Identifier(this.location, tmpVarName),
-        new AnonymousExpression(this.location, mallocExpr)).codegen(ctx);
-    recycleExpressionResult(ctx, this, assignExpr);
-    const ctorExpr = new CallExpression(this.location, callee, [
-        new Identifier(this.location, tmpVarName), ...this.arguments]).codegen(ctx);
-    recycleExpressionResult(ctx, this, ctorExpr);
-    return new Identifier(this.location, tmpVarName).codegen(ctx);
+    const itemType = ptrType.elementType;
+    const [ptrVarName] = ctx.allocTmpVar(ptrType, this);
+    if ( this.arraySize !== null ) {
+        const [sizeVarName] = ctx.allocTmpVar(PrimitiveTypes.int32, this);
+
+        const sizeExpr = IntegerConstant.fromNumber(this.location, itemType.length);
+
+        // size = sizeof(Type) * SizeExpression
+        const assignSizeExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, sizeVarName), this.arraySize).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignSizeExpr);
+
+        // headPtr = (int *) malloc(size + 4)
+        const mallocExpr = new CallExpression(this.location, new Identifier(this.location, "::malloc_array"),
+            [
+                sizeExpr,
+                new Identifier(this.location, sizeVarName),
+            ]).codegen(ctx);
+        mallocExpr.type = ptrType;
+
+        const assignExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, ptrVarName),
+            new AnonymousExpression(this.location, mallocExpr)).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignExpr);
+        // for(int i = 0; i < size; i++ )
+        if (itemType instanceof ClassType) {
+            const ctorName = itemType.fullName + "::#" + itemType.name;
+            const callee = new Identifier(this.location, ctorName);
+            getForLoop(new Identifier(this.location, sizeVarName), (i) => ([
+                new ExpressionStatement(this.location,
+                    new CallExpression(this.location, callee, [
+                        new BinaryExpression(this.location, "+",
+                            new Identifier(this.location, ptrVarName),
+                            i)]))]), this).codegen(ctx);
+        }
+    } else {
+        const mallocExpr = new CallExpression(this.location, new Identifier(this.location, "::malloc"),
+            [IntegerConstant.fromNumber(this.location, itemType.length)]).codegen(ctx);
+        mallocExpr.type = ptrType;
+        const assignExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, ptrVarName),
+            new AnonymousExpression(this.location, mallocExpr)).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignExpr);
+        if (itemType instanceof ClassType) {
+            const ctorName = itemType.fullName + "::#" + itemType.name;
+            const callee = new Identifier(this.location, ctorName);
+            const ctorExpr = new CallExpression(this.location, callee, [
+                new Identifier(this.location, ptrVarName), ...this.arguments]).codegen(ctx);
+            recycleExpressionResult(ctx, this, ctorExpr);
+        }
+    }
+    return new Identifier(this.location, ptrVarName).codegen(ctx);
 };
 
-NewArrayExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    if ( !ctx.isCpp() ) {
-        throw new LanguageError(`new is noly support in c++`, this);
+DeleteExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    if (!ctx.isCpp()) {
+        throw new LanguageError(`delete is only support in c++`, this);
     }
-    const ptrType = this.deduceType(ctx);
-    if (!(ptrType instanceof PointerType && ptrType.elementType instanceof ClassType)) {
-        throw new SyntaxError(`new array call must be class type`, this);
+    const rightType = this.expr.deduceType(ctx);
+    if (!(rightType instanceof PointerType)) {
+        throw new SyntaxError(`you could only delete pointer`, this);
     }
-    const classType = ptrType.elementType;
-    const ctorName = classType.fullName + "::#" + classType.name;
-    const callee = new Identifier(this.location, ctorName);
+    if (this.isArrayDelete) {
+        const [ptrVarName] = ctx.allocTmpVar(rightType, this);
+        const [basePtrVarName] = ctx.allocTmpVar(new PointerType(PrimitiveTypes.int32), this);
+        const [sizeVarName] = ctx.allocTmpVar(PrimitiveTypes.int32, this);
 
-    const sizeVarName = ctx.scopeManager.allocTmpVarName();
-    const sizeVar = new Variable(sizeVarName, sizeVarName, this.location.fileName, PrimitiveTypes.int32,
-        AddressType.STACK, ctx.memory.allocStack(PrimitiveTypes.int32.length));
-    ctx.scopeManager.define(sizeVarName, sizeVar, this);
+        // ptr = ptr
+        const assignPtrExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, ptrVarName), this.expr).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignPtrExpr);
 
-    const ptrVarName = ctx.scopeManager.allocTmpVarName();
-    const ptrVar = new Variable(ptrVarName, ptrVarName, this.location.fileName, ptrType,
-        AddressType.STACK, ctx.memory.allocStack(ptrType.length));
-    ctx.scopeManager.define(ptrVarName, ptrVar, this);
+        const tmpPtrExpr = new Identifier(this.location, ptrVarName).codegen(ctx);
+        tmpPtrExpr.type = new PointerType(PrimitiveTypes.int32);
 
-    const sizeExpr = IntegerConstant.fromNumber(this.location, classType.length);
+        // basePtr = (int*)ptr - 1
+        const basePtrExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, basePtrVarName), new BinaryExpression(
+                this.location, "-", new AnonymousExpression(this.location, tmpPtrExpr),
+                IntegerConstant.getOne(),
+            )).codegen(ctx);
+        recycleExpressionResult(ctx, this, basePtrExpr);
 
-    // size = sizeof(Type) * SizeExpression
-    const assignSizeExpr = new AssignmentExpression(this.location, "=",
-        new Identifier(this.location, sizeVarName), this.size).codegen(ctx);
-    recycleExpressionResult(ctx, this, assignSizeExpr);
+        // size = *basePtr
+        const assignSizeExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, sizeVarName), new UnaryExpression(
+                this.location, "*", new Identifier(this.location, basePtrVarName),
+            )).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignSizeExpr);
 
-    // headPtr = (int *) malloc(size + 4)
-    const mallocExpr = new CallExpression(this.location, new Identifier(this.location, "::malloc_array"),
-        [
-            sizeExpr,
-            new Identifier(this.location, sizeVarName),
-            ]).codegen(ctx);
-    mallocExpr.type = ptrType;
+        if (rightType.elementType instanceof ClassType) {
+            // call dtor
+            const dtorName = "~" + rightType.elementType.name;
+            const callee = new Identifier(this.location, dtorName);
+            getForLoop(new Identifier(this.location, sizeVarName), (i) => ([
+                new ExpressionStatement(this.location,
+                    new CallExpression(this.location, new MemberExpression(
+                        this.location, new BinaryExpression(this.location, "+",
+                            new Identifier(this.location, ptrVarName),
+                            i), true, callee,
+                    ), []))]), this).codegen(ctx);
 
-    const assignExpr = new AssignmentExpression(this.location, "=",
-        new Identifier(this.location, ptrVarName),
-        new AnonymousExpression(this.location, mallocExpr)).codegen(ctx);
-    recycleExpressionResult(ctx, this, assignExpr);
-    // for(int i = 0; i < size; i++ )
-    getForLoop(new Identifier(this.location, sizeVarName), (i) => ([
-        new ExpressionStatement(this.location,
-            new CallExpression(this.location, callee, [
-                new BinaryExpression(this.location, "+",
-                    new Identifier(this.location, ptrVarName),
-                    i)]))]), this).codegen(ctx);
-    return new Identifier(this.location, ptrVarName).codegen(ctx);
+        }
+
+        // free(basePtr)
+        new ExpressionStatement(this.location, new CallExpression(
+            this.location, new Identifier(this.location, "::free"),
+            [new Identifier(this.location, basePtrVarName)],
+        )).codegen(ctx);
+    } else {
+        if (rightType.elementType instanceof ClassType) {
+            const tmpVarName = ctx.scopeManager.allocTmpVarName();
+            const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, rightType,
+                AddressType.STACK, ctx.memory.allocStack(rightType.length));
+            ctx.scopeManager.define(tmpVarName, tmpVar, this);
+
+            new AssignmentExpression(this.location, "=",
+                new Identifier(this.location, tmpVarName), this.expr).codegen(ctx);
+
+            new ExpressionStatement(this.location, new CallExpression(this.location,
+                new MemberExpression(this.location, new Identifier(this.location, tmpVarName),
+                    true, new Identifier(this.location, "~" + rightType.elementType.name)),
+                [])).codegen(ctx);
+
+            new ExpressionStatement(this.location, new CallExpression(this.location,
+                new Identifier(this.location, "::free"), [
+                    new Identifier(this.location, tmpVarName),
+                ])).codegen(ctx);
+        } else {
+            new ExpressionStatement(this.location, new CallExpression(
+                this.location, new Identifier(this.location, "::free"),
+                [this.expr],
+            )).codegen(ctx);
+        }
+    }
+    return {
+        type: PrimitiveTypes.void,
+        isLeft: true,
+        expr: new WConst(WType.none, "1", this.location),
+    };
 };
 
 export function functions() {

@@ -4,20 +4,21 @@ import {
     CallExpression,
     CastExpression, CharacterConstant,
     ConditionalExpression,
-    ConstructorCallExpression,
+    ConstructorCallExpression, DeleteExpression,
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    MemberExpression, NewArrayExpression, NewExpression,
+    MemberExpression, NewExpression,
     ParenthesisExpression,
     PostfixExpression,
     StringLiteral,
-    SubscriptExpression,
+    SubscriptExpression, TypedefName,
     TypeName,
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
 import {FunctionEntity, Variable} from "../common/symbol";
+import {getPrimitiveTypeFromSpecifiers} from "../common/utils";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType} from "../type/compound_type";
@@ -282,20 +283,24 @@ ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type
 };
 
 ConstructorCallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
-    const name = this.name.name;
-    const item = ctx.scopeManager.lookupAnyName(name);
-    if ( !(item instanceof ClassType) ) {
-        throw new SyntaxError(`constructor call must be class type`, this);
+    if ( this.name instanceof TypedefName ) {
+        const name = this.name.name;
+        const item = ctx.scopeManager.lookupAnyName(name);
+        if (!(item instanceof ClassType)) {
+            throw new SyntaxError(`constructor call must be class type`, this);
+        }
+        return item;
+    } else {
+        return getPrimitiveTypeFromSpecifiers([this.name])!;
     }
-    return item;
-};
-
-NewArrayExpression.prototype.deduceType = function(ctx: CompileContext): Type {
-    return new PointerType(this.name.deduceType(ctx));
 };
 
 NewExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     return new PointerType(this.name.deduceType(ctx));
+};
+
+DeleteExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    return PrimitiveTypes.void;
 };
 
 export function expression_type() {

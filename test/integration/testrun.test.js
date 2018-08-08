@@ -5,14 +5,16 @@ const source = `
 #include <stdio.h>
 class A{
     A(){
-        printf("A()");
+        printf("A()\\n");
     }
     ~A(){
-        printf("~A()");
+        printf("~A()\\n");
     }
 };
 int main(){
-    //A * a = new A[10];
+    int size = 10;
+    A * a = new A[size];
+    delete[] a;
     return 0;
 }
 `;

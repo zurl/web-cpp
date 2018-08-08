@@ -1,25 +1,15 @@
-TypedIdentifier
-    = identifier:Identifier{
-        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
-        return identifier;
-    }
-
-InheritSpecifier
-    = lb:AccessControlLabels? _ className:TypedefName{
-        return new AST.InheritSpecifier(getLocation(), lb || "", className);
-    }
-
-InheritSpecifierList
-    = ':' _ head:InheritSpecifier tail:(_ ',' _ InheritSpecifier)* {
-        return buildList(head, tail, 1);
-    }
-
 ClassSpecifier
-    = classKey:ClassKey _ identifier:TypedIdentifier _ ih:InheritSpecifierList? _ '{' _ declarations:StructDeclarationList? _ '}' {
+    = classKey:ClassKey _ identifier:TypedIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
         return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
     }
     / classKey:ClassKey _ identifier:TypedIdentifier {
         return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
+    }
+
+TypedIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
+        return identifier;
     }
 
 ClassKey
@@ -27,12 +17,22 @@ ClassKey
         return text();
     }
 
+BaseSpecifier
+    = lb:AccessControlKey? _ className:TypedefName{
+        return new AST.BaseSpecifier(getLocation(), lb || "", className);
+    }
+
+BaseClause
+    = ':' _ head:BaseSpecifier tail:(_ ',' _ BaseSpecifier)* {
+        return buildList(head, tail, 1);
+    }
+
 StructDeclarationList
     = head:StructDeclaration tail:(_ StructDeclaration)* {
         return buildList(head, tail, 1);
     }
 
-AccessControlLabels = 'public' / 'private' / 'protect'
+AccessControlKey = 'public' / 'private' / 'protect'
 
 StructDeclaration
     = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
@@ -47,7 +47,7 @@ StructDeclaration
     / '~' id:TypedefName _ '(' _ ')' _ ';'{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null);
     }
-    / label:AccessControlLabels _ ':' {
+    / label:AccessControlKey _ ':' {
         return new AST.AccessControlLabel(getLocation(), label);
     }
     / decl:ExternalDeclaration {

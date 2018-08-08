@@ -7,8 +7,8 @@ import * as Long from "long";
 import {
     AssignmentExpression,
     BinaryExpression, CallExpression,
-    CastExpression, CharacterConstant, ConditionalExpression,
-    ExpressionResult,
+    CastExpression, CharacterConstant, ConditionalExpression, DeleteExpression,
+    ExpressionResult, ExpressionStatement,
     FloatingConstant, Identifier,
     IntegerConstant, MemberExpression,
     Node,
@@ -16,8 +16,8 @@ import {
     SubscriptExpression,
     UnaryExpression,
 } from "../common/ast";
-import {InternalError, SyntaxError} from "../common/error";
-import {AddressType} from "../common/symbol";
+import {InternalError, LanguageError, SyntaxError} from "../common/error";
+import {AddressType, Variable} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType} from "../type/compound_type";

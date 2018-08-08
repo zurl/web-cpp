@@ -5,23 +5,18 @@
  */
 
 import {
-    AssignmentExpression, BinaryExpression,
     BreakStatement,
-    CallExpression,
     CaseStatement,
     CompoundStatement,
     ContinueStatement,
     Declaration,
-    DeleteStatement,
     DoWhileStatement,
     ExpressionResult,
     ExpressionStatement,
     ForStatement,
     GotoStatement,
-    Identifier,
     IfStatement,
     LabeledStatement,
-    MemberExpression,
     NameSpaceBlock,
     Node,
     SwitchStatement,
@@ -31,10 +26,8 @@ import {
     UsingStatement,
     WhileStatement,
 } from "../common/ast";
-import {LanguageError, SyntaxError} from "../common/error";
-import {AddressType, Variable} from "../common/symbol";
-import {ClassType} from "../type/class_type";
-import {PointerType} from "../type/compound_type";
+import {SyntaxError} from "../common/error";
+import {AddressType} from "../common/symbol";
 import {IntegerType, PrimitiveTypes} from "../type/primitive_type";
 import {I32Binary, WBinaryOperation, WConst, WType} from "../wasm";
 import {WStatement} from "../wasm/node";
@@ -353,69 +346,6 @@ BreakStatement.prototype.codegen = function(ctx: CompileContext) {
     }
     const item = ctx.breakStack[ctx.breakStack.length - 1];
     ctx.submitStatement(new WBr(ctx.blockLevel - item, this.location));
-};
-
-DeleteStatement.prototype.codegen = function(ctx: CompileContext) {
-    if (!ctx.isCpp()) {
-        throw new LanguageError(`delete is only support in c++`, this);
-    }
-    const rightType = this.expr.deduceType(ctx);
-    if (!(rightType instanceof PointerType)) {
-        throw new SyntaxError(`you could only delete pointer`, this);
-    }
-    if (this.isArrayDelete) {
-        const sizeVarName = ctx.scopeManager.allocTmpVarName();
-        const sizeVar = new Variable(sizeVarName, sizeVarName, this.location.fileName, PrimitiveTypes.int32,
-            AddressType.STACK, ctx.memory.allocStack(PrimitiveTypes.int32.length));
-        ctx.scopeManager.define(sizeVarName, sizeVar, this);
-
-        const ptrVarName = ctx.scopeManager.allocTmpVarName();
-        const ptrVar = new Variable(ptrVarName, ptrVarName, this.location.fileName, rightType,
-            AddressType.STACK, ctx.memory.allocStack(rightType.length));
-        ctx.scopeManager.define(ptrVarName, ptrVar, this);
-        // // TODO::
-        // // TODO::
-        // // TODO::
-        throw 1;
-        // ptr = ptr
-        const assignSizeExpr = new AssignmentExpression(this.location, "=",
-            new Identifier(this.location, ptrVarName), this.expr).codegen(ctx);
-        recycleExpressionResult(ctx, this, assignSizeExpr);
-
-        if (rightType.elementType instanceof ClassType) {
-
-        }
-
-        new ExpressionStatement(this.location, new CallExpression(
-            this.location, new Identifier(this.location, "free"),
-            [new Identifier(this.location, ptrVarName)],
-        )).codegen(ctx);
-    } else {
-        if (rightType.elementType instanceof ClassType) {
-            const tmpVarName = ctx.scopeManager.allocTmpVarName();
-            const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, rightType,
-                AddressType.STACK, ctx.memory.allocStack(rightType.length));
-            ctx.scopeManager.define(tmpVarName, tmpVar, this);
-
-            new AssignmentExpression(this.location, "=",
-                new Identifier(this.location, tmpVarName), this.expr).codegen(ctx);
-
-            new ExpressionStatement(this.location, new CallExpression(this.location,
-                new MemberExpression(this.location, new Identifier(this.location, tmpVarName),
-                    true, new Identifier(this.location, "~" + rightType.elementType.name)),
-                [])).codegen(ctx);
-
-            new ExpressionStatement(this.location, new CallExpression(this.location,
-                new Identifier(this.location, "::free"), [
-                    new Identifier(this.location, tmpVarName),
-                ])).codegen(ctx);
-        } else {
-            new ExpressionStatement(this.location, new CallExpression(
-                this.location, new Identifier(this.location, "::free"),
-                [this.expr],
-            )).codegen(ctx);
-        }
-    }
 };
 
 UsingStatement.prototype.codegen = function(ctx: CompileContext) {

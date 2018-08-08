@@ -3,7 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 08/07/2018
  */
-import {SourceMapGenerator, SourceNode} from "source-map";
+import {SourceNode} from "source-map";
 import {PreprocessError} from "../common/error";
 import {parseMarco} from "./index";
 

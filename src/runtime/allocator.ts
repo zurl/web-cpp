@@ -147,6 +147,9 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
         const tag = vm.memory.getUint32(offset - 4);
         if ( tag >= this.MAGIC_NUMBER) {
             const idx = tag - this.MAGIC_NUMBER;
+            if (idx < 0 || idx >= this.pool.length) {
+                throw new RuntimeError(`free a blk not be malloc`);
+            }
             this.pool[idx].add(offset);
         } else {
             super.freeHeap(vm, offset);
@@ -157,6 +160,9 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
         const tag = vm.memory.getUint32(offset - 4);
         if ( tag >= this.MAGIC_NUMBER) {
             const idx = tag - this.MAGIC_NUMBER;
+            if (idx < 0 || idx >= this.pool.length) {
+                throw new RuntimeError(`free a blk not be malloc`);
+            }
             return this.poolSize[idx];
         } else {
             return super.getBlockSize(vm, offset);

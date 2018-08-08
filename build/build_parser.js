@@ -21,10 +21,10 @@ async function buildLibrary(minifiy){
         : grammarContent;
 
     const result =
-        `
-/* tslint:disable */
+        `/* tslint:disable */
+// generate from resource/grammar        
 export default \`${newContent}\`        
 `;
     fs.writeFileSync(outputPath + "c.lang.ts", result);
 }
-buildLibrary(false).then(_ => console.log("build parser finish"));
+buildLibrary(true).then(_ => console.log("build parser finish"));
