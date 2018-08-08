@@ -1,3 +1,4 @@
+const  {SourceMapConsumer} = require("source-map");
 const {CompilerError} = require("../../dist/common/error");
 const {NoInputFile, CommandOutputFile, StringInputFile, StringOutputFile} = require("../../dist/runtime/vmfile");
 const {NativeRuntime} = require("../../dist/runtime/native_runtime");
@@ -11,11 +12,23 @@ const Linker = require('../../dist/linker');
 const fs = require("fs");
 
 function compile(name, source, options = {}) {
+    options.fileName = name;
     const {code, map} = preprocess(name, source);
-    const translationUnit = CParser.parse(code, {fileName: name, isCpp: options.isCpp});
-    const ctx = new CompileContext(name, options, source, map);
-    codegen(translationUnit, ctx);
-    return ctx.toCompiledObject();
+    try {
+        const translationUnit = CParser.parse(code, options);
+        const ctx = new CompileContext(name, options, source, map);
+        codegen(translationUnit, ctx);
+        return ctx.toCompiledObject();
+    } catch (e) {
+        const sm = new SourceMapConsumer(map.toString());
+        if (e instanceof CompilerError) {
+            const newStart = sm.originalPositionFor(e.location.start);
+            e.errorLine = source.split("\n")[newStart.line];
+            e.location.start.line = newStart.line;
+            e.location.start.column = newStart.column;
+        }
+        throw e;
+    }
 }
 
 const precompiledObjects = Array.from(Impls.keys()).map(x=>compile(x, Impls.get(x), {isCpp: true}));
@@ -47,7 +60,7 @@ async function testRun(source, options){
         await runtime.run();
     } catch (e) {
         if( e instanceof CompilerError){
-            console.log(e.location.source);
+            console.log(e.errorLine);
         }
         throw e;
     }

@@ -5,12 +5,31 @@
  */
 
 import {
-    AssignmentExpression,
-    BreakStatement, CallExpression, CaseStatement,
-    CompoundStatement, ContinueStatement, Declaration, DeleteStatement, DoWhileStatement, ExpressionResult,
-    ExpressionStatement, ForStatement, GotoStatement, Identifier,
-    IfStatement, LabeledStatement, MemberExpression, Node,
-    SwitchStatement, UnaryExpression, WhileStatement,
+    AssignmentExpression, BinaryExpression,
+    BreakStatement,
+    CallExpression,
+    CaseStatement,
+    CompoundStatement,
+    ContinueStatement,
+    Declaration,
+    DeleteStatement,
+    DoWhileStatement,
+    ExpressionResult,
+    ExpressionStatement,
+    ForStatement,
+    GotoStatement,
+    Identifier,
+    IfStatement,
+    LabeledStatement,
+    MemberExpression,
+    NameSpaceBlock,
+    Node,
+    SwitchStatement,
+    UnaryExpression,
+    UsingItemStatement,
+    UsingNamespaceStatement,
+    UsingStatement,
+    WhileStatement,
 } from "../common/ast";
 import {LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
@@ -345,9 +364,31 @@ DeleteStatement.prototype.codegen = function(ctx: CompileContext) {
         throw new SyntaxError(`you could only delete pointer`, this);
     }
     if (this.isArrayDelete) {
+        const sizeVarName = ctx.scopeManager.allocTmpVarName();
+        const sizeVar = new Variable(sizeVarName, sizeVarName, this.location.fileName, PrimitiveTypes.int32,
+            AddressType.STACK, ctx.memory.allocStack(PrimitiveTypes.int32.length));
+        ctx.scopeManager.define(sizeVarName, sizeVar, this);
+
+        const ptrVarName = ctx.scopeManager.allocTmpVarName();
+        const ptrVar = new Variable(ptrVarName, ptrVarName, this.location.fileName, rightType,
+            AddressType.STACK, ctx.memory.allocStack(rightType.length));
+        ctx.scopeManager.define(ptrVarName, ptrVar, this);
+        // // TODO::
+        // // TODO::
+        // // TODO::
+        throw 1;
+        // ptr = ptr
+        const assignSizeExpr = new AssignmentExpression(this.location, "=",
+            new Identifier(this.location, ptrVarName), this.expr).codegen(ctx);
+        recycleExpressionResult(ctx, this, assignSizeExpr);
+
+        if (rightType.elementType instanceof ClassType) {
+
+        }
+
         new ExpressionStatement(this.location, new CallExpression(
             this.location, new Identifier(this.location, "free"),
-            [this.expr],
+            [new Identifier(this.location, ptrVarName)],
         )).codegen(ctx);
     } else {
         if (rightType.elementType instanceof ClassType) {
@@ -374,6 +415,36 @@ DeleteStatement.prototype.codegen = function(ctx: CompileContext) {
                 [this.expr],
             )).codegen(ctx);
         }
+    }
+};
+
+UsingStatement.prototype.codegen = function(ctx: CompileContext) {
+    const type = this.type.deduceType(ctx);
+    ctx.scopeManager.define(this.name.name, type, this);
+};
+
+NameSpaceBlock.prototype.codegen = function(ctx: CompileContext) {
+    ctx.scopeManager.enterScope(this.namespace.name);
+    this.statements.map((x) => x.codegen(ctx));
+    ctx.exitScope(this);
+};
+
+UsingNamespaceStatement.prototype.codegen = function(ctx: CompileContext) {
+    if ( !ctx.scopeManager.activeScope(this.namespace.name)) {
+        throw new SyntaxError(`${this.namespace.name} is not a namespace / class`, this);
+    }
+};
+
+UsingItemStatement.prototype.codegen = function(ctx: CompileContext) {
+    const item = ctx.scopeManager.lookupAnyName(this.identifier.name);
+    if ( item === null ) {
+        throw new SyntaxError(`undefine symbol ${this.identifier.name}`, this);
+    }
+    const tokens = this.identifier.name.split("::");
+    if ( item instanceof FunctionLookUpResult ) {
+        item.functions.map((func) => ctx.scopeManager.define(func.name, func));
+    } else {
+        ctx.scopeManager.define(tokens[tokens.length - 1], item, this);
     }
 };
 

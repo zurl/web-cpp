@@ -66,12 +66,12 @@ export function getCtorStmts(ctx: CompileContext,
                 if (testMatchClassName(
                     classType.inheritance[i].classType.fullName,
                     classType.fullName,
-                    initItem.key.identifier.name)) {
+                    initItem.key.name)) {
                     const baseType = classType.inheritance[i].classType;
                     const fullName = baseType.fullName + "::#" + baseType.name;
                     const nret = ctx.scopeManager.lookupFullName(fullName);
                     if (nret === null || !(nret instanceof FunctionLookUpResult)) {
-                        throw new SyntaxError(`the base class ${initItem.key.identifier.name}` +
+                        throw new SyntaxError(`the base class ${initItem.key.name}` +
                             ` construtor parameters mismatch`, node);
                     }
                     baseCtorStmts[i] = new ExpressionStatement(node.location,
@@ -85,7 +85,7 @@ export function getCtorStmts(ctx: CompileContext,
                 }
             }
             if (!hasFound) {
-                throw new SyntaxError(`class ${initItem.key.identifier.name}` +
+                throw new SyntaxError(`class ${initItem.key.name}` +
                     ` is not base class of ${classType.name}`, node);
             }
         }

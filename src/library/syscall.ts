@@ -217,3 +217,9 @@ export function dump_stack_info(this: Runtime): void {
 export function time(this: Runtime, ptr: number): number {
     return Math.round((new Date()).getTime() / 1000);
 }
+
+export function malloc_array(this: Runtime, element_size: number, length: number): number {
+    const ptr = this.heapAllocator.allocHeap(this, element_size * length + 4);
+    this.memory.setInt32(ptr, length, true);
+    return ptr + 4;
+}

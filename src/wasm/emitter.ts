@@ -228,16 +228,18 @@ export class WASMEmitter implements Emitter {
                     this.lastLine = -1;
                 }
             }
-            const mappedLine = this.consumer!.originalPositionFor({
-                line: loc.start.line,
-                column: 1,
-            }).line;
-            if (this.lastLine !== -1 && mappedLine > this.lastLine) {
-                this.sourceMapItem!.lastLine = mappedLine;
-                const st = this.lastLine + 1;
-                const ed = mappedLine;
-                this.dumpSource(st, ed);
-                this.lastLine = mappedLine;
+            if (this.consumer) {
+                const mappedLine = this.consumer.originalPositionFor({
+                    line: loc.start.line,
+                    column: 1,
+                }).line;
+                if (this.lastLine !== -1 && mappedLine > this.lastLine) {
+                    this.sourceMapItem!.lastLine = mappedLine;
+                    const st = this.lastLine + 1;
+                    const ed = mappedLine;
+                    this.dumpSource(st, ed);
+                    this.lastLine = mappedLine;
+                }
             }
         }
         console.log(indent + str);

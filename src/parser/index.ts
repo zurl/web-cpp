@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as Long_ from "long";
 import * as PegJs from "pegjs";
 import * as CTree_ from "../common/ast";
-import {Node, SpecifierType} from "../common/ast";
+import {Declarator, IdentifierDeclarator, Node, SpecifierType} from "../common/ast";
 import {SyntaxError, TypeError} from "../common/error";
 import CGrammar from "./c.lang";
 
@@ -45,12 +45,28 @@ export function getStorageClassSpecifierFromSpecifiers(specifiers: SpecifierType
     return storageClassSpecifiers[0] || null;
 }
 
+function getDeclaratorIdentifierName(declarator: Declarator | null): string {
+    if ( !declarator ) {
+        return "";
+    }
+    return declarator instanceof IdentifierDeclarator ? declarator.identifier.name
+        : getDeclaratorIdentifierName(declarator.declarator);
+}
+
+function parseUniversalCharacter(hexSequence: string) {
+    // SAFE_NUMBER: At most 0xFFFFFFFF.
+    const charCode = Number.parseInt(hexSequence, 16);
+    return String.fromCharCode(charCode);
+}
+const Helper_ = {
+    getDeclaratorIdentifierName,
+    parseUniversalCharacter,
+};
+
 function loadParser(source: string, query: any) {
     const Long = Long_;
-    const Ty = {
-        getStorageClassSpecifierFromSpecifiers,
-    };
     const AST = CTree_;
+    const Helper = Helper_;
 
     // cache
     if ((global as any)["window"] === undefined && fs.existsSync("/tmp/" + query.parserName + ".js")) {
@@ -72,12 +88,13 @@ function loadParser(source: string, query: any) {
     if (typeof query.allowedStartRules === "string") {
         query.allowedStartRules = [query.allowedStartRules];
     }
-    const code = PegJs.generate(source, query);
+
+        const code = PegJs.generate(source, query);
     // if ((global as any)["window"] === undefined) {
     //     console.log("fuck");
     //     fs.writeFileSync("/tmp/" + query.parserName + ".js", code);
     // }
-    return eval(code as any);
+        return eval(code as any);
 }
 
 const ConstantExpressionPegParser = loadParser(CGrammar,

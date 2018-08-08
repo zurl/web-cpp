@@ -9,6 +9,7 @@ import {Runtime} from "./runtime";
 export abstract class HeapAllocator {
     public abstract init(vm: Runtime): void;
     public abstract allocHeap(vm: Runtime, size: number): number;
+    public abstract getBlockSize(vm: Runtime, offset: number): number;
     public abstract freeHeap(vm: Runtime, offset: number): void;
 }
 
@@ -51,6 +52,22 @@ export class LinkedHeapAllocator extends HeapAllocator {
             vm.heapPointer += size + 8;
             return offset + 8;
         }
+    }
+
+    public getBlockSize(vm: Runtime, offset: number): number {
+        if ( !( offset >= vm.heapStart && offset <= vm.heapPointer)) {
+            throw new RuntimeError(`free a blk not be malloc`);
+        }
+        let ptr = vm.heapStart, lastPtr = 0;
+        while (ptr < offset - 8) {
+            const blkSize = vm.memory.getUint32(ptr + 4);
+            lastPtr = ptr;
+            ptr = ptr + blkSize + 8;
+        }
+        if ( ptr !== offset - 8) {
+            throw new RuntimeError(`free a blk not be malloc`);
+        }
+        return vm.memory.getUint32(ptr + 4);
     }
 
     public freeHeap(vm: Runtime, offset: number): void {
@@ -133,6 +150,16 @@ export class FastHeapAllocator extends LinkedHeapAllocator {
             this.pool[idx].add(offset);
         } else {
             super.freeHeap(vm, offset);
+        }
+    }
+
+    public getBlockSize(vm: Runtime, offset: number): number {
+        const tag = vm.memory.getUint32(offset - 4);
+        if ( tag >= this.MAGIC_NUMBER) {
+            const idx = tag - this.MAGIC_NUMBER;
+            return this.poolSize[idx];
+        } else {
+            return super.getBlockSize(vm, offset);
         }
     }
 

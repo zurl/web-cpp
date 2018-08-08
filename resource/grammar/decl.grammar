@@ -1,0 +1,306 @@
+
+
+// A.2.2 Declarations
+
+Declaration 'declaration'
+    = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList? _ ';' {
+        let declaration = new AST.Declaration(getLocation(), specifiers, initDeclarators || []);
+        try {
+            if(declaration.specifiers.includes('typedef')){
+                for (const initDeclarator of declaration.initDeclarators) {
+                    const name = getDeclaratorIdentifierName(initDeclarator.declarator);
+                    currScope.typedefNames.set(name, isTypedefName);
+                }
+            }
+        } catch (e) { /*hide error until at syntax-check */ }
+        return declaration;
+    }
+
+DeclarationWithoutSemicolon
+    = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList?
+
+DeclarationMissingSemicolon 'declaration'
+    = decl:DeclarationWithoutSemicolon {
+        error('Missing \\';\\' at end of declaration');
+    }
+
+DeclarationSpecifiers
+    = head:DeclarationSpecifier tail:(_ DeclarationSpecifier)* {
+        hasTypeSpecifier = false;
+        return buildList(head, tail, 1);
+    }
+
+FunctionSpecifier = ('inline' / '__libcall')
+
+// ADDED
+// REORDER: * / TypeSpecifier
+DeclarationSpecifier
+    = StorageClassSpecifier
+    / TypeQualifier
+    / FunctionSpecifier
+    / AlignmentSpecifier
+    / TypeSpecifier
+
+InitDeclaratorList
+    = head:InitDeclarator tail:(_ ',' _ InitDeclarator)* {
+        return buildList(head, tail, 3);
+    }
+
+InitDeclarator
+    = declarator:Declarator initializer:CppInitializer? {
+        return new AST.InitDeclarator(getLocation(), declarator, initializer || null);
+    }
+    
+CppInitializer
+    = _'=' _ init:Initializer{
+        return init;
+    }
+    / _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+        return new AST.ObjectInitializer(getLocation(),  arguments_ || []);  
+    }
+
+TypeSpecifier
+    = typeSpecifier:(
+    PrimitiveTypeSpecifier
+    / ClassSpecifier
+    / EnumSpecifier
+    / (!{
+        return hasTypeSpecifier;
+    } typedefName:TypedefName {
+        return typedefName;
+    })) {
+        hasTypeSpecifier = true;
+        return typeSpecifier;
+    }
+
+
+
+
+
+// TODO: Reorder: ? TypeName / ConstantExpression
+AlignmentSpecifier
+    = '_Alignas' _ &!'(' _ alignment:(TypeName / ConstantExpression) _ &!')' {
+        return new AST.AlignmentSpecifier(getLocation(), alignment);
+    }
+
+Declarator
+    = pointer:(Pointer _)? declarator:DirectDeclarator {
+        return pointer ? new AST.PointerDeclarator(getLocation(), declarator, extractOptional(pointer, 0)) : declarator;
+    }
+ 
+DirectDeclarator
+    = head:(identifier:Identifier {
+        return new AST.IdentifierDeclarator(getLocation(), identifier);
+    } / '(' _ declarator:Declarator _ &!')' {
+        return declarator;
+    } ) tail:(_ (
+        '[' _ qualifiers:TypeQualifierList? _ length:AssignmentExpression? _ &!']' {
+            return {
+                location: getLocation(),
+                type: AST.ArrayDeclarator,
+                arguments: [false, qualifiers || [], length, false]
+            };
+        }
+        / '[' _ 'static' !IdentifierPart _ qualifiers:TypeQualifierList? _ length:AssignmentExpression _ &!']' {
+            return {
+                location: getLocation(),
+                type: AST.ArrayDeclarator,
+                arguments: [true, qualifiers || [], length, false]
+            };
+        }
+        / '[' _ qualifiers:TypeQualifierList _ 'static' !IdentifierPart _ length:AssignmentExpression _ &!']' {
+            return {
+                location: getLocation(),
+                type: AST.ArrayDeclarator,
+                arguments: [true, qualifiers, length, false]
+            };
+        }
+        / '[' _ qualifiers:TypeQualifierList? _ '*' _ &!']' {
+            return {
+                location: getLocation(),
+                type: AST.ArrayDeclarator,
+                arguments: [false, qualifiers || [], null, true]
+            };
+        }
+        / '(' _ parameters: ParameterList? _ ')' {
+            return {
+                location: getLocation(),
+                type: AST.FunctionDeclarator,
+                arguments: [parameters || new AST.ParameterList(getLocation())]
+            }
+        }
+    ))* {
+        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
+    }
+
+Pointer
+    = '*' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '*');
+    }
+    /
+    '&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&');
+    }
+    /
+    '&&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&&');
+    }
+
+TypeQualifierList
+    = head:TypeQualifier tail:(_ TypeQualifier)* {
+        return buildList(head, tail, 1);
+    }
+
+// MERGED: ParameterTypeList => ParameterList
+ParameterList
+    = head:ParameterDeclaration tail:(_ ',' _ ParameterDeclaration)* ellipsis:(_ ',' _ '...')? {
+        return new AST.ParameterList(getLocation(), buildList(head, tail, 3), !!ellipsis);
+    }
+
+ParameterDeclaration
+    = specifiers:DeclarationSpecifiers _ declarator:(Declarator / AbstractDeclarator)? {
+        return new AST.ParameterDeclaration(getLocation(), specifiers, declarator);
+    }
+
+IdentifierList
+    = head:Identifier tail:(_ ',' _ Identifier)* {
+        return buildList(head, tail, 3);
+    }
+
+TypeName
+    = specifierQualifiers:SpecifierQualifierList _ declarator:AbstractDeclarator? {
+        return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
+    }
+
+AbstractDeclarator
+    = pointer:Pointer declarator:(_ DirectAbstractDeclarator)? {
+        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
+    }
+    / declarator:DirectAbstractDeclarator {
+        return declarator;
+    }
+
+DirectAbstractDeclarator
+    = head:(
+        '(' _ declarator:AbstractDeclarator _ &!')' {
+            return declarator;
+        }
+        / element:DirectAbstractDeclaratorElement {
+            return new element.type(getLocation(), null, ...element.arguments)
+        }
+    ) tail:(_ DirectAbstractDeclaratorElement)* {
+        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
+    }
+
+// ADDED
+DirectAbstractDeclaratorElement
+    = '[' _ qualifiers:TypeQualifierList? _ length:AssignmentExpression? _ &!']' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractArrayDeclarator,
+            arguments: [false, qualifiers || [], length, false]
+        };
+    }
+    / '[' _ 'static' !IdentifierPart _ qualifiers:TypeQualifierList? _ length:AssignmentExpression _ &!']' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractArrayDeclarator,
+            arguments: [true, qualifiers || [], length, false]
+        };
+    }
+    / '[' _ qualifiers:TypeQualifierList _ 'static' !IdentifierPart _ length:AssignmentExpression _ &!']' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractArrayDeclarator,
+            arguments: [true, qualifiers, length, false]
+        };
+    }
+    / '[' _ '*' _ &!']' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractArrayDeclarator,
+            arguments: [false, [], null, true]
+        };
+    }
+    / '(' _ parameters:ParameterList? _ &!')' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractFunctionDeclarator,
+            arguments: [parameters || new AST.ParameterList(getLocation())]
+        }
+    }
+
+Initializer
+    = AssignmentExpression
+    / '{' _ initializerList:InitializerList _ ','? _ &!'}' {
+        return initializerList;
+    }
+
+InitializerList
+    = head:InitializerListItem tail:(_ ',' _ InitializerListItem)* {
+        return new AST.InitializerList(getLocation(), buildList(head, tail, 3));
+    }
+
+// ADDED
+InitializerListItem
+    = designators:(Designation _)? initializer:Initializer {
+        return new AST.InitializerListItem(getLocation(), extractOptional(designators, 0) || [], initializer);
+    }
+
+Designation
+    = designators:DesignatorList _ '=' {
+        return designators;
+    }
+
+DesignatorList
+    = head:Designator tail:(_ Designator)* {
+        return buildList(head, tail, 1);
+    }
+
+Designator
+    = '[' _ subscript:ConstantExpression _ &!']' {
+        return new AST.SubscriptDesignator(getLocation(), subscript);
+    }
+    / '.' _ member:Identifier {
+        return new AST.MemberDesignator(getLocation(), member);
+    }
+
+
+// A.2.3 Statements
+
+// A.2.4 External definitions
+
+TranslationUnit 
+    = list:ExternalDeclarationList{
+        return new AST.TranslationUnit(getLocation(), list);
+    }
+ExternalDeclarationList
+    = _ head:ExternalDeclaration tail:(_ ExternalDeclaration)* _ {
+        return buildList(head, tail, 1);
+    }
+
+// REORDER: Declaration / FunctionDefinition (Don't know if necessary)
+ExternalDeclaration
+    = Declaration
+    / FunctionDefinition
+    / DeclarationMissingSemicolon
+    / UsingStatements
+    / 'namespace' _ name:Identifier _ '{' _ list:ExternalDeclarationList? _'}'{
+        currScope.typedefNames.set(name.name, true); 
+        return new AST.NameSpaceBlock(getLocation(), name, list || []);
+    }
+
+FunctionDefinition 'function definition'
+    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:DeclarationList? _ body:CompoundStatement {
+        return new AST.FunctionDefinition(getLocation(), specifiers, declarator, declarations, body);
+    }
+
+DeclarationList
+    = head:Declaration tail:(_ Declaration)* {
+        return buildList(head, tail, 1);
+    }
+ 	
+TypeNameNoBrace
+    =  specifierQualifiers:SpecifierQualifierList {
+        return new AST.TypeName(getLocation(), specifierQualifiers, null)
+    }

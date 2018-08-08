@@ -1,0 +1,206 @@
+Constant
+    = FloatingConstant
+    / IntegerConstant
+    / CharacterConstant
+
+IntegerConstant
+    // REORDER: HexadecimalConstant / OctalConstant
+    = integer:(constant:(DecimalConstant / HexadecimalConstant / OctalConstant) {
+        return {
+            base: constant.base,
+            value: constant.value,
+            raw: text()
+        }
+        }) suffix:$IntegerSuffix? {
+        if (suffix.toLowerCase().includes('u')) {
+            integer.value.unsigned = true;
+        }
+        return new AST.IntegerConstant(getLocation(), integer.base, integer.value, integer.raw, suffix || null);
+    }
+
+DecimalConstant
+    = NonzeroDigit Digit* {
+        // SAFE_NUMBER: Using Long.
+        return {
+            base: 10,
+            value: Long.fromString(text())
+        };
+    }
+
+OctalConstant
+    = '0' digits:$OctalDigit* {
+        // SAFE_NUMBER: Using Long.
+        return {
+            base: 8,
+            value: digits.length ? Long.fromString(digits, 8) : Long.ZERO
+        };
+    }
+
+HexadecimalConstant
+    = HexadecimalPrefix digits:$HexadecimalDigit+ {
+        // SAFE_NUMBER: Using Long.
+        return {
+            base: 16,
+            value: Long.fromString(digits, 16)
+        };
+    }
+
+FloatingConstant
+    = DecimalFloatingConstant
+
+DecimalFloatingConstant
+    = raw:$((FractionalConstant ExponentPart?) / (DigitSequence ExponentPart)) suffix:$FloatingSuffix? {
+        return new AST.FloatingConstant(getLocation(), Number.parseFloat(raw), raw, suffix || null);
+    }
+
+HexadecimalFractionalConstant
+    = HexadecimalDigitSequence '.' HexadecimalDigitSequence?
+    / '.' HexadecimalDigitSequence
+
+CharacterConstant
+    = prefix:$[LuU]? '\\'' value:CCharSequence '\\'' {
+        return new AST.CharacterConstant(getLocation(), value, prefix || null);
+    }
+
+EncodingPrefix
+    = 'u8'
+    / 'u'
+    / 'U'
+    / 'L'
+
+UniversalCharacterName
+    = '\\\\u' hexQuad:$HexQuad {
+        return parseUniversalCharacter(hexQuad);
+    }
+    / '\\\\U' hexQuads:$(HexQuad HexQuad) {
+        return parseUniversalCharacter(hexQuads);
+    }
+
+HexQuad
+    = HexadecimalDigit HexadecimalDigit HexadecimalDigit HexadecimalDigit
+
+StringLiteral
+    = head:SingleStringLiteral tail:(_ SingleStringLiteral)* {
+        return buildList(head, tail, 1).reduce((left, right) => {
+            let prefix = null;
+            if (left.prefix !== right.prefix) {
+                if (left.prefix) {
+                    if (right.prefix) {
+                        error('Unsupported non-standard concatenation of string literals');
+                    } else {
+                        prefix = left.prefix;
+                    }
+                } else {
+                    prefix = right.prefix;
+                }
+            } else {
+                prefix = left.prefix;
+            }
+            const value = left.value.slice(0, -1) + right.value;
+            return new AST.StringLiteral(getLocation(), prefix, value);
+        });
+    }
+
+SingleStringLiteral
+    = prefix:$EncodingPrefix? '"' value:SCharSequence? &!'"' {
+        return new AST.StringLiteral(getLocation(), prefix || null, (value || '') + '\\0');
+    }
+
+SCharSequence
+    = chars:SChar+ {
+        return chars.join('');
+    }
+
+SChar
+    = [^"\\\\\\n] // any member of the source character set except the double-quote ", backslash \\, or new-line character
+    / EscapeSequence
+
+UnaryOperator
+    = [*+\\-~!]
+    / SingleAnd
+
+
+TypeQualifier
+    = ('const'
+    / 'restrict'
+    / 'volatile') !IdentifierPart {
+        return text();
+    }
+
+CCharSequence
+    = chars:CChar+ {
+        return chars.join('');
+    }
+
+CChar
+    = [^'\\\\\\n] // any member of the source character set except the single-quote ', backslash \\, or new-line character
+    / EscapeSequence
+
+EscapeSequence
+    = SimpleEscapeSequence
+    / OctalEscapeSequence
+    / HexadecimalEscapeSequence
+    / UniversalCharacterName
+
+SimpleEscapeSequence
+    = ('\\\\\\''
+    / '\\\\"'
+    / '\\\\?'
+    / '\\\\\\\\') {
+        return text().charAt(1);
+    }
+    / '\\\\a' {
+        return '\\x07';
+    }
+    / '\\\\b' {
+        return '\\b';
+    }
+    / '\\\\f' {
+        return '\\f';
+    }
+    / '\\\\n' {
+        return '\\n';
+    }
+    / '\\\\r' {
+        return '\\r';
+    }
+    / '\\\\t' {
+        return '\\t';
+    }
+    / '\\\\v' {
+        return '\\v';
+    }
+
+OctalEscapeSequence
+    = '\\\\' digits:$(OctalDigit OctalDigit? OctalDigit?) {
+        // SAFE_NUMBER: At most 0777.
+        return String.fromCharCode(Number.parseInt(digits, 8));
+    }
+
+HexadecimalEscapeSequence
+    = '\\\\x' digits:$HexadecimalDigit+ {
+        // TODO: Guard against very long digits.
+        return String.fromCharCode(Number.parseInt(digits, 16));
+    }
+
+BinaryExponentPart
+    = [pP] Sign? DigitSequence
+
+HexadecimalDigitSequence
+    = HexadecimalDigit+
+
+FloatingSuffix
+    = [flFL]
+
+FractionalConstant
+    = DigitSequence '.' DigitSequence?
+    / '.' DigitSequence
+
+ExponentPart
+    = [eE] Sign? DigitSequence
+
+Sign
+    = [+\\-]
+
+DigitSequence
+    = Digit+

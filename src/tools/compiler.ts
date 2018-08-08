@@ -15,7 +15,8 @@ import {CallbackOutputFile, StringInputFile} from "../runtime/vmfile";
  *  Created at 04/08/2018
  */
 
-function compile(name: string, source: string, options = {}) {
+function compile(name: string, source: string, options: any = {}) {
+    options.fileName = name;
     const {code, map} = preprocess(name, source);
     try {
         const translationUnit = CParser.parse(code, options);

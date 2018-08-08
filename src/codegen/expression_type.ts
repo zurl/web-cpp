@@ -8,7 +8,7 @@ import {
     FloatingConstant,
     Identifier,
     IntegerConstant,
-    MemberExpression,
+    MemberExpression, NewArrayExpression, NewExpression,
     ParenthesisExpression,
     PostfixExpression,
     StringLiteral,
@@ -282,13 +282,22 @@ ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type
 };
 
 ConstructorCallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
-    const name = this.name.identifier.name;
+    const name = this.name.name;
     const item = ctx.scopeManager.lookupAnyName(name);
     if ( !(item instanceof ClassType) ) {
         throw new SyntaxError(`constructor call must be class type`, this);
     }
     return item;
 };
+
+NewArrayExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    return new PointerType(this.name.deduceType(ctx));
+};
+
+NewExpression.prototype.deduceType = function(ctx: CompileContext): Type {
+    return new PointerType(this.name.deduceType(ctx));
+};
+
 export function expression_type() {
     return "";
 }

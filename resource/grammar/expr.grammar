@@ -1,0 +1,153 @@
+Expression
+    = head:AssignmentExpression tail:(_ ',' _ AssignmentExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+AssignmentExpression
+    = left:UnaryExpression _ operator:AssignmentOperator _ right:AssignmentExpression {
+        return new AST.AssignmentExpression(getLocation(), operator, left, right);
+    }
+    / ConditionalExpression
+
+ConditionalExpression
+    = test:LogicalOrExpression _ '?' _ consequent:Expression _ &!':' _ alternate:ConditionalExpression {
+        return new AST.ConditionalExpression(getLocation(), test, consequent, alternate);
+    }
+    / LogicalOrExpression
+
+
+PlacementExpression
+    = '(' _  item:AssignmentExpression _ ')' {
+        return item;
+    }
+
+ConstructorCall
+    = 'new' !IdentifierPart _ name:TypeNameNoBrace _ placement:PlacementExpression? _ '(' _ arguments_:ArgumentExpressionList? _ ')' {
+        return new AST.NewExpression(getLocation(), name, arguments_ || [], placement || null);
+    }
+    / 'new' !IdentifierPart _ name:TypeNameNoBrace _ placement:PlacementExpression? _  '[' _ size:AssignmentExpression _ ']' {
+        return new AST.newArrayExpression(getLocation(), name, size, placement || null);
+    }
+    / name:TypedefName  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+        return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || []);
+    }
+
+PostfixExpression
+    = head:PrimaryExpression tail:(_ (
+        '[' _ subscript:Expression _ &!']' {
+            return {
+                type: AST.SubscriptExpression,
+                arguments: [subscript]
+            };
+        }
+        / '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+            return {
+                type: AST.CallExpression,
+                arguments: [arguments_ || []]
+            };
+        }
+        / operator:('.' / '->') _ member:Identifier {
+            return {
+                type: AST.MemberExpression,
+                arguments: [operator === '->', member]
+            };
+        }
+        / operator:('++' / '--') {
+            return {
+                type: AST.PostfixExpression,
+                arguments: [operator === '--']
+            };
+        }
+    ))* {
+        return extractList(tail, 1).reduce((result, element) => new element.type(getLocation(), result, ...element.arguments), head);
+    }
+
+ArgumentExpressionList
+    = head:AssignmentExpression tail:(_ ',' _ AssignmentExpression)* {
+        return buildList(head, tail, 3);
+    }
+
+UnaryExpression
+    = operator:('++' / '--') _ operand:UnaryExpression {
+        return new AST.UnaryExpression(getLocation(), operator, operand);
+    }
+    / operator:UnaryOperator _ operand:CastExpression { //Hack: when parse '&' operator, the operator variable will be array of 2 elements
+        return new AST.UnaryExpression(getLocation(), operator[0], operand);
+    }
+    / operator:'sizeof' !IdentifierPart _ operand:UnaryExpression {
+        return new AST.UnaryExpression(getLocation(), operator, operand);
+    }
+    / operator:('sizeof' / '_Alignof') _ '(' _ operand:TypeName _ &!')' {
+        return new AST.UnaryExpression(getLocation(), operator, operand);
+    }
+    / PostfixExpression
+
+CastExpression
+    = '(' _ typeName:TypeName _ ')' _ operand:CastExpression {
+        return new AST.CastExpression(getLocation(), typeName, operand);
+    }
+    / UnaryExpression
+
+MultiplicativeExpression
+    = head:CastExpression tail:(_ [*/%] _ CastExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+AdditiveExpression
+    = head:MultiplicativeExpression tail:(_ [+\\-] _ MultiplicativeExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+ShiftExpression
+    = head:AdditiveExpression tail:(_ ('<<' / '>>') _ AdditiveExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+RelationalExpression
+    = head:ShiftExpression tail:(_ ('<=' / '>=' / '<' / '>') _ ShiftExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+EqualityExpression
+    = head:RelationalExpression tail:(_ ('==' / '!=') _ RelationalExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+AndExpression
+    = head:EqualityExpression tail:(_ SingleAnd _ EqualityExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+ExclusiveOrExpression
+    = head:AndExpression tail:(_ '^' _ AndExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+InclusiveOrExpression
+    = head:ExclusiveOrExpression tail:(_ '|' _ ExclusiveOrExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+LogicalAndExpression
+    = head:InclusiveOrExpression tail:(_ AndAnd _ InclusiveOrExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+LogicalOrExpression
+    = head:LogicalAndExpression tail:(_ '||' _ LogicalAndExpression)* {
+        return buildBinaryExpression(head, tail);
+    }
+
+
+ConstantExpression
+    = ConditionalExpression
+
+
+PrimaryExpression
+    = Identifier
+    / ConstructorCall
+    / Constant
+    / StringLiteral
+    / '(' _ expression:Expression _ &!')' {
+        return new AST.ParenthesisExpression(getLocation(), expression);
+    }

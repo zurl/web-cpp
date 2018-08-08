@@ -1,0 +1,113 @@
+TypedIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
+        return identifier;
+    }
+
+InheritSpecifier
+    = lb:AccessControlLabels? _ className:TypedefName{
+        return new AST.InheritSpecifier(getLocation(), lb || "", className);
+    }
+
+InheritSpecifierList
+    = ':' _ head:InheritSpecifier tail:(_ ',' _ InheritSpecifier)* {
+        return buildList(head, tail, 1);
+    }
+
+ClassSpecifier
+    = classKey:ClassKey _ identifier:TypedIdentifier _ ih:InheritSpecifierList? _ '{' _ declarations:StructDeclarationList? _ '}' {
+        return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
+    }
+    / classKey:ClassKey _ identifier:TypedIdentifier {
+        return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
+    }
+
+ClassKey
+    = ('struct' / 'class' / 'union') !IdentifierPart {
+        return text();
+    }
+
+StructDeclarationList
+    = head:StructDeclaration tail:(_ StructDeclaration)* {
+        return buildList(head, tail, 1);
+    }
+
+AccessControlLabels = 'public' / 'private' / 'protect'
+
+StructDeclaration
+    = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body);
+    }
+    / id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null);
+    }
+    / '~' id:TypedefName _ '(' _ ')' _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body);
+    }
+    / '~' id:TypedefName _ '(' _ ')' _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null);
+    }
+    / label:AccessControlLabels _ ':' {
+        return new AST.AccessControlLabel(getLocation(), label);
+    }
+    / decl:ExternalDeclaration {
+        return decl;
+    }
+
+ConstructorInitializeList
+    = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
+         return buildList(head, tail, 3);
+    }
+
+ConstructorInitializeItem
+    = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value);
+    }
+    / key:TypedefName _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value);
+    }
+
+SpecifierQualifierList
+    = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
+        hasTypeSpecifier = false;
+        return buildList(head, tail, 1);
+    }
+
+// ADDED
+// REORDER: TypeQualifier / TypeSpecifier
+SpecifierQualifier
+    = TypeQualifier
+    / TypeSpecifier
+
+StructDeclaratorList
+    = head:StructDeclarator tail:(_ ',' _ StructDeclarator)* {
+        return buildList(head, tail, 3);
+    }
+
+StructDeclarator
+    = ':' _ width:ConstantExpression {
+        return new AST.StructDeclarator(getLocation(), null, width, null);
+    }
+    / declarator:Declarator _ initDeclarators:InitDeclaratorList? width:(_ ':' _ ConstantExpression)? {
+        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3), initDeclarators);
+    }
+
+EnumSpecifier
+    = 'enum' !IdentifierPart _ identifier:Identifier? _ '{' _ enumerators:EnumeratorList _ ','? _ &!'}' {
+        return new AST.EnumSpecifier(getLocation(), identifier, enumerators);
+    }
+    / 'enum' !IdentifierPart _ identifier:Identifier {
+        return new AST.EnumSpecifier(getLocation(), identifier, null);
+    }
+
+EnumeratorList
+    = head:Enumerator tail:(_ comma:','? _ enumerator:Enumerator)* {
+        return buildList(head, tail, 3);
+    }
+
+// MODIFICATION: EnumerationConstant => Identifier
+Enumerator
+    = identifier:Identifier value:(_ '=' _ ConstantExpression)? {
+        return new AST.Enumerator(getLocation(), identifier, extractOptional(value, 3));
+    }
+

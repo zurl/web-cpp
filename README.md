@@ -104,10 +104,13 @@ use `./cc` as local runtime (Node.js)
 - [X] 运算符重载 => working, bin->ok, unary->working, syntax不全
 - [X] implict this
 - [ ] public/private/ protect, 访问控制 (syntax ok, todo)
-- [ ] new/delete
-- [ ] using
-- [ ] namespace
+- [X] new/delete
+- [ ] new array []
+- [X] using
+- [X] namespace
 - [ ] 类型转换重载， like if(object) { ... }
+
+
 - [ ] 异常处理
 - [ ] 虚成员函数
 - [ ] 函数模板
@@ -118,3 +121,4 @@ use `./cc` as local runtime (Node.js)
 - [ ] mangled/demangled
 - [ ] virtual inheriant
 - [ ] seperate define class function
+- [ ] operator new/ placement new

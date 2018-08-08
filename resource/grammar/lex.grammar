@@ -1,0 +1,172 @@
+Id
+    = !Keyword head:IdentifierNondigit tail:IdentifierPart* {
+        return new AST.Identifier(getLocation(), head + tail.join(''));
+    }
+
+SingleIdentifier
+    = id:Id &{
+        return !isTypedefName(id.name)
+    } {
+        return id;
+    }
+
+Identifier
+    = 'operator' ope:OverloadOperator {
+        return new AST.Identifier(getLocation(), "#" + ope);
+    }
+    / isFullName:'::'? namespace:(Id '::')* name:SingleIdentifier {
+        let prefix = isFullName === "::" ? "::" : "";
+        name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return name;
+    }
+    / '~' name:TypedefName {
+        name.identifier.name = '~' + name.identifier.name;
+        return name.identifier;
+    }
+
+TypedefName
+    =  identifier:Id &{ //precondition
+        return isTypedefName(identifier.name);
+    } {
+        return new AST.TypedefName(getLocation(), identifier.name);
+    }
+
+
+WhiteSpace = [ \\t\\n\\v\\f]
+
+_ = WhiteSpace*
+
+Keyword
+    = ('auto'
+    / 'break'
+    / 'case'
+    / 'char'
+    / 'const'
+    / 'continue'
+    / 'default'
+    / 'double'
+    / 'do'
+    / 'else'
+    / 'enum'
+    / 'extern'
+    / 'float'
+    / 'for'
+    / 'goto'
+    / 'if'
+    / 'inline'
+    / 'int'
+    / 'long'
+    / 'register'
+    / 'restrict'
+    / 'return'
+    / 'short'
+    / 'signed'
+    / 'sizeof'
+    / 'static'
+    / 'struct'
+    / 'switch'
+    / 'typedef'
+    / 'union'
+    / 'unsigned'
+    / 'void'
+    / 'volatile'
+    / 'while'
+    / 'class'
+    / 'new'
+    / 'delete'
+    / 'operator'
+    / 'override'
+    / 'template'
+    / 'typename'
+    / 'namespace'
+    / 'using') !IdentifierPart
+
+StorageClassSpecifier
+    = ('typedef'
+    / 'extern'
+    / 'static'
+    / 'virtual'
+    / 'auto'
+    / 'register') !IdentifierPart {
+        return text();
+    }
+
+PrimitiveTypeSpecifier
+    = ('void'
+    / 'char'
+    / 'short'
+    / 'int'
+    / 'long'
+    / 'float'
+    / 'double'
+    / 'signed'
+    / 'unsigned'
+    / 'bool') !IdentifierPart { return text(); }
+
+OverloadOperator
+    = '+' / '-' / '*' / '/' / '%' / '&' / '<' / '>' / '<=' / '>=' / '==' / '!='
+    / '|' / '^' / '!' / '~' / '&&' / '||' / '>>' / '<<' / '++' / '--'
+    /'()' / '[]' / '->'
+    / AssignmentOperator
+
+AssignmentOperator
+    = '=' !'=' {
+        return text();
+    }
+    / '*='
+    / '/='
+    / '%='
+    / '+='
+    / '-='
+    / '<<='
+    / '>>='
+    / '&='
+    / '^='
+    / '|='
+
+AndAnd
+    = '&&'
+
+SingleAnd
+    = '&'!'&'
+
+HexadecimalPrefix
+    = '0x'
+    / '0X'
+
+NonzeroDigit
+    = [1-9]
+
+OctalDigit
+    = [0-7]
+
+HexadecimalDigit
+    = [0-9a-fA-F]
+
+IntegerSuffix
+    = UnsignedSuffix (LongLongSuffix / LongSuffix)?
+    / (LongLongSuffix / LongSuffix) UnsignedSuffix?
+
+UnsignedSuffix
+    = [uU]
+
+LongSuffix
+    = [lL]
+
+LongLongSuffix
+    = 'll'
+    / 'LL'
+
+IdentifierPart
+    = IdentifierNondigit
+    / Digit
+
+IdentifierNondigit
+    = UniversalCharacterName
+    / Nondigit
+
+Nondigit
+    = [_a-zA-Z]
+
+Digit
+    = [0-9]

@@ -8,13 +8,13 @@ import {InternalError} from "./error";
 export type SpecifierType =
     string
     | AtomicTypeSpecifier
-    | StructOrUnionSpecifier
+    | ClassSpecifier
     | EnumSpecifier
     | TypedefName
     | AlignmentSpecifier;
 
 export type ExternalDeclartions
-    = FunctionDefinition | Declaration | UsingStatement | UsingNamespaceStatement | NameSpaceBlockStatement;
+    = FunctionDefinition | Declaration | UsingStatement | UsingNamespaceStatement | NameSpaceBlock;
 
 export interface ExpressionResult {
     type: Type;
@@ -276,13 +276,11 @@ export class CallExpression extends Expression {
 export class ConstructorCallExpression extends Expression {
     public name: TypedefName;
     public arguments: Expression[];
-    public isNew: boolean;
 
-    constructor(location: SourceLocation, name: TypedefName, myArguments: Expression[], isNew: boolean) {
+    constructor(location: SourceLocation, name: TypedefName, myArguments: Expression[]) {
         super(location);
         this.name = name;
         this.arguments = myArguments;
-        this.isNew = isNew;
     }
 }
 
@@ -411,7 +409,7 @@ export class InheritSpecifier extends Node {
     }
 }
 
-export class StructOrUnionSpecifier extends Node {
+export class ClassSpecifier extends Node {
     public typeName: string;
     public identifier: Identifier;
     public declarations: ClassDirectives[] | null;
@@ -452,11 +450,11 @@ export class Enumerator extends Node {
 }
 
 export class TypedefName extends Node {
-    public identifier: Identifier;
+    public name: string;
 
-    constructor(location: SourceLocation, identifier: Identifier) {
+    constructor(location: SourceLocation, name: string) {
         super(location);
-        this.identifier = identifier;
+        this.name = name;
     }
 }
 
@@ -859,7 +857,7 @@ export class TranslationUnit extends Node {
 }
 
 export class FunctionDefinition extends Node {
-    public specifiers: Array<string | AtomicTypeSpecifier | StructOrUnionSpecifier | EnumSpecifier
+    public specifiers: Array<string | AtomicTypeSpecifier | ClassSpecifier | EnumSpecifier
         | TypedefName | AlignmentSpecifier>;
     public declarator: Declarator;
     public declarations: Declaration[] | null;
@@ -868,7 +866,7 @@ export class FunctionDefinition extends Node {
     public name: string;
 
     constructor(location: SourceLocation, specifiers: Array<string |
-                    AtomicTypeSpecifier | StructOrUnionSpecifier | EnumSpecifier |
+                    AtomicTypeSpecifier | ClassSpecifier | EnumSpecifier |
                     TypedefName | AlignmentSpecifier>,
                 declarator: Declarator,
                 declarations: Declaration[] | null, body: CompoundStatement) {
@@ -938,10 +936,10 @@ export class AccessControlLabel extends Node {
 }
 
 export class UsingStatement extends Node {
-    public name: TypedefName;
-    public type: AbstractDeclarator;
+    public name: Identifier;
+    public type: TypeName;
 
-    constructor(location: SourceLocation, name: TypedefName, type: AbstractDeclarator) {
+    constructor(location: SourceLocation, name: Identifier, type: TypeName) {
         super(location);
         this.name = name;
         this.type = type;
@@ -957,18 +955,18 @@ export class UsingNamespaceStatement extends Node {
     }
 }
 
-export class NameSpaceBlockStatement extends Node {
-    public namespace: TypedefName;
+export class NameSpaceBlock extends Node {
+    public namespace: Identifier;
     public statements: ExternalDeclartions[];
 
-    constructor(location: SourceLocation, namespace: TypedefName, statements: ExternalDeclartions[]) {
+    constructor(location: SourceLocation, namespace: Identifier, statements: ExternalDeclartions[]) {
         super(location);
         this.namespace = namespace;
         this.statements = statements;
     }
 }
 
-export class DeleteStatement extends Node {
+export class DeleteStatement extends Statement {
     public expr: Expression;
     public isArrayDelete: boolean;
 
@@ -976,5 +974,42 @@ export class DeleteStatement extends Node {
         super(location);
         this.expr = expr;
         this.isArrayDelete = isArrayDelete;
+    }
+}
+
+export class UsingItemStatement extends Statement {
+    public identifier: Identifier;
+
+    constructor(location: SourceLocation, identifier: Identifier) {
+        super(location);
+        this.identifier = identifier;
+    }
+}
+
+export class NewExpression extends Expression {
+    public name: TypeName;
+    public arguments: Expression[];
+    public placement: Expression | null;
+
+    constructor(location: SourceLocation, name: TypeName,
+                arguments_: Expression[], placement: Expression | null) {
+        super(location);
+        this.name = name;
+        this.arguments = arguments_;
+        this.placement = placement;
+    }
+}
+
+export class NewArrayExpression extends Expression {
+    public name: TypeName;
+    public size: Expression;
+    public placement: Expression | null;
+
+    constructor(location: SourceLocation, name: TypeName,
+                size: Expression, placement: Expression | null) {
+        super(location);
+        this.name = name;
+        this.size = size;
+        this.placement = placement;
     }
 }

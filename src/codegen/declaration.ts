@@ -20,14 +20,14 @@ import {
     Pointer,
     PointerDeclarator,
     SpecifierType,
-    StructOrUnionSpecifier, SubscriptExpression,
+    ClassSpecifier, SubscriptExpression,
     TranslationUnit,
     TypedefName, UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
 import {getPrimitiveTypeFromSpecifiers, isTypeSpecifier} from "../common/utils";
-import {Type} from "../type";
+import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
 import {FunctionType} from "../type/function_type";
@@ -49,7 +49,7 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
             throw new SyntaxError(`illegal syntax`, nodeForError);
         }
         const node = typeNodes[0];
-        if ( node instanceof StructOrUnionSpecifier) {
+        if ( node instanceof ClassSpecifier) {
             resultType = node.codegen(ctx) as Type;
         } else if ( node instanceof TypedefName) {
             resultType = node.codegen(ctx) as Type;
@@ -240,14 +240,14 @@ Declaration.prototype.codegen = function(ctx: CompileContext) {
             if ( lastItem !== "none" ) {
                 throw new SyntaxError(`confliction of typename ${name}`, this);
             }
-            ctx.scopeManager.declare(name, type, this);
+            ctx.scopeManager.define(name, type, this);
             continue;
         }
 
         // function
         if ( type instanceof FunctionType ) {
             type.name = name;
-            declareFunction(ctx, type, this.specifiers.includes("__libcall"), this);
+            declareFunction(ctx, type, this.specifiers.includes("__libcall"), AccessControl.Public, this);
             continue;
         }
 
@@ -337,9 +337,9 @@ export function parseAbstractDeclarator(ctx: CompileContext, node: AbstractDecla
 }
 
 TypedefName.prototype.codegen = function(ctx: CompileContext) {
-    const item = this.identifier.name.slice(0, 2) === "::" ?
-        ctx.scopeManager.lookupFullName(this.identifier.name) :
-        ctx.scopeManager.lookupShortName(this.identifier.name);
+    const item = this.name.slice(0, 2) === "::" ?
+        ctx.scopeManager.lookupFullName(this.name) :
+        ctx.scopeManager.lookupShortName(this.name);
     if ( item && item instanceof Type) {
         return item;
     }

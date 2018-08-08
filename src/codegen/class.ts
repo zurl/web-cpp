@@ -11,7 +11,7 @@ import {
     ExpressionResult, FunctionDefinition, InitializerList,
     MemberExpression,
     Node, ObjectInitializer,
-    StructOrUnionSpecifier, UnaryExpression,
+    ClassSpecifier, UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
@@ -119,7 +119,7 @@ interface ClassBuildContext {
     accessControl: AccessControl;
 }
 
-StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
+ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     let name = this.identifier.name;
     if (!ctx.isCpp()) {
         name = "$" + name;
@@ -139,7 +139,7 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     const inheritance = [] as Inheritance[];
     for (const item of this.inherits) {
         const accessControl = getAccessControlFromString(item.accessControl);
-        const classType = ctx.scopeManager.lookupAnyName(item.className.identifier.name);
+        const classType = ctx.scopeManager.lookupAnyName(item.className.name);
         if (!(classType instanceof ClassType)) {
             throw new SyntaxError(`you could not inherit type ${classType}, which is not a class type`, this);
         }
@@ -176,8 +176,8 @@ StructOrUnionSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         if (decl instanceof Declaration) {
             parseClassDeclartion(ctx, decl, buildCtx, this);
         } else if (decl instanceof ConstructorOrDestructorDeclaration) {
-            if (decl.name.identifier.name !== name) {
-                throw new SyntaxError(`invaild ctor/dtor name ${decl.name.identifier.name}`, this);
+            if (decl.name.name !== name) {
+                throw new SyntaxError(`invaild ctor/dtor name ${decl.name.name}`, this);
             }
             let funcType: FunctionType;
             if (decl.isCtor) {

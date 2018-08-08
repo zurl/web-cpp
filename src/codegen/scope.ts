@@ -144,6 +144,7 @@ export class ScopeManager {
     public scopeId: number;
     public isCpp: boolean;
     public tmpVarId: number;
+    public tmpActiveScopes: Scope[];
 
     constructor(isCpp: boolean) {
         this.isCpp = isCpp;
@@ -152,6 +153,7 @@ export class ScopeManager {
         this.activeScopes = new Set<Scope>([this.root]);
         this.scopeId = 0;
         this.tmpVarId = 0;
+        this.tmpActiveScopes = [];
     }
 
     public enterUnnamedScope() {
@@ -172,6 +174,8 @@ export class ScopeManager {
     public exitScope() {
         this.activeScopes.delete(this.currentScope);
         this.currentScope = this.currentScope.parent;
+        this.tmpActiveScopes.map((x) => this.activeScopes.delete(x));
+        this.tmpActiveScopes = [];
     }
 
     public lookupAnyName(anyName: string): LookUpResult {
@@ -273,6 +277,36 @@ export class ScopeManager {
         return "$__" + this.tmpVarId++;
     }
 
+    public lookupScope(scopeName: string): Scope | null {
+        let curScope = this.root;
+        const tokens = scopeName.split("::");
+        if (scopeName.substr(0, 2) === "::") {
+            for (let i = 1; i < tokens.length; i++) {
+                const item = curScope.children.filter(((x) => x.shortName === tokens[i]));
+                if (item.length !== 1) {
+                    return null;
+                }
+                curScope = item[0];
+            }
+            return curScope;
+        } else {
+            for (const as of this.activeScopes) {
+                const item = this.lookupScope(as.fullName + "::" + scopeName);
+                if (item) {
+                    return item;
+                }
+            }
+            return null;
+        }
+    }
+
+    public activeScope(scopeName: string): boolean {
+        const scope = this.lookupScope(scopeName);
+        if ( !scope ) { return false; }
+        this.tmpActiveScopes.push(scope);
+        this.activeScopes.add(scope);
+        return true;
+    }
     private innerLookUp(shortName: string): Symbol | null {
         const realName = shortName.split("@")[0];
         const result = this.lookupFullName(this.currentScope.fullName
@@ -295,9 +329,7 @@ export class ScopeManager {
     //
     // }
     //
-    // public activeScope(scopeName: string) {
-    //
-    // }
+
     //
     // public deactiveScope(scopeName: string) {
     //

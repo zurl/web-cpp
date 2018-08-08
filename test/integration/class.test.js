@@ -203,10 +203,14 @@ dtor`;
         int main(){
             B a(5, 7), b(0, 3);
             a.foo();
+            B *c = new B(1, 2);
+            B *d = new B(1, 2);
+            delete c;
+            delete d;
             return 0;
         }
         `;
-        const expectOutput = `base\n~B(7)\n~A(5)\n~B(3)\n~A(0)`;
+        const expectOutput = `base\n~B(2)\n~A(1)\n~B(2)\n~A(1)\n~B(7)\n~A(5)\n~B(3)\n~A(0)`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
 });

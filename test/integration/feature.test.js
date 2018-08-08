@@ -122,4 +122,50 @@ describe('feature integration test', function () {
         const expectOutput = `222\n0 1\n`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
+    it('test namespace / using', async function () {
+        const testCode = `
+#include "stdio.h"
+        using HAHA = int;
+        namespace ABC{
+            int main(){
+                HAHA b = 3;
+                printf("%d", b);
+                return 0;
+            }
+            int a(){
+                printf("foo\\n");
+                return 0;
+            }
+        }
+        class DDD{
+        public:
+            static int goo(){
+                printf("goo()\\n");
+                return 0;
+            }
+        };
+        using DDD::goo;
+        int main(){
+            using namespace ABC;
+            a();
+            goo();
+            return ABC::main();
+        }
+        `;
+        const expectOutput = `foo\ngoo()\n3`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
+    it('multi string literal', async function () {
+        const testCode = `
+#include "stdio.h"
+        int main(){
+            printf("1234" "1234" "1234");
+            return 0;
+        }
+        `;
+        const expectOutput = `123412341234`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
+
+
 });
