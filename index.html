@@ -6,23 +6,34 @@
     <title>Editor</title>
     <script src="/web-cpp/materialize.min.6b133169.js"></script>
     <link rel="stylesheet" href="/web-cpp/materialize.min.8bbe8b74.css">
-    <link rel="stylesheet" href="/web-cpp/main.cecd7783.css">
+    <link rel="stylesheet" href="/web-cpp/main.ecfa8469.css">
 </head>
 <body>
 
 <div id="main-container">
     <div id="left-container">
-        <div id="title-container">
-            <div class="title">
-                C++ Compiler in Browser
+        <div id="left-container-upper">
+            <div id="title-container">
+                <div class="title">
+                    C++ Compiler in Browser
+                </div>
+                <div id="version">
+                    <div id="version-text"></div>
+                </div>
+
+
             </div>
-            <div id="version"></div>
-
-
+            <div id="button-container">
+                <div class="button-area"><a class="waves-effect waves-light btn" onclick="run()">compile & run</a></div>
+                <div class="button-area"><a class="waves-effect waves-light btn" onclick="doSave()">save</a></div>
+            </div>
         </div>
-        <div id="button-container">
-            <div class="button-area"><a class="waves-effect waves-light btn" onclick="run()">compile & run</a></div>
-            <div class="button-area"><a class="waves-effect waves-light btn" onclick="doSave()">save</a></div>
+        <div id="left-container-lower">
+            <div> Copyright (c) Chengyi Zhang. All rights reserved. </div>
+            <div id="github-div">
+                <div id="github-img-container"><img id="github-img" src="/web-cpp/github.3b3d6953.svg"></div>
+                <a id="github-link" href="https://github.com/zurl/web-cpp">github.com/zurl/web-cpp</a>
+            </div>
         </div>
     </div>
     <div id="right-container">
@@ -56,7 +67,7 @@ int main(){
         </div>
     </div>
 </div>
-<script src="/web-cpp/main.239d0fa3.js" type="text/javascript" charset="utf-8"></script>
+<script src="/web-cpp/main.e4761831.js" type="text/javascript" charset="utf-8"></script>
 
 </body>
 </html>
