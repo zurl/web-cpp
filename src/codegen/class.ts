@@ -5,13 +5,13 @@
  */
 import {
     AccessControlLabel,
+    ClassSpecifier,
     CompoundStatement,
-    ConstructorOrDestructorDeclaration,
-    Declaration, Expression,
-    ExpressionResult, FunctionDefinition, InitializerList,
-    MemberExpression,
-    Node, ObjectInitializer,
-    ClassSpecifier, UnaryExpression,
+    ConstructorOrDestructorDeclaration, Declaration,
+    Expression, ExpressionResult, FunctionDefinition,
+    InitializerList,
+    MemberExpression, Node,
+    ObjectInitializer, UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";

@@ -48,7 +48,7 @@ export enum AccessControl {
     Protected,
 }
 
-export function getAccessControlFromString(str: string){
+export function getAccessControlFromString(str: string) {
     if ( str === "public" ) {
         return AccessControl.Public;
     } else if ( str === "protected") {

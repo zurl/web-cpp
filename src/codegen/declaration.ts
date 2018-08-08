@@ -8,19 +8,19 @@ import {
     AbstractDeclarator, AbstractFunctionDeclarator, AbstractPointerDeclarator,
     ArrayDeclarator,
     AssignmentExpression, CallExpression,
+    ClassSpecifier,
     Declaration,
-    Declarator,
-    EnumSpecifier, Expression, ExpressionResult, ExpressionStatement,
+    Declarator, EnumSpecifier, Expression, ExpressionResult,
+    ExpressionStatement,
     FunctionDeclarator,
     Identifier,
-    IdentifierDeclarator,
-    InitializerList, IntegerConstant,
-    Node, ObjectInitializer,
+    IdentifierDeclarator, InitializerList,
+    IntegerConstant, Node,
+    ObjectInitializer,
     ParameterList,
     Pointer,
     PointerDeclarator,
-    SpecifierType,
-    ClassSpecifier, SubscriptExpression,
+    SpecifierType, SubscriptExpression,
     TranslationUnit,
     TypedefName, UnaryExpression,
 } from "../common/ast";
@@ -343,7 +343,7 @@ TypedefName.prototype.codegen = function(ctx: CompileContext) {
     if ( item && item instanceof Type) {
         return item;
     }
-    throw new SyntaxError(`${this.identifier.name} is not a type`, this);
+    throw new SyntaxError(`${this.name} is not a type`, this);
 };
 
 EnumSpecifier.prototype.codegen = function(ctx: CompileContext) {

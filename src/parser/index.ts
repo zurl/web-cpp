@@ -89,12 +89,12 @@ function loadParser(source: string, query: any) {
         query.allowedStartRules = [query.allowedStartRules];
     }
 
-        const code = PegJs.generate(source, query);
+    const code = PegJs.generate(source, query);
     // if ((global as any)["window"] === undefined) {
     //     console.log("fuck");
     //     fs.writeFileSync("/tmp/" + query.parserName + ".js", code);
     // }
-        return eval(code as any);
+    return eval(code as any);
 }
 
 const ConstantExpressionPegParser = loadParser(CGrammar,
