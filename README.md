@@ -4,7 +4,7 @@
 
 a experimental c++ compiler in typescript
 
-online demo => [zurl.github.com/web-cpp](zurl.github.com/web-cpp)
+online demo => [https://zurl.github.com/web-cpp](zurl.github.com/web-cpp)
 
 ## usage
 
