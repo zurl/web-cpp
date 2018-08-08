@@ -19,6 +19,9 @@ body {
 #left-container {
     width: 25%;
     background-color: #01579b;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 #right-container {
@@ -98,6 +101,10 @@ body {
     color: #e1f5fe;
     padding: 20px;
     font-size: 20px;
+    display: flex;
+}
+#github-img{
+
 }
 .button-area{
     margin: 10px;
@@ -133,4 +140,31 @@ body {
     flex-grow: 1;
     height: max-content;
     display: flex;
+}
+
+#left-container-lower{
+    font-size: 14px;
+    align-items: center;
+    display: flex;
+    color: #bbbbbb;
+    flex-direction: column;
+}
+
+#github-img-container{
+    display: flex;
+    margin: 10px;
+}
+
+#github-img{
+    height: 20px;
+}
+
+#github-div{
+    display: flex;
+}
+
+#github-link{
+    color: #bbbbbb !important;
+    text-decoration: underline;
+    padding: 10px 0;
 }

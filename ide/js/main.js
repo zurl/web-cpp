@@ -12,7 +12,7 @@ editor.setTheme("ace/theme/monokai");
 editor.session.setMode("ace/mode/c_cpp");
 
 const tabdiv = M.Tabs.init(document.getElementById("tab-div"), {});
-document.getElementById("version").innerText = "v" + version;
+document.getElementById("version-text").innerText = "v" + version;
 
 let obj = null;
 

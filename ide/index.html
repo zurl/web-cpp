@@ -12,17 +12,28 @@
 
 <div id="main-container">
     <div id="left-container">
-        <div id="title-container">
-            <div class="title">
-                C++ Compiler in Browser
+        <div id="left-container-upper">
+            <div id="title-container">
+                <div class="title">
+                    C++ Compiler in Browser
+                </div>
+                <div id="version">
+                    <div id="version-text"></div>
+                </div>
+
+
             </div>
-            <div id="version"></div>
-
-
+            <div id="button-container">
+                <div class="button-area"><a class="waves-effect waves-light btn" onclick="run()">compile & run</a></div>
+                <div class="button-area"><a class="waves-effect waves-light btn" onclick="doSave()">save</a></div>
+            </div>
         </div>
-        <div id="button-container">
-            <div class="button-area"><a class="waves-effect waves-light btn" onclick="run()">compile & run</a></div>
-            <div class="button-area"><a class="waves-effect waves-light btn" onclick="doSave()">save</a></div>
+        <div id="left-container-lower">
+            <div> Copyright (c) Chengyi Zhang. All rights reserved. </div>
+            <div id="github-div">
+                <div id="github-img-container"><img id="github-img" src="img/github.svg"></div>
+                <a id="github-link" href="https://github.com/zurl/web-cpp">github.com/zurl/web-cpp</a>
+            </div>
         </div>
     </div>
     <div id="right-container">
