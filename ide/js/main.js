@@ -72,8 +72,27 @@ async function run() {
         showMessage("runtime", "code return with code 0");
         tabdiv.select("output");
     }catch(e){
-        if( e instanceof CompilerError ) showError(e);
-        else showMessage("error", e.toString());
+        if( e instanceof CompilerError ) {
+            ga('send', 'ce', {
+                'exDescription': JSON.stringify({
+                    error: e.toString(),
+                    errorLine: e.errorLine,
+                    source: editor.getValue()
+                }),
+                'exFatal': false
+            });
+            showError(e);
+        }
+        else {
+            ga('send', 'oe', {
+                'exDescription': JSON.stringify({
+                    error: e.toString(),
+                    source: editor.getValue()
+                }),
+                'exFatal': false
+            });
+            showMessage("error", e.toString());
+        }
     }
 }
 
