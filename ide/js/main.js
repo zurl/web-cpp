@@ -40,6 +40,24 @@ function showOutput(message){
 }
 
 let isFirst = true;
+
+function reportError(errorJson){
+    fetch('http://er.zhangcy.cn/report', {
+        body: JSON.stringify({
+            "ua": navigator.userAgent,
+            "code" : errorJson.source,
+            "error" :errorJson.error,
+        }), // must match 'Content-Type' header
+        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+        headers: {
+            'user-agent': 'Mozilla/4.0 MDN Example',
+            'content-type': 'application/json'
+        },
+        method: 'POST', // *GET, POST, PUT, DELETE, etc.
+        mode: 'cors', // no-cors, cors, *same-origin
+    });
+}
+
 async function run() {
     outputDiv.innerText = "";
     if(isFirst){
@@ -72,27 +90,25 @@ async function run() {
         showMessage("runtime", "code return with code 0");
         tabdiv.select("output");
     }catch(e){
+        let errorjson = {};
         if( e instanceof CompilerError ) {
-            gtag('event', 'err', {
-                'event_category' : 'ce',
-                'event_label' : JSON.stringify({
-                    error: e.toString(),
-                    errorLine: e.errorLine,
-                    source: editor.getValue()
-                })
-            });
+            errorjson = {
+                type: 'ce',
+                error: e.toString(),
+                errorLine: e.errorLine,
+                source: editor.getValue()
+            };
             showError(e);
         }
         else {
-            gtag('event', 'err', {
-                'event_category' : 'oe',
-                'event_label' : JSON.stringify({
-                    error: e.toString(),
-                    source: editor.getValue()
-                })
-            });
+            errorjson = {
+                type: 'oe',
+                error: e.toString(),
+                source: editor.getValue()
+            };
             showMessage("error", e.toString());
         }
+        reportError(errorjson);
     }
 }
 
