@@ -73,7 +73,7 @@ async function run() {
         tabdiv.select("output");
     }catch(e){
         if( e instanceof CompilerError ) {
-            ga('send', 'ce', {
+            ga('send', 'exception', {
                 'exDescription': JSON.stringify({
                     error: e.toString(),
                     errorLine: e.errorLine,
@@ -84,7 +84,7 @@ async function run() {
             showError(e);
         }
         else {
-            ga('send', 'oe', {
+            ga('send', 'exception', {
                 'exDescription': JSON.stringify({
                     error: e.toString(),
                     source: editor.getValue()
