@@ -73,23 +73,23 @@ async function run() {
         tabdiv.select("output");
     }catch(e){
         if( e instanceof CompilerError ) {
-            ga('send', 'exception', {
-                'exDescription': JSON.stringify({
+            gtag('event', 'exception', {
+                'description': JSON.stringify({
                     error: e.toString(),
                     errorLine: e.errorLine,
                     source: editor.getValue()
                 }),
-                'exFatal': false
+                'fatal': false
             });
             showError(e);
         }
         else {
-            ga('send', 'exception', {
-                'exDescription': JSON.stringify({
+            gtag('event', 'exception', {
+                'description': JSON.stringify({
                     error: e.toString(),
                     source: editor.getValue()
                 }),
-                'exFatal': false
+                'fatal': false
             });
             showMessage("error", e.toString());
         }
