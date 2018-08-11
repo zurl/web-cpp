@@ -12,7 +12,6 @@ online demo => [zurl.github.io/web-cpp](https://zurl.github.io/web-cpp)
 
 ```shell
 npm install
-npm install -g typescript nyc mocha
 npm run build
 npm run test
 ```
@@ -20,7 +19,6 @@ npm run test
 2. build the web-cpp online ide
 
 ```shell
-npm install -g parcel
 npm run build
 cd ide
 parcel build index.html
@@ -37,8 +35,6 @@ use `./cc` as local runtime (Node.js)
 # todolist
 
 ## Road Map
-
--2018.8.4 new，__cxx_global_var_init，namespace， using
 
 ## C language
 
@@ -113,20 +109,20 @@ use `./cc` as local runtime (Node.js)
 - [X] function overload
 - [X] member function overload
 - [X] __cxx_global_var_init
-- [X] 继承
-- [X] 运算符重载 => working, bin->ok, unary->working, syntax不全
+- [X] inheriant
+- [X] operator overload => working, bin->ok, unary->working, syntax
 - [X] implict this
-- [ ] public/private/ protect, 访问控制 (syntax ok, todo)
+- [ ] public/private/ protect, access control (syntax ok, todo)
 - [X] new/delete
 - [X] new array []
 - [X] using
 - [X] namespace
-- [ ] 类型转换重载， like if(object) { ... }
-- [ ] 异常处理
-- [ ] 虚成员函数
-- [ ] 函数模板
+- [ ] cast overload， like if(object) { ... }
+- [ ] exception handling
+- [ ] virtual member function
+- [ ] function template
 - [ ] const/override/virtual member function
-- [ ] class模板
+- [ ] class template
 - [ ] typeinfo
 - [ ] static_cast / dynamic_cast / reinterpret_cast
 - [ ] mangled/demangled

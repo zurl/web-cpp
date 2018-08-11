@@ -4,7 +4,6 @@
  *  Created at 16/06/2018
  */
 
-import {PEG, PegjsError} from "pegjs";
 import {Node, Position, SourceLocation} from "./ast";
 
 export class FatalError extends Error {

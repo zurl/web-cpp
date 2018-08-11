@@ -141,38 +141,16 @@ export class IntegerConstant extends Constant {
 
 }
 
-const ZeroConstant = new IntegerConstant(
-    new SourceLocation("", "",
-        new Position(1, 1, 1),
-        new Position(1, 1, 1),
-    ),
-    10,
-    Long.fromInt(0),
-    "0",
-    null,
-);
+const EmptyLocation = new SourceLocation("", "",
+    new Position(1, 1, 1),
+    new Position(1, 1, 1),
+    );
 
-const OneConstant = new IntegerConstant(
-    new SourceLocation("", "",
-        new Position(1, 1, 1),
-        new Position(1, 1, 1),
-        ),
-    10,
-    Long.fromInt(1),
-    "1",
-    null,
-);
+const ZeroConstant = IntegerConstant.fromNumber(EmptyLocation, 0);
 
-const NegOneConstant = new IntegerConstant(
-    new SourceLocation("", "",
-        new Position(1, 1, 1),
-        new Position(1, 1, 1),
-    ),
-    10,
-    Long.fromInt(-1),
-    "-1",
-    null,
-);
+const OneConstant = IntegerConstant.fromNumber(EmptyLocation, 1);
+
+const NegOneConstant = IntegerConstant.fromNumber(EmptyLocation, -1);
 
 export class FloatingConstant extends Constant {
     public value: number;
@@ -206,39 +184,6 @@ export class StringLiteral extends Expression {
         super(location);
         this.prefix = prefix;
         this.value = value;
-    }
-}
-
-export class Punctuator extends Node {
-    public value: string;
-
-    constructor(location: SourceLocation, value: string) {
-        super(location);
-        this.value = value;
-    }
-}
-
-export class HeaderName extends Node {
-    public name: string;
-    public quoted: boolean;
-
-    constructor(location: SourceLocation, name: string, quoted: boolean) {
-        super(location);
-        this.name = name;
-        this.quoted = quoted;
-    }
-}
-
-export class PpNumber extends Node {
-    public raw: string;
-
-    constructor(location: SourceLocation, raw: string) {
-        super(location);
-        this.raw = raw;
-    }
-
-    get value() { // alias
-        return this.raw;
     }
 }
 
@@ -490,17 +435,6 @@ export class ObjectInitializer extends Node {
     }
 }
 
-export class StaticAssertDeclaration extends Declaration {
-    public test: Expression;
-    public message: StringLiteral;
-
-    constructor(location: SourceLocation, test: Expression, message: StringLiteral) {
-        super(location, [], []);
-        this.test = test;
-        this.message = message;
-    }
-}
-
 export class Declarator extends Node {
     public declarator: Declarator | null;
 
@@ -737,12 +671,6 @@ export class ExpressionStatement extends Statement {
     constructor(location: SourceLocation, expression: Expression) {
         super(location);
         this.expression = expression;
-    }
-}
-
-export class NullStatement extends Statement {
-    constructor(location: SourceLocation) {
-        super(location);
     }
 }
 

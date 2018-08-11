@@ -1,5 +1,5 @@
-
 /* tslint:disable */
+// generate from resource/grammar        
 export default `{ function getDeclaratorIdentifierName(declarator){ return declarator instanceof AST.IdentifierDeclarator?declarator.identifier.name: getDeclaratorIdentifierName(declarator.declarator);}
 function newPosition(position){ return new AST.Position(position.offset,position.line,position.column - 1);}
 function getLocation(){ const location_=location();
