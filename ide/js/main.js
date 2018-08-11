@@ -73,23 +73,23 @@ async function run() {
         tabdiv.select("output");
     }catch(e){
         if( e instanceof CompilerError ) {
-            gtag('event', 'exception', {
-                'description': JSON.stringify({
+            gtag('event', 'err', {
+                'event_category' : 'ce',
+                'event_label' : JSON.stringify({
                     error: e.toString(),
                     errorLine: e.errorLine,
                     source: editor.getValue()
-                }),
-                'fatal': false
+                })
             });
             showError(e);
         }
         else {
-            gtag('event', 'exception', {
-                'description': JSON.stringify({
+            gtag('event', 'err', {
+                'event_category' : 'oe',
+                'event_label' : JSON.stringify({
                     error: e.toString(),
                     source: editor.getValue()
-                }),
-                'fatal': false
+                })
             });
             showMessage("error", e.toString());
         }
