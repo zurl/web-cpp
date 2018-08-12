@@ -8,10 +8,21 @@ import {AccessControl, Type} from ".";
 import {WAddressHolder} from "../codegen/address";
 import {CompileContext} from "../codegen/context";
 import {FunctionLookUpResult} from "../codegen/scope";
-import {Expression, ObjectInitializer} from "../common/ast";
+import {
+    AnonymousExpression,
+    AssignmentExpression,
+    Expression,
+    ExpressionStatement,
+    Identifier,
+    IntegerConstant,
+    Node, ObjectInitializer, SubscriptExpression,
+} from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
-import {Variable} from "../common/symbol";
+import {AddressType, Variable} from "../common/symbol";
 import {WType} from "../wasm";
+import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../wasm/expression";
+import {PointerType} from "./compound_type";
+import {FunctionType} from "./function_type";
 import {PrimitiveTypes} from "./primitive_type";
 
 export interface ClassField {
@@ -25,6 +36,16 @@ export interface ClassField {
 export interface Inheritance {
     classType: ClassType;
     accessControl: AccessControl;
+}
+
+export interface VirtualTableItem {
+    indexName: string;
+    fullName: string;
+}
+
+export interface VirtualTable {
+    className: string;
+    vFunctions: VirtualTableItem[];
 }
 
 export class ClassType extends Type {
@@ -43,6 +64,8 @@ export class ClassType extends Type {
     // vptr settings
     public requireVPtr: boolean;
     public VPtrOffset: number;
+    public vTable: VirtualTable;
+    public vTablePtr: number;
 
     constructor(name: string, fullName: string, fileName: string,
                 fields: ClassField[], isUnion: boolean, inheritance: Inheritance[]) {
@@ -55,21 +78,26 @@ export class ClassType extends Type {
         this.fieldMap = new Map<string, ClassField>();
         this.isUnion = isUnion;
         this.inheritance = inheritance;
-        this.requireVPtr = false;
-        this.VPtrOffset = 0;
         this.selfSize = 0;
+        this.vTablePtr = 0;
         this.objectSize = this.inheritance.map(
             (x) => x.classType.length).reduce((x, y) => x + y, 0);
+        this.requireVPtr = false;
+        this.VPtrOffset = 0;
+        this.vTable = {
+            className: fullName,
+            vFunctions: [],
+        };
     }
 
     public initialize() {
         this.fieldMap = new Map<string, ClassField>(
             this.fields.map((x) => [x.name, x] as [string, ClassField]));
         if (this.isUnion) {
-            this.selfSize = Math.max(...this.fields
+            this.selfSize += Math.max(...this.fields
                 .map((field) => field.type.length));
         } else {
-            this.selfSize = this.fields
+            this.selfSize += this.fields
                 .map((field) => field.type.length)
                 .reduce((x, y) => x + y, 0);
         }
@@ -155,6 +183,85 @@ export class ClassType extends Type {
             if (subItem) {
                 return subItem;
             }
+        }
+        return null;
+    }
+
+    public setUpVPtr() {
+        let off = 0;
+        for (const parent of this.inheritance) {
+            if (parent.classType.requireVPtr) {
+                this.requireVPtr = true;
+                this.VPtrOffset = parent.classType.VPtrOffset + off;
+                parent.classType.vTable.vFunctions.map((item) =>
+                    this.vTable.vFunctions.push({
+                    indexName: item.indexName,
+                    fullName: item.fullName,
+                }));
+                break;
+            }
+            off += parent.classType.objectSize;
+        }
+        if ( !this.requireVPtr ) {
+            this.requireVPtr = true;
+            this.VPtrOffset = this.objectSize;
+            this.objectSize += 4;
+            this.selfSize += 4;
+        }
+    }
+
+    public registerVFunction(ctx: CompileContext, functionType: FunctionType) {
+        const indexName = functionType.toIndexName();
+        const fullName = ctx.scopeManager.getFullName(functionType.name + "@" + functionType.toMangledName());
+        const oldItems = this.vTable.vFunctions.filter((x) => x.indexName === indexName);
+        if ( oldItems.length === 0) {
+            this.vTable.vFunctions.push({
+                indexName,
+                fullName,
+            });
+        } else {
+            oldItems[0].fullName = fullName;
+        }
+    }
+
+    public generateVTable(ctx: CompileContext, node: Node) {
+        const vTablesize = 4 * this.vTable.vFunctions.length;
+        this.vTablePtr = ctx.memory.allocData(vTablesize);
+        for (let i = 0; i < this.vTable.vFunctions.length; i++) {
+            const vTablePtrExpr = new WGetAddress(WMemoryLocation.DATA, node.location);
+            vTablePtrExpr.offset = this.vTablePtr + i * 4;
+            const vTableExpr = new AnonymousExpression(node.location, {
+                type: PrimitiveTypes.int32,
+                expr: new WAddressHolder(vTablePtrExpr, AddressType.RVALUE, node.location),
+                isLeft: true,
+            });
+            const vFuncName = this.vTable.vFunctions[i].fullName;
+            new ExpressionStatement(node.location, new AssignmentExpression(node.location,
+                "=",
+                vTableExpr,
+                new AnonymousExpression(node.location, {
+                    type: PrimitiveTypes.int32,
+                    isLeft: false,
+                    expr: new WGetFunctionAddress(vFuncName, node.location),
+                }))).codegen(ctx);
+        }
+    }
+
+    public getVCallInfo(indexName: string): [number, number] | null{
+        for (let i = 0; i < this.vTable.vFunctions.length; i++) {
+            if ( this.vTable.vFunctions[i].indexName === indexName) {
+                return [this.VPtrOffset, i * 4];
+            }
+        }
+        let nowOffset = 0;
+        for ( const parent of this.inheritance ) {
+            const vFuncs = parent.classType.vTable.vFunctions;
+            for (let i = 0; i < vFuncs.length; i++) {
+                if ( vFuncs[i].indexName === indexName) {
+                    return [parent.classType.VPtrOffset, i * 4];
+                }
+            }
+            nowOffset += parent.classType.objectSize;
         }
         return null;
     }

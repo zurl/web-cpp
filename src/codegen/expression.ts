@@ -20,7 +20,7 @@ import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
-import {ArrayType, LeftReferenceType, PointerType} from "../type/compound_type";
+import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
 import {
     CharType,
     DoubleType, FloatingType,
@@ -339,18 +339,19 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
                 IntegerConstant.getOne()))
             .codegen(ctx);
     }
-    const expr = this.operand.codegen(ctx);
+    let expr = this.operand.codegen(ctx);
     if (this.operator === "*") {
-        const newExpr = doValueTransform(ctx, expr, this);
-        if (newExpr.type instanceof PointerType) {
-            if (newExpr.expr instanceof FunctionLookUpResult) {
+        if (expr.type instanceof ReferenceType) {
+            expr = doReferenceTransform(ctx, expr, this);
+        }
+        if (expr.type instanceof PointerType) {
+            if (expr.expr instanceof FunctionLookUpResult) {
                 throw new SyntaxError(`unsupport function name`, this);
             }
             return {
                 isLeft: true,
-                type: newExpr.type.elementType,
-                expr: new WAddressHolder(newExpr.expr, AddressType.RVALUE,
-                    this.location),
+                type: new LeftReferenceType(expr.type.elementType),
+                expr: expr.expr,
             };
         } else {
             throw new SyntaxError(`you could not apply * on ${expr.type.toString()} `, this);

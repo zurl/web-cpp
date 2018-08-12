@@ -233,12 +233,14 @@ export class MemberExpression extends Expression {
     public object: Expression;
     public pointed: boolean;
     public member: Identifier;
+    public forceDynamic: boolean;
 
     constructor(location: SourceLocation, object: Expression, pointed: boolean, member: Identifier) {
         super(location);
         this.object = object;
         this.pointed = pointed;
         this.member = member;
+        this.forceDynamic = false;
     }
 }
 
@@ -814,15 +816,18 @@ export class ConstructorOrDestructorDeclaration extends Node {
     public param: ParameterList | null;
     public initList: ConstructorInitializeItem[] | null;
     public body: CompoundStatement | null;
+    public isVirtual: boolean;
 
     constructor(location: SourceLocation, isCtor: boolean, name: TypedefName, param: ParameterList | null,
-                initList: ConstructorInitializeItem[] | null, body: CompoundStatement | null) {
+                initList: ConstructorInitializeItem[] | null, body: CompoundStatement | null,
+                isVirtual: boolean) {
         super(location);
         this.isCtor = isCtor;
         this.name = name;
         this.param = param;
         this.initList = initList;
         this.body = body;
+        this.isVirtual = isVirtual;
     }
 }
 

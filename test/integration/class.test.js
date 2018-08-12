@@ -183,7 +183,8 @@ dtor`;
 #include "stdio.h"
         class A{
             int a;
-            A(int a): a(a){}
+            A(int a): a(a){
+            }
             virtual void foo(){
                 printf("base\\n");
             }
@@ -211,6 +212,48 @@ dtor`;
         }
         `;
         const expectOutput = `base\n~B(2)\n~A(1)\n~B(2)\n~A(1)\n~B(7)\n~A(5)\n~B(3)\n~A(0)`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
+    it('test vptr',async function() {
+        const testCode = `
+#include <stdio.h>
+        class A{
+        public:
+            A(){
+                printf("A()\\n");
+            }
+            virtual ~A(){
+                printf("~A()\\n");
+            }
+            virtual void foo(){
+                printf("A::foo()\\n");
+            }
+        };
+        class B: public A{
+        public:
+            void foo(){
+                 printf("B::foo()\\n");
+            }
+            ~B(){
+                printf("~B()\\n");
+            }
+        };
+        int main(){
+            //int size = 10;
+            A * a = new A();
+            A * b = new B();
+            A & ar = *a;
+            A & br = *b;
+            a->foo();
+            b->foo();
+            ar.foo();
+            br.foo();
+            delete a;
+            delete b;
+            return 0;
+        }
+        `;
+        const expectOutput = `A()\nA()\nA::foo()\nB::foo()\nA::foo()\nB::foo()\n~A()\n~B()\n~A()\n`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
 });

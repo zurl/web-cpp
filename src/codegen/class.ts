@@ -19,7 +19,7 @@ import {
     AccessControl, getAccessControlFromString, Type,
 } from "../type";
 import {ClassField, ClassType, Inheritance} from "../type/class_type";
-import {PointerType} from "../type/compound_type";
+import {PointerType, ReferenceType} from "../type/compound_type";
 import {CppFunctionType, FunctionType} from "../type/function_type";
 import {PrimitiveTypes} from "../type/primitive_type";
 import {WAddressHolder} from "./address";
@@ -61,6 +61,14 @@ function parseClassDeclartion(ctx: CompileContext, decl: Declaration, buildCtx: 
                     fieldType.parameterNames = ["this", ...fieldType.parameterNames];
                     fieldType.cppFunctionType = CppFunctionType.MemberFunction;
                     fieldType.referenceClass = buildCtx.classType;
+                    if (fieldType.isVirtual) {
+                        buildCtx.classType.registerVFunction(ctx, fieldType);
+                    } else {
+                        if (buildCtx.classType.getVCallInfo(fieldType.toIndexName()) !== null) {
+                            fieldType.isVirtual = true;
+                            buildCtx.classType.registerVFunction(ctx, fieldType);
+                        }
+                    }
                     declareFunction(ctx, fieldType,
                         decl.specifiers.includes("__libcall"), buildCtx.accessControl, node);
                 }
@@ -151,6 +159,7 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             accessControl,
         });
     }
+
     const newItem = new ClassType(name, ctx.scopeManager.getFullName(name),
         ctx.fileName, [], this.typeName === "union", inheritance);
     if (this.declarations === null) {
@@ -159,6 +168,33 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         ctx.scopeManager.declare(name, newItem, this);
         return newItem;
     }
+
+    // find virtual
+    let isVirtual = false;
+    for (const decl of this.declarations) {
+        if (decl instanceof Declaration || decl instanceof FunctionDefinition) {
+            if (decl.specifiers.includes("virtual")) {
+                isVirtual = true;
+                break;
+            }
+        } else if ( decl instanceof ConstructorOrDestructorDeclaration) {
+            if (decl.isVirtual) {
+                isVirtual = true;
+                break;
+            }
+        }
+    }
+    for (const parent of inheritance) {
+        if (parent.classType.requireVPtr) {
+            isVirtual = true;
+            break;
+        }
+    }
+
+    if (isVirtual) {
+        newItem.setUpVPtr();
+    }
+
     ctx.scopeManager.define(name, newItem, this);
     ctx.scopeManager.enterScope(name);
     const buildCtx: ClassBuildContext = {
@@ -172,6 +208,7 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
     };
     newItem.isComplete = false;
     const delayParseList: Array<[CompoundStatement, FunctionType]> = [];
+
     for (const decl of this.declarations) {
         if (decl instanceof Declaration) {
             parseClassDeclartion(ctx, decl, buildCtx, this);
@@ -196,6 +233,15 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                     [new PointerType(newItem)], ["this"], false);
                 funcType.cppFunctionType = CppFunctionType.Destructor;
                 funcType.referenceClass = newItem;
+                if (decl.isVirtual) {
+                    funcType.isVirtual = true;
+                    buildCtx.classType.registerVFunction(ctx, funcType);
+                } else {
+                    if (buildCtx.classType.getVCallInfo(funcType.toIndexName()) !== null) {
+                        funcType.isVirtual = true;
+                        buildCtx.classType.registerVFunction(ctx, funcType);
+                    }
+                }
             }
             if (decl.body !== null) {
                 delayParseList.push([decl.body, funcType]);
@@ -222,6 +268,14 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
                 functionType.parameterNames = ["this", ...functionType.parameterNames];
                 functionType.cppFunctionType = CppFunctionType.MemberFunction;
                 functionType.referenceClass = newItem;
+                if (functionType.isVirtual) {
+                    newItem.registerVFunction(ctx, functionType);
+                } else {
+                    if (newItem.getVCallInfo(functionType.toIndexName()) !== null) {
+                        functionType.isVirtual = true;
+                        buildCtx.classType.registerVFunction(ctx, functionType);
+                    }
+                }
                 declareFunction(ctx, functionType,
                     decl.specifiers.includes("__libcall"), buildCtx.accessControl, this);
             }
@@ -231,6 +285,9 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
         } else {
             throw new InternalError(`StructOrUnionSpecifier()`);
         }
+    }
+    if (newItem.requireVPtr) {
+        newItem.generateVTable(ctx, this);
     }
     newItem.initialize();
     newItem.isComplete = true;
@@ -248,6 +305,8 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     let left = this.pointed ?
         new UnaryExpression(this.location, "*", this.object).codegen(ctx)
         : this.object.codegen(ctx);
+
+    const isRef = left.type instanceof ReferenceType;
 
     left = doReferenceTransform(ctx, left, this);
 
@@ -273,6 +332,13 @@ MemberExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
     } else if (item instanceof FunctionLookUpResult) {
         item.instance = left.expr;
         item.instanceType = left.type;
+        if (this.pointed || isRef) {
+            if ( this.member.name.includes("~") ) {
+                item.isDynamicCall = this.forceDynamic;
+            } else {
+                item.isDynamicCall = true;
+            }
+        }
         return {
             type: PrimitiveTypes.void,
             expr: item,

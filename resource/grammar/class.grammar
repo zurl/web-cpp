@@ -36,16 +36,16 @@ AccessControlKey = 'public' / 'private' / 'protect'
 
 StructDeclaration
     = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body);
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
     }
     / id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null);
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
     }
-    / '~' id:TypedefName _ '(' _ ')' _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body);
+    / isVirtual:'virtual'? _ '~' id:TypedefName _ '(' _ ')' _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
     }
-    / '~' id:TypedefName _ '(' _ ')' _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null);
+    / isVirtual:'virtual'? _ '~' id:TypedefName _ '(' _ ')' _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
     }
     / label:AccessControlKey _ ':' {
         return new AST.AccessControlLabel(getLocation(), label);

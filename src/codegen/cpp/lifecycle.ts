@@ -4,21 +4,23 @@
  *  Created at 22/07/2018
  */
 import {
-    AssignmentExpression, CallExpression,
+    AnonymousExpression,
+    AssignmentExpression, BinaryExpression, CallExpression,
     Expression, ExpressionStatement,
-    Identifier,
+    Identifier, IntegerConstant,
     MemberExpression,
     Node, ObjectInitializer,
     Statement, UnaryExpression,
 } from "../../common/ast";
-import {SyntaxError} from "../../common/error";
 import {InternalError} from "../../common/error";
+import {SyntaxError} from "../../common/error";
 import {FunctionEntity, Variable} from "../../common/symbol";
 import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
 import {CppFunctionType, FunctionType} from "../../type/function_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
+import {WGetAddress, WMemoryLocation} from "../../wasm/expression";
 import {CompileContext} from "../context";
 import {defineFunction} from "../function";
 import {FunctionLookUpResult} from "../scope";
@@ -148,6 +150,27 @@ export function getCtorStmts(ctx: CompileContext,
         }
     }
 
+    if (classType.requireVPtr) {
+        const thisPtrExpr = new Identifier(node.location, "this").codegen(ctx);
+        thisPtrExpr.type = new PointerType(PrimitiveTypes.char);
+        const vPtrExpr = new BinaryExpression(node.location, "+",
+            new AnonymousExpression(node.location, thisPtrExpr),
+            IntegerConstant.fromNumber(node.location, classType.VPtrOffset)).codegen(ctx);
+        vPtrExpr.type = new PointerType(PrimitiveTypes.int32);
+        const lhs = new UnaryExpression(node.location, "*", new AnonymousExpression(
+            node.location, vPtrExpr,
+        ));
+        const vTableAddr = new WGetAddress(WMemoryLocation.DATA, node.location);
+        vTableAddr.offset = classType.vTablePtr;
+        const rhs = new AnonymousExpression(node.location, {
+            type: PrimitiveTypes.int32,
+            expr: vTableAddr,
+            isLeft: false,
+        });
+        ctorStmts.push(new ExpressionStatement(node.location, new AssignmentExpression(node.location,
+            "=", lhs, rhs,
+        )));
+    }
     return ctorStmts;
 }
 
@@ -183,7 +206,8 @@ export function getDtorStmts(ctx: CompileContext,
         if (nret !== null) {
             dtorStmts.push(new ExpressionStatement(node.location,
                 new CallExpression(node.location,
-                    new MemberExpression(node.location, new Identifier(node.location, "this"),
+                    new MemberExpression(node.location,
+                        new Identifier(node.location, "this"),
                         true, new Identifier(node.location, "~" + item.classType.name)),
                     [])));
         }
@@ -217,55 +241,26 @@ export function generateDefaultCtors(ctx: CompileContext,
     const defaultCtorRet = ctx.scopeManager
         .lookupFullName(classType.fullName + "::#" + classType.name);
     if (defaultCtorRet === null) {
-        const body = [] as Statement[];
-        for (const item of classType.inheritance) {
-            const fullName = item.classType.fullName + "::#" + item.classType.name;
-            const nret = ctx.scopeManager.lookupFullName(fullName);
-            if (nret === null) {
-                throw new SyntaxError(`the parent class ${item.classType.toString()} contains no default ctor`, node);
-            } else {
-                body.push(new ExpressionStatement(node.location,
-                    new CallExpression(node.location,
-                        new Identifier(node.location, fullName),
-                        [new Identifier(node.location, "this")])));
-            }
-        }
         const shortName = "#" + classType.name;
         const funcType = new FunctionType(shortName, PrimitiveTypes.void,
             [new PointerType(classType)], ["this"], false);
         funcType.cppFunctionType = CppFunctionType.Constructor;
         funcType.referenceClass = classType;
         funcType.name = shortName;
-        defineFunction(ctx, funcType, body, AccessControl.Public, node);
+        defineFunction(ctx, funcType, [], AccessControl.Public, node);
     }
 
     // 2. default dtor
     const defaultDtorRet = ctx.scopeManager
         .lookupFullName(classType.fullName + "::~" + classType.name);
     if (defaultDtorRet === null) {
-        const body = [] as Statement[];
-        for (const item of classType.inheritance) {
-            const fullName = item.classType.fullName + "::~" + item.classType.name;
-            const nret = ctx.scopeManager.lookupFullName(fullName);
-            if (nret !== null) {
-                body.push(new ExpressionStatement(node.location,
-                    new CallExpression(node.location,
-                        new MemberExpression(node.location, new Identifier(node.location, "this"),
-                            true, new Identifier(node.location, "~" + item.classType.name)),
-                        [])));
-            }
-        }
         const shortName = "~" + classType.name;
         const funcType = new FunctionType(shortName, PrimitiveTypes.void,
             [new PointerType(classType)], ["this"], false);
         funcType.cppFunctionType = CppFunctionType.Destructor;
         funcType.referenceClass = classType;
         funcType.name = shortName;
-        defineFunction(ctx, funcType, body, AccessControl.Public, node);
+        defineFunction(ctx, funcType, [], AccessControl.Public, node);
     }
-
-    // 2. copy ctor
-
-    // TODO:: generate default copy constructor!
 
 }

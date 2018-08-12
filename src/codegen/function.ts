@@ -19,14 +19,14 @@ import {
     Node,
     ParameterList,
     ReturnStatement,
-    Statement,
+    Statement, SubscriptExpression,
     UnaryExpression,
 } from "../common/ast";
 import {assertType,  LanguageError, SyntaxError} from "../common/error";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
 import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
-import {ArrayType, PointerType, ReferenceType} from "../type/compound_type";
+import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
 import {CppFunctionType, FunctionType} from "../type/function_type";
 import {PrimitiveTypes} from "../type/primitive_type";
 import {
@@ -36,21 +36,29 @@ import {
     WCall,
     WConst,
     WFunction,
-    WIfElseBlock,
+    WIfElseBlock, WLoad,
     WLoop,
     WReturn,
     WType,
 } from "../wasm";
-import {getNativeType} from "../wasm/constant";
-import {WCallIndirect, WFakeExpression, WGetGlobal, WGetLocal} from "../wasm/expression";
+import {BinaryOperator, getNativeType} from "../wasm/constant";
+import {WCallIndirect, WFakeExpression, WGetGlobal, WGetLocal, WMemoryLocation} from "../wasm/expression";
 import {WExpression, WStatement} from "../wasm/node";
 import {WFunctionType} from "../wasm/section";
 import {WDrop, WSetGlobal, WSetLocal} from "../wasm/statement";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {doConversion, doTypeTransfrom, doValuePromote, getInStackSize} from "./conversion";
+import {
+    doConversion,
+    doReferenceTransform,
+    doTypeTransfrom,
+    doValuePromote,
+    doValueTransform,
+    getInStackSize,
+} from "./conversion";
 import {getCtorStmts, getDtorStmts} from "./cpp/lifecycle";
 import {doFunctionOverloadResolution, isFunctionExists} from "./cpp/overload";
+import {doReferenceBinding} from "./cpp/reference";
 import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
@@ -66,6 +74,10 @@ export function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
         if (resultType.isStatic) {
             result.isStatic = true;
             resultType.isStatic = false;
+        }
+        if (resultType.isVirtual) {
+            result.isVirtual = true;
+            resultType.isVirtual = false;
         }
         return result;
     } else if (node.declarator != null) {
@@ -280,6 +292,8 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     const lookUpResult = callee.expr;
     const thisPtrs: ExpressionResult[] = [];
 
+    let isVCall = false, VCallExpr: WExpression | null = null;
+
     if (lookUpResult instanceof FunctionLookUpResult) {
         if (!(lookUpResult instanceof FunctionLookUpResult)) {
             throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
@@ -306,6 +320,25 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
                 type: new PointerType(lookUpResult.instanceType),
                 isLeft: false,
             });
+            if (funcType.isVirtual && lookUpResult.isDynamicCall) {
+                isVCall = true;
+                const ret = lookUpResult.instanceType
+                    .getVCallInfo(funcEntity.type.toIndexName());
+                if ( ret === null) {
+                    throw new SyntaxError(`${funcEntity.name} is not a virtual function`, this);
+                }
+                const [vPtrOffset, vFuncOffset] = ret;
+                const vTableExpr = new WLoad(WType.i32, new WBinaryOperation(
+                    I32Binary.add,
+                    lookUpResult.instance.createLoadAddress(ctx),
+                    new WConst(WType.i32, vPtrOffset.toString(), this.location),
+                    this.location), WMemoryLocation.RAW, this.location);
+                VCallExpr = new WLoad(WType.i32, new WBinaryOperation(
+                    I32Binary.add,
+                    vTableExpr,
+                    new WConst(WType.i32, vFuncOffset.toString(), this.location),
+                    this.location), WMemoryLocation.RAW, this.location);
+            }
         }
     } else if (callee.type instanceof FunctionType) {
         funcType = callee.type;
@@ -414,7 +447,11 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
 
     let funcExpr: WExpression;
 
-    if (funcEntity === null) {
+    if (isVCall) {
+        ctx.requiredWASMFuncTypes.add(funcType.toWASMEncoding()); // require by wasm
+        funcExpr = new WCallIndirect(VCallExpr as WExpression,
+            funcType.toWASMEncoding(), argus, afterStatements, this.location);
+    } else if (funcEntity === null) {
         callee.type = PrimitiveTypes.int32;
         ctx.requiredWASMFuncTypes.add(funcType.toWASMEncoding()); // require by wasm
         funcExpr = new WCallIndirect(doConversion(ctx, PrimitiveTypes.int32, callee, this),
@@ -457,8 +494,11 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
         if (returnType.equals(PrimitiveTypes.void)) {
             throw new SyntaxError(`return type mismatch`, this);
         }
-        const expr = this.argument.codegen(ctx);
+        let expr = this.argument.codegen(ctx);
         if (returnType instanceof ClassType || returnType instanceof ReferenceType) {
+            if (expr.type instanceof LeftReferenceType) {
+                expr = doReferenceTransform(ctx, expr, this);
+            }
             if (!(expr.isLeft) || !(expr.expr instanceof WAddressHolder)) {
                 throw new SyntaxError(`return a rvalue of reference`, this);
             }
@@ -613,13 +653,18 @@ DeleteExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
             // call dtor
             const dtorName = "~" + rightType.elementType.name;
             const callee = new Identifier(this.location, dtorName);
+            const memExpr = (i: Identifier) => {
+                const expr = new MemberExpression(
+                    this.location, new BinaryExpression(this.location, "+",
+                        new Identifier(this.location, ptrVarName),
+                        i), true, callee,
+                );
+                expr.forceDynamic = true;
+                return expr;
+            };
             getForLoop(new Identifier(this.location, sizeVarName), (i) => ([
                 new ExpressionStatement(this.location,
-                    new CallExpression(this.location, new MemberExpression(
-                        this.location, new BinaryExpression(this.location, "+",
-                            new Identifier(this.location, ptrVarName),
-                            i), true, callee,
-                    ), []))]), this).codegen(ctx);
+                    new CallExpression(this.location, memExpr(i), []))]), this).codegen(ctx);
 
         }
 
@@ -638,9 +683,13 @@ DeleteExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRe
             new AssignmentExpression(this.location, "=",
                 new Identifier(this.location, tmpVarName), this.expr).codegen(ctx);
 
-            new ExpressionStatement(this.location, new CallExpression(this.location,
+            const memExpr =
                 new MemberExpression(this.location, new Identifier(this.location, tmpVarName),
-                    true, new Identifier(this.location, "~" + rightType.elementType.name)),
+                    true, new Identifier(this.location, "~" + rightType.elementType.name));
+
+            memExpr.forceDynamic = true;
+
+            new ExpressionStatement(this.location, new CallExpression(this.location, memExpr,
                 [])).codegen(ctx);
 
             new ExpressionStatement(this.location, new CallExpression(this.location,

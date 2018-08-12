@@ -38,12 +38,16 @@ export function doReferenceTransform(ctx: CompileContext, left: ExpressionResult
                                      node: Node) {
 
     if ( left.type instanceof LeftReferenceType ) {
-        if ( !left.isLeft || !(left.expr instanceof WAddressHolder)) {
-            throw new SyntaxError(`reference value is not reference`, node);
+        if (left.expr instanceof FunctionLookUpResult) {
+            throw new SyntaxError(`unsupport functionlookup result`, node);
+        } else if ( !left.isLeft || !(left.expr instanceof WAddressHolder)) {
+            left.type = left.type.elementType;
+            left.expr = new WAddressHolder(left.expr, AddressType.RVALUE, node.location);
+        } else {
+            left.type = left.type.elementType;
+            left.expr = new WAddressHolder(left.expr.createLoad(ctx, PrimitiveTypes.uint32),
+                AddressType.RVALUE, node.location);
         }
-        left.type = left.type.elementType;
-        left.expr = new WAddressHolder(left.expr.createLoad(ctx, PrimitiveTypes.uint32),
-            AddressType.RVALUE, node.location);
     }
     return left;
 }
@@ -62,9 +66,15 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
             throw new SyntaxError(`unsupport function name`, node);
         }
 
+        if ( expr.type instanceof LeftReferenceType && !(expr.expr instanceof WAddressHolder) ) {
+            expr.type = expr.type.elementType;
+            expr.expr = new WAddressHolder(expr.expr, AddressType.RVALUE, node.location);
+        }
+
         if ( !(expr.expr instanceof WAddressHolder)) {
             throw new InternalError(`if( !(expr.expr instanceof WAddressHolder)) {`);
         }
+
         if (expr.type instanceof ClassType && !toReference) {
             throw new SyntaxError(`you should not convert a class to rvalue`, node);
         }

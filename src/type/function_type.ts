@@ -12,6 +12,7 @@ import {getNativeType, WType} from "../wasm/constant";
 import {ClassType} from "./class_type";
 import {ArrayType, PointerType} from "./compound_type";
 import {Type} from "./index";
+import {PrimitiveTypes} from "./primitive_type";
 
 export enum CppFunctionType {
     Normal,
@@ -43,7 +44,7 @@ export class FunctionType extends Type {
         this.initList = [];
         for (let i = 0; i < this.parameterTypes.length; i++) {
             const ty = this.parameterTypes[i];
-            if ( ty instanceof ArrayType ) {
+            if (ty instanceof ArrayType) {
                 this.parameterTypes[i] = new PointerType(ty.elementType);
             }
         }
@@ -72,6 +73,13 @@ export class FunctionType extends Type {
         return this.parameterTypes.map((x) => x.toMangledName()).join(",");
     }
 
+    public toIndexName(): string {
+        if (this.cppFunctionType === CppFunctionType.Destructor) {
+            return "~";
+        }
+        return this.name + "@" + this.parameterTypes.slice(1).map((x) => x.toMangledName()).join(",");
+    }
+
     public compatWith(type: Type): boolean {
         return type.equals(this);
     }
@@ -83,7 +91,7 @@ export class FunctionType extends Type {
 
     public toWASMEncoding(): string {
         let result = "";
-        if (!(this.returnType instanceof ClassType)) {
+        if (!this.returnType.equals(PrimitiveTypes.void) && !(this.returnType instanceof ClassType)) {
             result += String.fromCharCode(getNativeType(this.returnType.toWType()));
         } else {
             result += "v";
