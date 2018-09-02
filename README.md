@@ -2,9 +2,28 @@
 [![Build Status](https://www.travis-ci.org/zurl/web-cpp.svg?branch=master)](https://www.travis-ci.org/zurl/web-cpp)
 [![Coverage Status](https://coveralls.io/repos/github/zurl/web-cpp/badge.svg?branch=master)](https://coveralls.io/github/zurl/web-cpp)
 
-a experimental c++ compiler in typescript
+A experimental c++ compiler in typescript
 
 online demo => [zurl.github.io/web-cpp](https://zurl.github.io/web-cpp)
+
+# Introduction in brief
+
+This project is a In-browser C++ Compiler and Runtime toolchains,
+which requires no server and could run in all major browsers.
+
+Our compiler could compile C++ to [WebAssembly](https://webassembly.org/),
+which is a low-level programming language. WebAssembly is supported by most
+browsers currently, it is much more faster than JavaScript, and able to be compiled
+from all static languages.
+
+[LLVM](http://llvm.org/) provides excellent support of WebAssembly Backend, our
+compiler is inspired by them and learned a lot from its good design.
+
+Our Compiler and Runtime is much more fast than all C++ interpreter in browser,
+the c++ code will be compiled directly to WebAssembly, and WebAssembly will be
+executed by high performance JIT execution engine in our browser. According to our
+experiment, our compiler could have nearly same performance to gcc/g++ without
+optimization.
 
 ## usage
 
@@ -17,6 +36,9 @@ npm run test
 ```
 
 2. build the web-cpp online ide
+
+we use parcel as our packager, you could use any kind of web packager with your
+custom configuration.
 
 ```shell
 npm run build
@@ -32,9 +54,7 @@ use `./cc` as local runtime (Node.js)
 ./cc run resource/testcodes/demo.cpp
 ```
 
-# todolist
-
-## Road Map
+# Road Map
 
 ## C language
 
@@ -117,9 +137,9 @@ use `./cc` as local runtime (Node.js)
 - [X] new array []
 - [X] using
 - [X] namespace
+- [X] virtual member function
 - [ ] cast overload， like if(object) { ... }
 - [ ] exception handling
-- [ ] virtual member function
 - [ ] function template
 - [ ] const/override/virtual member function
 - [ ] class template
@@ -129,3 +149,11 @@ use `./cc` as local runtime (Node.js)
 - [ ] virtual inheriant
 - [ ] seperate define class function
 - [ ] operator new/ placement new
+
+
+## miscellaneous
+
+This project is my thesis of my bachelor's degree, which is inspired by
+the rapid development of online programing education. This project is
+targeted to improve the C++ learning experience for new students,
+thanks to everyone who helps me in the development of this project.
