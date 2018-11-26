@@ -5,8 +5,11 @@ const grammarPath = "resource/grammar/";
 const outputPath = "src/parser/";
 
 async function buildLibrary(minifiy){
-    const grammarFiles = await recursive(grammarPath);
-    grammarFiles.sort(filePath => !filePath.includes("header"));
+    const originalGrammarFiles = await recursive(grammarPath);
+    const grammarFiles = [
+        ...originalGrammarFiles.filter(x => x.includes("header")),
+        ...originalGrammarFiles.filter(x => !x.includes("header"))
+    ];
     const grammarContent = grammarFiles
         .map(filePath => fs.readFileSync(filePath, "utf-8"))
         .join("\n");
@@ -27,4 +30,4 @@ export default \`${newContent}\`
 `;
     fs.writeFileSync(outputPath + "c.lang.ts", result);
 }
-buildLibrary(true).then(_ => console.log("build parser finish"));
+buildLibrary(false).then(_ => console.log("build parser finish"));
