@@ -28,6 +28,15 @@ export function doUnaryCompute(ope: UnaryOperator, value: number): number {
         case F32Unary.floor:
         case F64Unary.floor:
             return Math.floor(value);
+        case F32Unary.nearest:
+        case F64Unary.nearest:
+            return Math.floor(value + 0.5);
+        case F32Unary.trunc:
+        case F64Unary.trunc:
+            return value | 0;
+        case F32Unary.sqrt:
+        case F64Unary.sqrt:
+            return Math.sqrt(value);
         case I32Unary.eqz:
         case I64Unary.eqz:
             return +(value === 0);
