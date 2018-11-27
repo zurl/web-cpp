@@ -6,7 +6,7 @@
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
 import {Control, F32, F64, getNativeType, I32, I32Binary, I64, OpCodes, WType, WTypeMap} from "./constant";
-import {Emitter} from "./emitter";
+import {Emitter, JSONEmitter} from "./emitter";
 import {getAlign, WBinaryOperation, WCall, WConst, WMemoryLocation} from "./expression";
 import {getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
@@ -40,6 +40,26 @@ export class WReturn extends WStatement {
             this.expr.emit(e);
         }
         e.writeByte(Control.return);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        const curFunc = e.getCurrentFunc();
+        if ( curFunc.type.returnTypes.length === 0 && this.expr !== null) {
+            throw new EmitError(`type mismatch at WReturn`);
+        }
+        if ( curFunc.type.returnTypes.length !== 0) {
+            if (this.expr === null) {
+                throw new EmitError(`type mismatch at WReturn`);
+            }
+            const exprType = this.expr.deduceType(e);
+            if (getNativeType(exprType) !== getNativeType(curFunc.type.returnTypes[0])) {
+                throw new EmitError(`type mismatch at WReturn`);
+            }
+        }
+        if (this.expr !== null) {
+            this.expr.emitJSON(e);
+        }
+        e.emitIns([Control.return, 0]);
     }
 
     public length(e: Emitter): number {
@@ -100,7 +120,7 @@ export class WStore extends WStatement {
         }
     }
 
-    public emit(e: Emitter): void {
+    private computeOffset(e: Emitter): number{
         if (getNativeType(this.value.deduceType(e)) !== getNativeType(this.type)) {
             throw new EmitError(`type mismatch at store: ${this.value.deduceType(e)} and ${this.type}`);
         }
@@ -119,11 +139,23 @@ export class WStore extends WStatement {
             this.replaceAddress();
             offset = 0;
         }
+        return offset;
+    }
+
+    public emit(e: Emitter): void {
+        const offset = this.computeOffset(e);
         this.address.emit(e);
         this.value.emit(e);
         e.writeByte(this.getOp() as number);
         e.writeUint32(getAlign(offset));
         e.writeUint32(offset);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        const offset = this.computeOffset(e);
+        this.address.emitJSON(e);
+        this.value.emitJSON(e);
+        e.emitIns([this.getOp() as number, offset]);
     }
 
     public replaceAddress() {
@@ -184,6 +216,11 @@ export class WSetLocal extends WStatement {
         e.writeUint32(this.offset);
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        this.value.emitJSON(e);
+        e.emitIns([Control.set_local, this.offset]);
+    }
+
     public length(e: Emitter): number {
         return this.value.length(e) + 1 + getLeb128UintLength(this.offset);
     }
@@ -220,6 +257,15 @@ export class WSetGlobal extends WStatement {
         e.writeUint32(e.getGlobalIdx(this.name));
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        if (e.getGlobalType(this.name) !== this.type) {
+            throw new EmitError(`type mismatch at set_global`);
+        }
+        this.value.emitJSON(e);
+        e.emitIns([Control.get_global, e.getGlobalIdx(this.name)]);
+        e.writeByte(Control.set_global);
+    }
+
     public length(e: Emitter): number {
         return this.value.length(e) + 1 + getLeb128UintLength(e.getGlobalType(this.name));
     }
@@ -246,6 +292,11 @@ export class WDrop extends WStatement {
     public emit(e: Emitter): void {
         this.value.emit(e);
         e.writeByte(Control.drop);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.value.emitJSON(e);
+        e.emitIns([Control.drop, 0]);
     }
 
     public length(e: Emitter): number {
@@ -277,6 +328,10 @@ export class WBr extends WStatement {
         e.writeUint32(this.labelIdx);
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        e.emitIns([Control.br, this.labelIdx]);
+    }
+
     public length(e: Emitter): number {
         return 1 + getLeb128UintLength(this.labelIdx);
     }
@@ -300,6 +355,11 @@ export class WBrIf extends WStatement {
         this.expression.emit(e);
         e.writeByte(Control.br_if);
         e.writeUint32(this.labelIdx);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.expression.emitJSON(e);
+        e.emitIns([Control.br_if, this.labelIdx]);
     }
 
     public length(e: Emitter): number {
@@ -340,6 +400,17 @@ export class WIfElseBlock extends WStatement {
             this.alternative.map((stmt) => stmt.emit(e));
         }
         e.writeByte(Control.end);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.condition.emitJSON(e);
+        e.emitIns([Control.if, 0]);
+        this.consequence.map((stmt) => stmt.emitJSON(e));
+        if (this.alternative !== null) {
+            e.emitIns([Control.else, 0]);
+            this.alternative.map((stmt) => stmt.emitJSON(e));
+        }
+        e.emitIns([Control.end, 0]);
     }
 
     public length(e: Emitter): number {
@@ -392,6 +463,12 @@ export class WBlock extends WStatement {
         e.writeByte(Control.end);
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        e.emitIns([Control.block, 0]);
+        this.body.map((stmt) => stmt.emitJSON(e));
+        e.emitIns([Control.end, 0]);
+    }
+
     public length(e: Emitter): number {
         return getArrayLength(this.body, (stmt) => stmt.length(e)) + 3;
     }
@@ -424,6 +501,12 @@ export class WLoop extends WStatement {
         e.writeByte(Control.end);
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        e.emitIns([Control.loop, 0]);
+        this.body.map((stmt) => stmt.emitJSON(e));
+        e.emitIns([Control.end, 0]);
+    }
+
     public length(e: Emitter): number {
         return getArrayLength(this.body, (stmt) => stmt.length(e)) + 3;
     }
@@ -452,6 +535,10 @@ export class WExprStatement extends WStatement {
 
     public emit(e: Emitter): void {
         this.expr.emit(e);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.expr.emitJSON(e);
     }
 
     public length(e: Emitter): number {

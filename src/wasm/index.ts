@@ -42,6 +42,7 @@ export {
 
 export {
     WASMEmitter,
+    JSONEmitter,
 } from "./emitter";
 
 export const i32 = WType.i32;

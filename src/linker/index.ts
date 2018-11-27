@@ -4,7 +4,7 @@ import {LinkerError} from "../common/error";
 import {BinaryObject, CompiledObject, SourceMap} from "../common/object";
 import {ImportObject} from "../runtime/runtime";
 import {
-    i32,
+    i32, JSONEmitter,
     u32,
     WASMEmitter,
     WCall,
@@ -87,6 +87,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     const startFunc = new WFunction("$start", [], [], [],
         initFuncNames.map((name) => new WCall(name, [], [])));
     functions.push(startFunc);
+
     // 2. build extern map
 
     for (const object of objects) {
@@ -158,6 +159,10 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         const dumper = new WASMEmitter();
         dumper.sourceMap = sourceMap;
         mod.dump(dumper);
+
+        const jsondumper = new JSONEmitter();
+        mod.emitJSON(jsondumper);
+        console.log(jsondumper.getJSON());
     }
 
     const heapStart = (parseInt((bssNow + 1) / 4 as any) + 1) * 4;

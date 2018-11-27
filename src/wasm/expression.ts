@@ -17,7 +17,7 @@ import {
     WType,
     WTypeMap,
 } from "./constant";
-import {Emitter} from "./emitter";
+import {Emitter, JSONEmitter} from "./emitter";
 import {getLeb128IntLength, getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
 
@@ -39,6 +39,10 @@ export class WFakeExpression extends WExpression {
 
     public emit(e: Emitter): void {
         this.statement.emit(e);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.statement.emitJSON(e);
     }
 
     public fold(): WExpression {
@@ -76,6 +80,12 @@ export class WCall extends WExpression {
         e.writeByte(Control.call);
         e.writeUint32(e.getFuncIdx(this.target));
         this.afterStatements.map((x) => x.emit(e));
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.argument.map((x) => x.emitJSON(e));
+        e.emitIns([Control.call, e.getFuncIdx(this.target)]);
+        this.afterStatements.map((x) => x.emitJSON(e));
     }
 
     public length(e: Emitter): number {
@@ -130,6 +140,12 @@ export class WUnaryOperation extends WExpression {
         this.operand.emit(e);
         e.writeByte(this.ope);
     }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.operand.emitJSON(e);
+        e.emitIns([this.ope, 0]);
+    }
+
 
     public length(e: Emitter): number {
         return this.operand.length(e) + 1;
@@ -186,6 +202,12 @@ export class WBinaryOperation extends WExpression {
         this.lhs.emit(e);
         this.rhs.emit(e);
         e.writeByte(this.ope);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.lhs.emitJSON(e);
+        this.rhs.emitJSON(e);
+        e.emitIns([this.ope, 0]);
     }
 
     public length(e: Emitter): number {
@@ -291,6 +313,23 @@ export class WLoad extends WExpression {
         e.writeUint32(offset);
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        if ( offset < 0 ) {
+            this.replaceAddress();
+            offset = 0;
+        }
+        this.address.emitJSON(e);
+        e.emitIns([this.getOp() as number, offset]);
+    }
+
     public length(e: Emitter): number {
         let offset = this.offset;
         if ( this.form === WMemoryLocation.DATA ) {
@@ -351,6 +390,10 @@ export class WGetGlobal extends WExpression {
         e.writeUint32(e.getGlobalIdx(this.name));
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        e.emitIns([Control.get_global, e.getGlobalIdx(this.name)]);
+    }
+
     public length(e: Emitter): number {
         return 1 + getLeb128UintLength(e.getGlobalIdx(this.name));
     }
@@ -388,6 +431,10 @@ export class WGetLocal extends WExpression {
     public emit(e: Emitter): void {
         e.writeByte(Control.get_local);
         e.writeUint32(this.offset);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        e.emitIns([Control.get_local, this.offset]);
     }
 
     public length(e: Emitter): number {
@@ -443,6 +490,23 @@ export class WConst extends WExpression {
         }
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        switch (getNativeType(this.type)) {
+            case WType.i32:
+                e.emitIns([I32.const, parseInt(this.constant)]);
+                break;
+            case WType.i64:
+                e.emitIns([I64.const, this.constant.split(".")[0]]);
+                break;
+            case WType.f32:
+                e.emitIns([F32.const, parseFloat(this.constant)]);
+                break;
+            case WType.f64:
+                e.emitIns([F64.const, parseFloat(this.constant)]);
+                break;
+        }
+    }
+
     public deduceType(e: Emitter): WType {
         return this.type;
     }
@@ -491,6 +555,11 @@ export class WCovertOperation extends WExpression {
     public emit(e: Emitter): void {
         this.operand.emit(e);
         e.writeByte(this.ope);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.operand.emitJSON(e);
+        e.emitIns([this.ope, 0]);
     }
 
     public deduceType(e: Emitter): WType {
@@ -549,6 +618,18 @@ export class WGetAddress extends WExpression {
             offset += e.getExternLocation(this.offsetName);
         }
         e.writeInt32(offset);
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        e.emitIns([I32.const, offset]);
     }
 
     public length(e: Emitter): number {
@@ -630,6 +711,15 @@ export class WConditionalExpression extends WExpression {
         e.writeByte(Control.end);
     }
 
+    public emitJSON(e: JSONEmitter): void {
+        this.condition.emitJSON(e);
+        e.emitIns([Control.if, this.deduceType(e)]);
+        this.consequence.emitJSON(e);
+        e.emitIns([Control.else, 0]);
+        this.alternative.emitJSON(e);
+        e.emitIns([Control.end, this.deduceType(e)]);
+    }
+
     public length(e: Emitter): number {
         return 4 + this.condition.length(e)
         + this.consequence.length(e)
@@ -675,6 +765,10 @@ export class WGetFunctionAddress extends WExpression {
     public emit(e: Emitter): void {
         e.writeByte(I32.const);
         e.writeUint32(e.getFuncIdx(this.name));
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        e.emitIns([I32.const, e.getFuncIdx(this.name)]);
     }
 
     public length(e: Emitter): number {
@@ -746,6 +840,13 @@ export class WCallIndirect extends WExpression {
         this.target.dump(e);
         e.dump(`call_indirect`, this.location);
         this.afterStatements.map((x) => x.dump(e));
+    }
+
+    public emitJSON(e: JSONEmitter): void {
+        this.argument.map((x) => x.emitJSON(e));
+        this.target.emitJSON(e);
+        e.emitIns([Control.call_indirect, e.getTypeIdxFromEncoding(this.typeEncoding)]);
+        this.afterStatements.map((x) => x.emitJSON(e));
     }
 
 }

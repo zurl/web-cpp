@@ -321,6 +321,10 @@ export class WAddressHolder extends WExpression {
         throw new EmitError(`WAddressHolder()`);
     }
 
+    public emitJSON(e: Emitter): void {
+        throw new EmitError(`WAddressHolder()`);
+    }
+
     public fold(): WExpression {
         return this;
     }

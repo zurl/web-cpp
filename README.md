@@ -116,9 +116,15 @@ to a WCodeSection.
 For other WSection, you could refer to the official standard
 of WebAssembly.
 
-##
 
 # Road Map
+
+## Version
+
+- [X] 0.4 Classic C with class support
+- [ ] 0.5 With interpreter runtime
+- [ ] 0.6 (DLC1) With template
+- [ ] 0.7 (DLC2) With std library (some)
 
 ## C language
 

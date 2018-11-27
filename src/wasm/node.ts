@@ -5,7 +5,8 @@
  */
 import {SourceLocation} from "../common/ast";
 import {WType} from "./constant";
-import {Emitter} from "./emitter";
+import {Emitter, JSONEmitter} from "./emitter";
+
 
 export abstract class WNode {
     public location?: SourceLocation;
@@ -17,6 +18,8 @@ export abstract class WNode {
     public abstract emit(e: Emitter): void;
 
     public abstract length(e: Emitter): number;
+
+    public abstract emitJSON(e: JSONEmitter): void;
 
     public abstract dump(e: Emitter): void;
 
@@ -32,6 +35,7 @@ export abstract class WExpression extends WNode {
     public abstract fold(): WExpression;
 
     public abstract isPure(): boolean;
+
 }
 
 export abstract class WStatement extends WNode {

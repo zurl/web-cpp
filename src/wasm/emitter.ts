@@ -262,3 +262,56 @@ export class WASMEmitter implements Emitter {
     }
 
 }
+
+export type WASMInstruction = [number, number | string];
+
+export interface WASMJSON {
+    functions: {
+        name: string;
+        locals: number[];
+        codes: WASMInstruction[];
+        type: string;
+        signatureId: number;
+    }[];
+    types: string[];
+    data: {
+        offset: number;
+        data: ArrayBuffer;
+    }[];
+    globals: {
+        name: string,
+        type: number,
+        init: string,
+    }[];
+    imports: {
+        module: string;
+        name: string;
+        type: string;
+        signatureId: number;
+    }[];
+}
+
+export class JSONEmitter extends WASMEmitter{
+    public insBuffer: WASMInstruction[];
+    public wasmJSON: WASMJSON;
+    public constructor(){
+        super();
+        this.insBuffer = [];
+        this.wasmJSON = {
+            functions: [],
+            types: [],
+            globals: [],
+            imports: [],
+            data: []
+        };
+    }
+    public emitIns(ins: WASMInstruction): void{
+        this.insBuffer.push(ins);
+    }
+    public setBuffer(insBuffer: WASMInstruction[]){
+        this.insBuffer = insBuffer;
+    }
+    public getJSON(): WASMJSON{
+        return this.wasmJSON;
+    }
+}
