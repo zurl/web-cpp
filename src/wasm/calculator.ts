@@ -8,10 +8,11 @@ import {
     BinaryOperator,
     F32Binary,
     F32Unary,
-    F64Binary,
+    F64Binary, F64Unary,
     I32Binary,
     I32Unary,
-    I64Binary, I64Unary,
+    I64Binary,
+    I64Unary,
     UnaryOperator,
 } from "./constant";
 import * as Long from "long";
@@ -19,12 +20,21 @@ import * as Long from "long";
 export function doUnaryCompute(ope: UnaryOperator, value: number): number {
     switch (ope) {
         case F32Unary.abs:
+        case F64Unary.abs:
             return Math.abs(value);
         case F32Unary.ceil:
+        case F64Unary.ceil:
             return Math.ceil(value);
+        case F32Unary.floor:
+        case F64Unary.floor:
+            return Math.floor(value);
         case I32Unary.eqz:
         case I64Unary.eqz:
             return +(value === 0);
+        case F32Unary.neg:
+        case F64Unary.neg:
+            return -value;
+
     }
     throw new RuntimeError(`unsupport operator ${ope}`);
 }
@@ -73,12 +83,17 @@ export function doLongBinaryCompute(ope: BinaryOperator, lhs: Long, rhs: Long): 
             return lhs.or(rhs);
         case I64Binary.xor:
             return lhs.xor(rhs);
+        case I64Binary.shl:
+            return lhs.shl(rhs);
+        case I64Binary.shr_s:
+            return lhs.shr(rhs);
+        case I64Binary.shr_u:
+            return lhs.shru(rhs);
     }
     throw new RuntimeError(`unsupport operator ${ope}`);
 }
 export function doBinaryCompute(ope: BinaryOperator, lhs: number, rhs: number): number {
     switch (ope) {
-
         case I64Binary.add:
         case F32Binary.add:
         case F64Binary.add:
@@ -131,6 +146,21 @@ export function doBinaryCompute(ope: BinaryOperator, lhs: number, rhs: number): 
             return +(lhs | rhs);
         case I32Binary.xor:
             return +(lhs ^ rhs);
+        case I32Binary.shl:
+            return lhs << rhs;
+        case I32Binary.shr_s:
+            return lhs >> rhs;
+        case I32Binary.shr_u:
+            return lhs >>> rhs;
+        case F32Binary.copysign:
+        case F64Binary.copysign:
+            return rhs > 0 ? Math.abs(lhs) : -Math.abs(lhs);
+        case F32Binary.max:
+        case F64Binary.max:
+            return Math.max(lhs, rhs);
+        case F32Binary.min:
+        case F64Binary.min:
+            return Math.min(lhs, rhs);
     }
     throw new RuntimeError(`unsupport operator ${ope}`);
 }

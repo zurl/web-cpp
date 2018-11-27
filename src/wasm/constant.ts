@@ -316,6 +316,7 @@ export enum I64Binary {
     shl = 0x86,
     shr_s = 0x87,
     shr_u = 0x88,
+    // not impl
     rotl = 0x89,
     rotr = 0x8a,
 }
@@ -327,13 +328,13 @@ export enum F32Binary {
     gt = 0x5e,
     le = 0x5f,
     ge = 0x60,
-    neg = 0x8c,
-    floor = 0x8e,
-    nearest = 0x90,
     add = 0x92,
     sub = 0x93,
     mul = 0x94,
     div = 0x95,
+    min = 0x96,
+    max = 0x97,
+    copysign = 0x98,
 }
 
 export enum F64Binary {
@@ -343,13 +344,13 @@ export enum F64Binary {
     gt = 0x64,
     le = 0x65,
     ge = 0x66,
-    neg = 0x9a,
-    floor = 0x9c,
-    nearest = 0x9e,
     add = 0xa0,
     sub = 0xa1,
     mul = 0xa2,
     div = 0xa3,
+    min = 0xa4,
+    max = 0xa5,
+    copysign = 0xa6,
 }
 
 export enum I32Unary {
@@ -390,9 +391,9 @@ export enum F32Unary {
     ceil = 0x8d,
     trunc = 0x8f,
     sqrt = 0x91,
-    min = 0x96,
-    max = 0x97,
-    copysign = 0x98,
+    neg = 0x8c,
+    floor = 0x8e,
+    nearest = 0x90,
 }
 
 export enum F32Convert {
@@ -409,10 +410,9 @@ export enum F64Unary {
     ceil = 0x9b,
     trunc = 0x9d,
     sqrt = 0x9f,
-    min = 0xa4,
-    max = 0xa5,
-    copysign = 0xa6,
-
+    neg = 0x9a,
+    floor = 0x9c,
+    nearest = 0x9e,
 }
 
 export enum F64Convert {
@@ -704,8 +704,3 @@ export function getNativeType(type: WType): WType {
     }
     return WType.none;
 }
-
-export const UnaryOpeType1 = {};
-export const UnaryOpeType2 = {};
-export const BinaryOpeType1 = {};
-export const BinaryOpeType1 = {};
