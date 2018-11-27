@@ -499,7 +499,9 @@ export class WExportFunction extends WNode {
         e.writeUint32(e.getFuncIdx(this.name));
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void {
+        e.getJSON().exports[this.name] = e.getFuncIdx(this.name);
+    }
 
     public length(e: Emitter): number {
         return getUtf8StringLength(this.name) +
@@ -527,7 +529,9 @@ export class WExportSection extends WSection {
         this.functions.map((func) => func.emit(e));
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void {
+        this.functions.map((func) => func.emitJSON(e));
+    }
 
     public getBodyLength(e: Emitter): number {
         return getLeb128UintLength(this.functions.length) +
@@ -569,7 +573,7 @@ export class WGlobalVariable extends WNode {
         if(this.init instanceof WConst){
             e.getJSON().globals.push({
                 name: this.name,
-                type: this.type,
+                type: getNativeType(this.type),
                 init: this.init.constant
             })
         } else {

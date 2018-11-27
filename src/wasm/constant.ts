@@ -704,3 +704,8 @@ export function getNativeType(type: WType): WType {
     }
     return WType.none;
 }
+
+export const UnaryOpeType1 = {};
+export const UnaryOpeType2 = {};
+export const BinaryOpeType1 = {};
+export const BinaryOpeType1 = {};

@@ -5,7 +5,7 @@
  */
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
-import {doBinaryCompute, doUnaryCompute} from "./calculator";
+import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "./calculator";
 import {
     BinaryOperator,
     Control, ConvertOperator,
@@ -20,6 +20,7 @@ import {
 import {Emitter, JSONEmitter} from "./emitter";
 import {getLeb128IntLength, getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
+import * as Long from "long";
 
 export function getAlign(number: number) {
     return 0;
@@ -166,10 +167,14 @@ export class WUnaryOperation extends WExpression {
                 return new WConst(type,
                     doUnaryCompute(this.ope,
                         parseFloat(this.operand.constant)).toString());
-            } else {
+            } else if (type === WType.i32){
                 return new WConst(type,
                     doUnaryCompute(this.ope,
                         parseInt(this.operand.constant)).toString());
+            } else {
+                return new WConst(type,
+                    doLongUnaryCompute(this.ope,
+                        Long.fromString(this.operand.constant)).toString());
             }
         } else {
             return this;
@@ -233,11 +238,16 @@ export class WBinaryOperation extends WExpression {
                     doBinaryCompute(this.ope,
                         parseFloat(this.lhs.constant),
                         parseFloat(this.rhs.constant)).toString());
-            } else {
+            } else if (type === WType.i32){
                 return new WConst(type,
                     doBinaryCompute(this.ope,
                         parseInt(this.lhs.constant),
                         parseInt(this.rhs.constant)).toString());
+            } else {
+                return new WConst(type,
+                    doLongBinaryCompute(this.ope,
+                        Long.fromString(this.lhs.constant),
+                        Long.fromString(this.rhs.constant)).toString());
             }
         } else {
             return this;

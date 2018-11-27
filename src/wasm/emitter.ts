@@ -265,14 +265,16 @@ export class WASMEmitter implements Emitter {
 
 export type WASMInstruction = [number, number | string];
 
+export interface WASMJSONFunction {
+    name: string;
+    locals: number[];
+    codes: WASMInstruction[];
+    type: string;
+    signatureId: number;
+}
+
 export interface WASMJSON {
-    functions: {
-        name: string;
-        locals: number[];
-        codes: WASMInstruction[];
-        type: string;
-        signatureId: number;
-    }[];
+    functions: WASMJSONFunction[];
     types: string[];
     data: {
         offset: number;
@@ -289,6 +291,9 @@ export interface WASMJSON {
         type: string;
         signatureId: number;
     }[];
+    exports: {
+        [key: string]: number
+    };
 }
 
 export class JSONEmitter extends WASMEmitter{
@@ -302,7 +307,8 @@ export class JSONEmitter extends WASMEmitter{
             types: [],
             globals: [],
             imports: [],
-            data: []
+            data: [],
+            exports: {},
         };
     }
     public emitIns(ins: WASMInstruction): void{
