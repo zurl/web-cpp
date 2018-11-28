@@ -6,32 +6,25 @@
 import "babel-polyfill";
 import {Runtime, RuntimeOptions} from "./runtime";
 
+
+export interface NativeRuntimeOptions extends RuntimeOptions {
+    code: ArrayBuffer;
+}
+
 export class NativeRuntime extends Runtime {
 
     public wasmMemory: WebAssembly.Memory;
     public instance: WebAssembly.Instance | null;
-    public entry: string;
-    public options: RuntimeOptions;
+    public code: ArrayBuffer;
+    public options: NativeRuntimeOptions;
 
-    constructor(options: RuntimeOptions) {
+    constructor(options: NativeRuntimeOptions) {
         super(options);
-        const that = this;
-        this.entry = options.entry;
+
+        this.code = options.code;
         this.options = options;
 
         // wrap importObject
-        const oldImportObject = this.importObjects;
-        this.importObjects = {};
-        for (const moduleName of Object.keys(oldImportObject)) {
-            const module = oldImportObject[moduleName];
-            this.importObjects[moduleName] = {};
-            for (const funcName of Object.keys(module)) {
-                const func = module[funcName] as Function;
-                this.importObjects[moduleName][funcName] = function() {
-                    return func.apply(that, Array.from(arguments));
-                };
-            }
-        }
         this.wasmMemory = new WebAssembly.Memory(
             {
                 initial: 1,
@@ -45,6 +38,21 @@ export class NativeRuntime extends Runtime {
         this.memory = new DataView(this.memoryBuffer);
         this.memoryUint8Array = new Uint8Array(this.memoryBuffer);
         this.instance = null;
+
+
+        const that = this;
+        const oldImportObject = this.importObjects;
+        this.importObjects = {};
+        for (const moduleName of Object.keys(oldImportObject)) {
+            const module = oldImportObject[moduleName];
+            this.importObjects[moduleName] = {};
+            for (const funcName of Object.keys(module)) {
+                const func = module[funcName] as Function;
+                this.importObjects[moduleName][funcName] = function() {
+                    return func.apply(that, Array.from(arguments));
+                };
+            }
+        }
     }
 
     public async run(): Promise<void> {

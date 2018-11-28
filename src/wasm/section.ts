@@ -58,6 +58,24 @@ export class WFunction extends WNode {
         this.body.map((stmt) => stmt.emitJSON(e));
         e.setCurrentFunc();
 
+        // match the block/end pair
+        const stack = [];
+        for(let i = 0; i < codes.length; i++){
+            if(codes[i][0] == Control.if || codes[i][0] == Control.block || codes[i][0] == Control.loop){
+                stack.push(i);
+            }
+            else if(codes[i][0] == Control.else){
+                codes[stack[stack.length - 1]][1] = i;
+                stack.pop();
+                stack.push(i);
+            }
+            else if(codes[i][0] == Control.end){
+                codes[stack[stack.length - 1]][1] = i;
+                stack.pop();
+            }
+        }
+
+        codes.push([Control.return, 0]);
         e.getJSON().functions.push({
             name: this.name,
             locals: this.local.map((x) => getNativeType(x)),
@@ -395,8 +413,7 @@ export class WImportFunction extends WImportItem {
         e.getJSON().imports.push({
             module: this.module,
             name: this.name,
-            type: this.type.toEncoding(),
-            signatureId: this.signatureId
+            type: this.type.toEncoding()
         });
         e.setFuncIdx(this.name, this.type);
     }

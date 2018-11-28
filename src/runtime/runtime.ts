@@ -14,7 +14,6 @@ export interface ImportObject {
 }
 
 export interface RuntimeOptions {
-    code: ArrayBuffer;
     heapStart: number;
     importObjects: ImportObject;
     memorySize: number;
@@ -29,7 +28,7 @@ export abstract class Runtime {
     public heapStart: number;
     public heapPointer: number;
 
-    public code: ArrayBuffer;
+    public entry: string;
     public importObjects: ImportObject;
     public files: VMFile[];
     public heapAllocator: HeapAllocator;
@@ -40,10 +39,10 @@ export abstract class Runtime {
         this.memory = new DataView(this.memoryBuffer);
         this.heapStart = options.heapStart;
         this.heapPointer = options.heapStart;
-        this.code = options.code;
         this.importObjects = options.importObjects;
         this.files = options.files;
         this.heapAllocator = new FastHeapAllocator();
+        this.entry = options.entry;
     }
 
     public abstract async run(): Promise<void>;

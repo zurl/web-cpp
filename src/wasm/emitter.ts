@@ -289,7 +289,6 @@ export interface WASMJSON {
         module: string;
         name: string;
         type: string;
-        signatureId: number;
     }[];
     exports: {
         [key: string]: number
