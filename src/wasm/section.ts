@@ -268,6 +268,9 @@ export class WTypeSection extends WSection {
     }
 
     public emitJSON(e: JSONEmitter): void {
+        for (let i = 0; i < this.types.length; i++) {
+            e.setTypeIdxFromEncoding(this.types[i].toEncoding(), i);
+        }
         e.getJSON().types = this.types.map( (x) => x.toEncoding());
     }
 

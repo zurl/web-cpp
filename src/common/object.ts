@@ -4,6 +4,7 @@ import {WFunction} from "../wasm";
 import {WMemoryLocation} from "../wasm/expression";
 import {WStatement} from "../wasm/node";
 import {WFunctionType} from "../wasm/section";
+import {WASMJSON} from "../wasm/emitter";
 
 /**
  *  @file
@@ -52,5 +53,6 @@ export interface BinaryObject {
 
     // debug only
     sourceMap?: Map<string, SourceMap>;
+    json: WASMJSON;
 
 }

@@ -13,6 +13,7 @@ import {ClassType} from "./class_type";
 import {ArrayType, PointerType} from "./compound_type";
 import {Type} from "./index";
 import {PrimitiveTypes} from "./primitive_type";
+import {WFunctionType} from "../wasm/section";
 
 export enum CppFunctionType {
     Normal,
@@ -92,12 +93,12 @@ export class FunctionType extends Type {
     public toWASMEncoding(): string {
         let result = "";
         if (!this.returnType.equals(PrimitiveTypes.void) && !(this.returnType instanceof ClassType)) {
-            result += String.fromCharCode(getNativeType(this.returnType.toWType()));
+            result += WFunctionType.n2s(getNativeType(this.returnType.toWType()));
         } else {
             result += "v";
         }
         this.parameterTypes.filter((ty) => !(ty instanceof ClassType))
-            .map((ty) => result += String.fromCharCode(getNativeType(ty.toWType())));
+            .map((ty) => result += WFunctionType.n2s(getNativeType(ty.toWType())));
         return result;
     }
 }

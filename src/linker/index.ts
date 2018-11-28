@@ -155,14 +155,13 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     mod.optimize(emitter);
     mod.emit(emitter);
 
+    const jsonEmitter = new JSONEmitter();
+    mod.emitJSON(jsonEmitter);
+
     if (option.debug) {
         const dumper = new WASMEmitter();
         dumper.sourceMap = sourceMap;
         mod.dump(dumper);
-
-        const jsondumper = new JSONEmitter();
-        mod.emitJSON(jsondumper);
-        console.log(jsondumper.getJSON());
     }
 
     const heapStart = (parseInt((bssNow + 1) / 4 as any) + 1) * 4;
@@ -173,5 +172,6 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         entry: entry[0],
         sourceMap,
         binary: emitter.buffer.slice(0, emitter.now),
+        json: jsonEmitter.getJSON()
     };
 }

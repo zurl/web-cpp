@@ -324,4 +324,8 @@ class JSRuntime extends Runtime{
         return true;
     }
 
+    async run(): Promise<void> {
+        while(this.runStep());
+    }
+
 }

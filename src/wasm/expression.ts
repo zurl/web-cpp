@@ -21,6 +21,7 @@ import {Emitter, JSONEmitter} from "./emitter";
 import {getLeb128IntLength, getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
 import * as Long from "long";
+import {WFunction, WFunctionType} from "./section";
 
 export function getAlign(number: number) {
     return 0;
@@ -832,7 +833,7 @@ export class WCallIndirect extends WExpression {
         if (this.typeEncoding.charAt(0) === "v") {
             return WType.none;
         } else {
-            return this.typeEncoding.charCodeAt(0) as WType;
+            return WFunctionType.s2n(this.typeEncoding.charAt(0));
         }
     }
 

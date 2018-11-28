@@ -21,23 +21,26 @@ const BINARY_VERSION = 3;
 export function saveBinaryFile(fileName: string, binary: BinaryObject) {
     const codeBuf = Buffer.from(binary.binary);
     const code = codeBuf.toString("base64");
+    const json = binary.json;
     writeFileSync(fileName, JSON.stringify({
         version: BINARY_VERSION,
         enrty: binary.entry,
         heapStart: binary.heapStart,
         code,
+        json
     }));
 }
 
 export function loadBinaryFile(fileName: string): BinaryObject {
-    const json = JSON.parse(readFileSync(fileName, "utf-8"));
-    const {entry, heapStart} = json;
-    const binary = Buffer.from(json.code, "base64") as any;
+    const orijson = JSON.parse(readFileSync(fileName, "utf-8"));
+    const {entry, heapStart, json} = orijson;
+    const binary = Buffer.from(orijson.code, "base64") as any;
     return {
         binary,
         entry,
         heapStart,
         fileName,
+        json
     };
 }
 
