@@ -3,6 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
+import * as Long from "long";
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
 import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "./calculator";
@@ -20,7 +21,6 @@ import {
 import {Emitter, JSONEmitter} from "./emitter";
 import {getLeb128IntLength, getLeb128UintLength} from "./leb128";
 import {getArrayLength, WExpression, WStatement} from "./node";
-import * as Long from "long";
 import {WFunction, WFunctionType} from "./section";
 
 export function getAlign(number: number) {
@@ -148,7 +148,6 @@ export class WUnaryOperation extends WExpression {
         e.emitIns([this.ope, 0]);
     }
 
-
     public length(e: Emitter): number {
         return this.operand.length(e) + 1;
     }
@@ -168,7 +167,7 @@ export class WUnaryOperation extends WExpression {
                 return new WConst(type,
                     doUnaryCompute(this.ope,
                         parseFloat(this.operand.constant)).toString());
-            } else if (type === WType.i32){
+            } else if (type === WType.i32) {
                 return new WConst(type,
                     doUnaryCompute(this.ope,
                         parseInt(this.operand.constant)).toString());
@@ -239,7 +238,7 @@ export class WBinaryOperation extends WExpression {
                     doBinaryCompute(this.ope,
                         parseFloat(this.lhs.constant),
                         parseFloat(this.rhs.constant)).toString());
-            } else if (type === WType.i32){
+            } else if (type === WType.i32) {
                 return new WConst(type,
                     doBinaryCompute(this.ope,
                         parseInt(this.lhs.constant),

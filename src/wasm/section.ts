@@ -60,16 +60,14 @@ export class WFunction extends WNode {
 
         // match the block/end pair
         const stack = [];
-        for(let i = 0; i < codes.length; i++){
-            if(codes[i][0] == Control.if || codes[i][0] == Control.block || codes[i][0] == Control.loop){
+        for (let i = 0; i < codes.length; i++) {
+            if (codes[i][0] === Control.if || codes[i][0] === Control.block || codes[i][0] === Control.loop) {
                 stack.push(i);
-            }
-            else if(codes[i][0] == Control.else){
+            } else if (codes[i][0] === Control.else) {
                 codes[stack[stack.length - 1]][1] = i;
                 stack.pop();
                 stack.push(i);
-            }
-            else if(codes[i][0] == Control.end){
+            } else if (codes[i][0] === Control.end) {
                 codes[stack[stack.length - 1]][1] = i;
                 stack.pop();
             }
@@ -79,9 +77,9 @@ export class WFunction extends WNode {
         e.getJSON().functions.push({
             name: this.name,
             locals: this.local.map((x) => getNativeType(x)),
-            codes: codes,
+            codes,
             type: this.type.toEncoding(),
-            signatureId: this.signatureId
+            signatureId: this.signatureId,
         });
     }
 
@@ -124,19 +122,19 @@ export class WFunction extends WNode {
 
 export class WFunctionType extends WNode {
 
-    public static n2s(x: number): string{
-        if(x == WType.i32) return 'i';
-        if(x == WType.i64) return 'l';
-        if(x == WType.f32) return 'f';
-        if(x == WType.f64) return 'd';
-        return 'v';
+    public static n2s(x: number): string {
+        if (x === WType.i32) { return "i"; }
+        if (x === WType.i64) { return "l"; }
+        if (x === WType.f32) { return "f"; }
+        if (x === WType.f64) { return "d"; }
+        return "v";
     }
 
-    public static s2n(x: string): WType{
-        if(x == 'i') return WType.i32;
-        if(x == 'l') return WType.i64;
-        if(x == 'f') return WType.f32;
-        if(x == 'd') return WType.f64;
+    public static s2n(x: string): WType {
+        if (x === "i") { return WType.i32; }
+        if (x === "l") { return WType.i64; }
+        if (x === "f") { return WType.f32; }
+        if (x === "d") { return WType.f64; }
         return WType.none;
     }
 
@@ -168,7 +166,7 @@ export class WFunctionType extends WNode {
         this.returnTypes.map((type) => e.writeUint32(getNativeType(type)));
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public toString(): string {
         return this.parameters.join(",") + "#" + this.returnTypes.join(",");
@@ -205,7 +203,6 @@ export class WMemorySection extends WNode {
         this.pageInfo = pageInfo;
     }
 
-
     public emit(e: Emitter): void {
         e.writeByte(SectionCode.memory);
         e.writeUint32(this.getBodyLength(e));
@@ -223,7 +220,7 @@ export class WMemorySection extends WNode {
         });
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public getBodyLength(e: Emitter): number {
         return getLeb128UintLength(this.pageInfo.length) +
@@ -378,7 +375,7 @@ export class WImportItem extends WNode {
         e.writeUtf8String(this.name);
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public length(e: Emitter): number {
         return getUtf8StringLength(this.module) +
@@ -416,7 +413,7 @@ export class WImportFunction extends WImportItem {
         e.getJSON().imports.push({
             module: this.module,
             name: this.name,
-            type: this.type.toEncoding()
+            type: this.type.toEncoding(),
         });
         e.setFuncIdx(this.name, this.type);
     }
@@ -454,7 +451,7 @@ export class WImportMemory extends WImportItem {
         }
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public length(e: Emitter): number {
         if (this.max === null) {
@@ -588,16 +585,16 @@ export class WGlobalVariable extends WNode {
         e.writeByte(Control.end);
     }
 
-    public emitJSON(e: JSONEmitter): void{
+    public emitJSON(e: JSONEmitter): void {
         e.setGlobalIdx(this.name, this.type);
-        if(this.init instanceof WConst){
+        if (this.init instanceof WConst) {
             e.getJSON().globals.push({
                 name: this.name,
                 type: getNativeType(this.type),
-                init: this.init.constant
-            })
+                init: this.init.constant,
+            });
         } else {
-            throw "WASM emitJSON: could not handle";
+            throw new Error("WASM emitJSON: could not handle");
         }
     }
 
@@ -625,7 +622,7 @@ export class WGlobalSection extends WSection {
         this.globals.map((x) => x.emit(e));
     }
 
-    public emitJSON(e: JSONEmitter): void{
+    public emitJSON(e: JSONEmitter): void {
         this.globals.map((x) => x.emitJSON(e));
     }
 
@@ -659,7 +656,7 @@ export class WTable extends WNode {
         e.writeUint32(this.len);
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public length(e: Emitter): number {
         return 2 + getLeb128UintLength(this.len);
@@ -686,7 +683,7 @@ export class WTableSection extends WSection {
         this.tables.map((x) => x.emit(e));
     }
 
-    public emitJSON(e: JSONEmitter): void { }
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public getBodyLength(e: Emitter): number {
         return getLeb128UintLength(this.tables.length) +
@@ -728,7 +725,7 @@ export class WDataSegment extends WNode {
         }
     }
 
-    public emitJSON(e: JSONEmitter): void { };
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public length(e: Emitter): number {
         return 1 + getLeb128UintLength(this.memIdx) +
@@ -760,7 +757,7 @@ export class WDataSection extends WSection {
     public emitJSON(e: JSONEmitter): void {
         e.getJSON().data = this.segments.map((x) => ({
             offset: x.offsetNumber,
-            data: x.dataBuffer
+            data: x.dataBuffer,
         }));
     }
 
@@ -804,8 +801,7 @@ export class WElement extends WNode {
         }
     }
 
-    public emitJSON(e: JSONEmitter): void {}
-
+    public emitJSON(e: JSONEmitter): void { return; }
 
     public length(e: Emitter): number {
         let len = 2 + this.offset.length(e) + getLeb128UintLength(this.len);
@@ -835,7 +831,9 @@ export class WElementSection extends WSection {
         this.elems.map((x) => x.emit(e));
     }
 
-    public emitJSON(e: JSONEmitter): void {}
+    public emitJSON(e: JSONEmitter): void {
+        return;
+    }
 
     public getBodyLength(e: Emitter): number {
         return getLeb128UintLength(this.elems.length) +
@@ -889,7 +887,7 @@ export class WModule extends WNode {
             config.imports.filter((x) => x instanceof WImportFunction)
                 .map((x) => x as WImportFunction);
 
-        for (const func of [...config.functions, ...this.importFunctions]) {
+        for (const func of [...this.importFunctions, ...config.functions]) {
             func.signatureId = this.funcTypes.length;
             this.funcTypes.push(func.type);
         }

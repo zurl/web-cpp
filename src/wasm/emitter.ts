@@ -276,29 +276,29 @@ export interface WASMJSONFunction {
 export interface WASMJSON {
     functions: WASMJSONFunction[];
     types: string[];
-    data: {
+    data: Array<{
         offset: number;
         data: ArrayBuffer;
-    }[];
-    globals: {
+    }>;
+    globals: Array<{
         name: string,
         type: number,
         init: string,
-    }[];
-    imports: {
+    }>;
+    imports: Array<{
         module: string;
         name: string;
         type: string;
-    }[];
+    }>;
     exports: {
-        [key: string]: number
+        [key: string]: number,
     };
 }
 
-export class JSONEmitter extends WASMEmitter{
+export class JSONEmitter extends WASMEmitter {
     public insBuffer: WASMInstruction[];
     public wasmJSON: WASMJSON;
-    public constructor(){
+    public constructor() {
         super();
         this.insBuffer = [];
         this.wasmJSON = {
@@ -310,13 +310,13 @@ export class JSONEmitter extends WASMEmitter{
             exports: {},
         };
     }
-    public emitIns(ins: WASMInstruction): void{
+    public emitIns(ins: WASMInstruction): void {
         this.insBuffer.push(ins);
     }
-    public setBuffer(insBuffer: WASMInstruction[]){
+    public setBuffer(insBuffer: WASMInstruction[]) {
         this.insBuffer = insBuffer;
     }
-    public getJSON(): WASMJSON{
+    public getJSON(): WASMJSON {
         return this.wasmJSON;
     }
 }

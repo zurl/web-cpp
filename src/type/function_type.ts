@@ -9,11 +9,11 @@ import {ConstructorInitializeItem} from "../common/ast";
 import {InternalError} from "../common/error";
 import {isArrayEqual} from "../common/utils";
 import {getNativeType, WType} from "../wasm/constant";
+import {WFunctionType} from "../wasm/section";
 import {ClassType} from "./class_type";
 import {ArrayType, PointerType} from "./compound_type";
 import {Type} from "./index";
 import {PrimitiveTypes} from "./primitive_type";
-import {WFunctionType} from "../wasm/section";
 
 export enum CppFunctionType {
     Normal,

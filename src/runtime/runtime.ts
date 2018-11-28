@@ -34,7 +34,7 @@ export abstract class Runtime {
     public heapAllocator: HeapAllocator;
 
     constructor(options: RuntimeOptions) {
-        this.memoryBuffer = new ArrayBuffer(0);
+        this.memoryBuffer = new ArrayBuffer(options.memorySize);
         this.memoryUint8Array = new Uint8Array(this.memoryBuffer);
         this.memory = new DataView(this.memoryBuffer);
         this.heapStart = options.heapStart;

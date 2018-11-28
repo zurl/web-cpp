@@ -41,7 +41,7 @@ describe('big test', function () {
         }
         `;
         const expectOutput = `11779999`;
-        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true, debug: true});
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
     it('test c_eval', async function () {
         const testCode = `

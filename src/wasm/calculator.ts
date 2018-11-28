@@ -3,6 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
+import * as Long from "long";
 import {RuntimeError} from "../common/error";
 import {
     BinaryOperator,
@@ -15,7 +16,6 @@ import {
     I64Unary,
     UnaryOperator,
 } from "./constant";
-import * as Long from "long";
 
 export function doUnaryCompute(ope: UnaryOperator, value: number): number {
     switch (ope) {
@@ -58,7 +58,7 @@ export function doLongUnaryCompute(ope: UnaryOperator, value: Long): Long {
 
 export function doLongBinaryCompute(ope: BinaryOperator, lhs: Long, rhs: Long): Long {
     switch (ope) {
-        case I32Binary.add:
+        case I64Binary.add:
             return lhs.add(rhs);
         case I64Binary.sub:
             return lhs.sub(rhs);
@@ -103,7 +103,7 @@ export function doLongBinaryCompute(ope: BinaryOperator, lhs: Long, rhs: Long): 
 }
 export function doBinaryCompute(ope: BinaryOperator, lhs: number, rhs: number): number {
     switch (ope) {
-        case I64Binary.add:
+        case I32Binary.add:
         case F32Binary.add:
         case F64Binary.add:
             return lhs + rhs;

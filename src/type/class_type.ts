@@ -247,7 +247,7 @@ export class ClassType extends Type {
         }
     }
 
-    public getVCallInfo(indexName: string): [number, number] | null{
+    public getVCallInfo(indexName: string): [number, number] | null {
         for (let i = 0; i < this.vTable.vFunctions.length; i++) {
             if ( this.vTable.vFunctions[i].indexName === indexName) {
                 return [this.VPtrOffset, i * 4];

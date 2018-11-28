@@ -6,7 +6,6 @@
 import "babel-polyfill";
 import {Runtime, RuntimeOptions} from "./runtime";
 
-
 export interface NativeRuntimeOptions extends RuntimeOptions {
     code: ArrayBuffer;
 }
@@ -28,7 +27,7 @@ export class NativeRuntime extends Runtime {
         this.wasmMemory = new WebAssembly.Memory(
             {
                 initial: 1,
-                maximum: options.memorySize,
+                maximum: options.memorySize / 65536,
             });
         if (!this.importObjects.hasOwnProperty("system")) {
             this.importObjects["system"] = {};

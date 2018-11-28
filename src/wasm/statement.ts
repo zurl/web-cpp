@@ -120,28 +120,6 @@ export class WStore extends WStatement {
         }
     }
 
-    private computeOffset(e: Emitter): number{
-        if (getNativeType(this.value.deduceType(e)) !== getNativeType(this.type)) {
-            throw new EmitError(`type mismatch at store: ${this.value.deduceType(e)} and ${this.type}`);
-        }
-        if ( this.address.deduceType(e) !== WType.u32 && this.address.deduceType(e) !== WType.i32 ) {
-            throw new EmitError(`type mismatch at store, address`);
-        }
-        let offset = this.offset;
-        if ( this.form === WMemoryLocation.DATA ) {
-            offset += e.getCurrentFunc().dataStart;
-        } else if ( this.form === WMemoryLocation.BSS ) {
-            offset += e.getCurrentFunc().bssStart;
-        } else if ( this.form === WMemoryLocation.EXTERN ) {
-            offset += e.getExternLocation(this.offsetName);
-        }
-        if ( offset < 0 ) {
-            this.replaceAddress();
-            offset = 0;
-        }
-        return offset;
-    }
-
     public emit(e: Emitter): void {
         const offset = this.computeOffset(e);
         this.address.emit(e);
@@ -195,6 +173,28 @@ export class WStore extends WStatement {
         this.value.optimize(e);
         this.address = this.address.fold();
         this.address.optimize(e);
+    }
+
+    private computeOffset(e: Emitter): number {
+        if (getNativeType(this.value.deduceType(e)) !== getNativeType(this.type)) {
+            throw new EmitError(`type mismatch at store: ${this.value.deduceType(e)} and ${this.type}`);
+        }
+        if ( this.address.deduceType(e) !== WType.u32 && this.address.deduceType(e) !== WType.i32 ) {
+            throw new EmitError(`type mismatch at store, address`);
+        }
+        let offset = this.offset;
+        if ( this.form === WMemoryLocation.DATA ) {
+            offset += e.getCurrentFunc().dataStart;
+        } else if ( this.form === WMemoryLocation.BSS ) {
+            offset += e.getCurrentFunc().bssStart;
+        } else if ( this.form === WMemoryLocation.EXTERN ) {
+            offset += e.getExternLocation(this.offsetName);
+        }
+        if ( offset < 0 ) {
+            this.replaceAddress();
+            offset = 0;
+        }
+        return offset;
     }
 
 }
@@ -262,8 +262,7 @@ export class WSetGlobal extends WStatement {
             throw new EmitError(`type mismatch at set_global`);
         }
         this.value.emitJSON(e);
-        e.emitIns([Control.get_global, e.getGlobalIdx(this.name)]);
-        e.writeByte(Control.set_global);
+        e.emitIns([Control.set_global, e.getGlobalIdx(this.name)]);
     }
 
     public length(e: Emitter): number {

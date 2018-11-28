@@ -33,7 +33,7 @@ describe('cpp -> wasm', function () {
         const runtime = new NativeRuntime({
             importObjects: importObj,
             code: bin.binary,
-            memorySize: 10,
+            memorySize: 10 * 65536,
             entry: bin.entry,
             heapStart: bin.heapStart,
             files: [

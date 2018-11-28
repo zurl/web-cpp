@@ -7,7 +7,6 @@ import {SourceLocation} from "../common/ast";
 import {WType} from "./constant";
 import {Emitter, JSONEmitter} from "./emitter";
 
-
 export abstract class WNode {
     public location?: SourceLocation;
 

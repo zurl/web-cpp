@@ -27,7 +27,7 @@ export function saveBinaryFile(fileName: string, binary: BinaryObject) {
         enrty: binary.entry,
         heapStart: binary.heapStart,
         code,
-        json
+        json,
     }));
 }
 
@@ -40,7 +40,7 @@ export function loadBinaryFile(fileName: string): BinaryObject {
         entry,
         heapStart,
         fileName,
-        json
+        json,
     };
 }
 

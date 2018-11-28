@@ -172,6 +172,6 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         entry: entry[0],
         sourceMap,
         binary: emitter.buffer.slice(0, emitter.now),
-        json: jsonEmitter.getJSON()
+        json: jsonEmitter.getJSON(),
     };
 }

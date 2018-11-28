@@ -707,12 +707,12 @@ export function getNativeType(type: WType): WType {
 }
 
 export const WLoadIns = new Set<number>([
-    I32.load, I32.load8_s, I32.load8_s, I32.load16_s, I32.load16_u,
-    I64.load, I64.load8_s, I64.load8_s, I64.load16_s, I64.load16_u,
-    F32.load, F64.load
+    I32.load, I32.load8_s, I32.load8_u, I32.load16_s, I32.load16_u,
+    I64.load, I64.load8_s, I64.load8_u, I64.load16_s, I64.load16_u,
+    F32.load, F64.load,
 ]);
 export const WStoreIns = new Set<number>([
     I32.store, I32.store8, I32.store16,
     I64.store, I64.store8, I64.store32,
-    F32.store, F64.store
+    F32.store, F64.store,
 ]);
