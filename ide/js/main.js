@@ -3,40 +3,50 @@ import * as Ace from "./ace/ace";
 import * as AceMonokai from "./ace/theme-monokai"
 import * as AceCCpp from "./ace/mode-c_cpp";
 import {version} from "./version";
-
-const messageDiv = document.getElementById("message");
-const outputDiv = document.getElementById("output");
-const inputTa = document.getElementById("input-ta");
-const editor = ace.edit("editor");
-editor.setTheme("ace/theme/monokai");
-editor.session.setMode("ace/mode/c_cpp");
-
-const tabdiv = M.Tabs.init(document.getElementById("tab-div"), {});
 document.getElementById("version-text").innerText = "v" + version;
 
-let obj = null;
+const editor = ace.edit("editor", {
+    theme: "ace/theme/tomorrow",
+    mode: "ace/mode/c_cpp",
+    maxLines: 30,
+    minLines: 30,
+    autoScrollEditorIntoView: true
+});
+
+const var_ins_content = document.getElementById("var-ins-content");
+document.getElementById("var-ins-switcter").addEventListener('change', function(e){
+     if(e.target.checked){
+         var_ins_content.style.height = "400px";
+     } else {
+         var_ins_content.style.height = "0";
+     }
+});
+
+function selectDiv(divName) {
+    document.getElementById(`${divName}-href`).click();
+}
+
+const inputTA = document.getElementById("input-textarea");
+const outputTA = document.getElementById("output-textarea");
+const messageTA = document.getElementById("message-textarea");
+
+
 
 function showMessage(type, message){
-    tabdiv.select("message");
-    const line = document.createElement("div");
-    line.innerText = `[${type}] : ${message}`;
-    messageDiv.appendChild(line);
-    messageDiv.scrollTop = 1000000;
+    selectDiv("message");
+    messageTA.value += `[${type}] : ${message}\n`;
+    messageTA.scrollTop = 1000000;
 }
 
 function showError(error){
-    tabdiv.select("message");
-    const line = document.createElement("div");
-    line.innerText = error.toString();
-    messageDiv.appendChild(line);
-    const line2 = document.createElement("div");
-    line2.innerText = ">> " + error.errorLine;
-    messageDiv.appendChild(line2);
-    messageDiv.scrollTop = 1000000;
+    selectDiv("message");
+    messageTA.value += error.toString();
+    messageTA.value += ">> " + error.errorLine;
+    messageTA.scrollTop = 1000000;
 }
 
 function showOutput(message){
-    outputDiv.innerText += message;
+    outputTA.value += message;
 }
 
 let isFirst = true;
@@ -59,7 +69,7 @@ function reportError(errorJson){
 }
 
 async function run() {
-    outputDiv.innerText = "";
+    outputTA.value = "";
     if(isFirst){
         showMessage("compiler", "downloading compiler");
         isFirst = false;
@@ -76,19 +86,19 @@ async function run() {
         const runtime = new NativeRuntime({
             importObjects: importObj,
             code: obj.binary,
-            memorySize: 10,
+            memorySize: 10 * 65536,
             entry: obj.entry,
             heapStart: obj.heapStart,
             files: [
-                new StringInputFile(inputTa.value),
+                new StringInputFile(inputTA.value),
                 new CallbackOutputFile(x => showOutput(x)),
                 new CallbackOutputFile(x => showOutput(x)),
             ],
         });
-        tabdiv.select("output");
+        selectDiv("output");
         await runtime.run();
         showMessage("runtime", "code return with code 0");
-        tabdiv.select("output");
+        selectDiv("output");
     }catch(e){
         let errorjson = {};
         if( e instanceof CompilerError ) {

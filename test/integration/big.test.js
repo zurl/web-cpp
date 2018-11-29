@@ -110,6 +110,6 @@ describe('big test', function () {
         }
         `;
         const expectOutput = `9,9,`;
-        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true, linkStd: true});
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true, linkStd: true, debug: true});
     });
 });

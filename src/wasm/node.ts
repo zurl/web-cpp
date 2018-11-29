@@ -22,6 +22,11 @@ export abstract class WNode {
 
     public abstract dump(e: Emitter): void;
 
+    public getStartLine(): number {
+        if (this.location) { return this.location.start.line; }
+        return -1;
+    }
+
     public optimize(e: Emitter): void {
         return;
     }

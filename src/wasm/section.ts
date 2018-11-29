@@ -73,9 +73,10 @@ export class WFunction extends WNode {
             }
         }
 
-        codes.push([Control.return, 0]);
+        codes.push([Control.return, 0, this.getStartLine()]);
         e.getJSON().functions.push({
             name: this.name,
+            fileName: this.fileName,
             locals: this.local.map((x) => getNativeType(x)),
             codes,
             type: this.type.toEncoding(),

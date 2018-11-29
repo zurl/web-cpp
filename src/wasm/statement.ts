@@ -59,7 +59,7 @@ export class WReturn extends WStatement {
         if (this.expr !== null) {
             this.expr.emitJSON(e);
         }
-        e.emitIns([Control.return, 0]);
+        e.emitIns([Control.return, 0, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -133,7 +133,7 @@ export class WStore extends WStatement {
         const offset = this.computeOffset(e);
         this.address.emitJSON(e);
         this.value.emitJSON(e);
-        e.emitIns([this.getOp() as number, offset]);
+        e.emitIns([this.getOp() as number, offset, this.getStartLine()]);
     }
 
     public replaceAddress() {
@@ -218,7 +218,7 @@ export class WSetLocal extends WStatement {
 
     public emitJSON(e: JSONEmitter): void {
         this.value.emitJSON(e);
-        e.emitIns([Control.set_local, this.offset]);
+        e.emitIns([Control.set_local, this.offset, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -262,7 +262,7 @@ export class WSetGlobal extends WStatement {
             throw new EmitError(`type mismatch at set_global`);
         }
         this.value.emitJSON(e);
-        e.emitIns([Control.set_global, e.getGlobalIdx(this.name)]);
+        e.emitIns([Control.set_global, e.getGlobalIdx(this.name), this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -295,7 +295,7 @@ export class WDrop extends WStatement {
 
     public emitJSON(e: JSONEmitter): void {
         this.value.emitJSON(e);
-        e.emitIns([Control.drop, 0]);
+        e.emitIns([Control.drop, 0, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -328,7 +328,7 @@ export class WBr extends WStatement {
     }
 
     public emitJSON(e: JSONEmitter): void {
-        e.emitIns([Control.br, this.labelIdx]);
+        e.emitIns([Control.br, this.labelIdx, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -358,7 +358,7 @@ export class WBrIf extends WStatement {
 
     public emitJSON(e: JSONEmitter): void {
         this.expression.emitJSON(e);
-        e.emitIns([Control.br_if, this.labelIdx]);
+        e.emitIns([Control.br_if, this.labelIdx, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -403,13 +403,13 @@ export class WIfElseBlock extends WStatement {
 
     public emitJSON(e: JSONEmitter): void {
         this.condition.emitJSON(e);
-        e.emitIns([Control.if, 0]);
+        e.emitIns([Control.if, 0, this.getStartLine()]);
         this.consequence.map((stmt) => stmt.emitJSON(e));
         if (this.alternative !== null) {
-            e.emitIns([Control.else, 0]);
+            e.emitIns([Control.else, 0, this.getStartLine()]);
             this.alternative.map((stmt) => stmt.emitJSON(e));
         }
-        e.emitIns([Control.end, 0]);
+        e.emitIns([Control.end, 0, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -463,9 +463,9 @@ export class WBlock extends WStatement {
     }
 
     public emitJSON(e: JSONEmitter): void {
-        e.emitIns([Control.block, 0]);
+        e.emitIns([Control.block, 0, this.getStartLine()]);
         this.body.map((stmt) => stmt.emitJSON(e));
-        e.emitIns([Control.end, 0]);
+        e.emitIns([Control.end, 0, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {
@@ -501,9 +501,9 @@ export class WLoop extends WStatement {
     }
 
     public emitJSON(e: JSONEmitter): void {
-        e.emitIns([Control.loop, 0]);
+        e.emitIns([Control.loop, 0, this.getStartLine()]);
         this.body.map((stmt) => stmt.emitJSON(e));
-        e.emitIns([Control.end, 0]);
+        e.emitIns([Control.end, 0, this.getStartLine()]);
     }
 
     public length(e: Emitter): number {

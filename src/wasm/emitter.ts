@@ -263,10 +263,11 @@ export class WASMEmitter implements Emitter {
 
 }
 
-export type WASMInstruction = [number, number | string];
+export type WASMInstruction = [number, number | string, number];
 
 export interface WASMJSONFunction {
     name: string;
+    fileName: string;
     locals: number[];
     codes: WASMInstruction[];
     type: string;
