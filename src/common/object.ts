@@ -5,6 +5,7 @@ import {WASMJSON} from "../wasm/emitter";
 import {WMemoryLocation} from "../wasm/expression";
 import {WStatement} from "../wasm/node";
 import {WFunctionType} from "../wasm/section";
+import {Scope} from "../codegen/scope";
 
 /**
  *  @file
@@ -33,6 +34,7 @@ export interface CompiledObject {
     exports: ExportSymbol[];
     data: ArrayBuffer;
     requiredWASMFuncTypes: Set<string>;
+    scope: Scope;
 
     // debug only
     source?: string;
@@ -50,6 +52,7 @@ export interface BinaryObject {
     entry: string;
     binary: ArrayBuffer;
     heapStart: number;
+    scope: Scope;
 
     // debug only
     sourceMap?: Map<string, SourceMap>;

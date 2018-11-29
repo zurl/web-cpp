@@ -54,6 +54,7 @@ export class WFunction extends WNode {
     public emitJSON(e: JSONEmitter): void {
         const codes = [] as WASMInstruction[];
         e.setBuffer(codes);
+
         e.setCurrentFunc(this);
         this.body.map((stmt) => stmt.emitJSON(e));
         e.setCurrentFunc();
@@ -72,8 +73,18 @@ export class WFunction extends WNode {
                 stack.pop();
             }
         }
-
         codes.push([Control.return, 0, this.getStartLine()]);
+
+        // build inverse idx
+        const inverseIdx = new Set<number>();
+        const lineIdx = new Set<number>();
+        for (let i = 0; i < codes.length; i++) {
+            if (!inverseIdx.has(codes[i][2])) {
+                inverseIdx.add(codes[i][2]);
+                lineIdx.add(i);
+            }
+        }
+
         e.getJSON().functions.push({
             name: this.name,
             fileName: this.fileName,
@@ -81,6 +92,7 @@ export class WFunction extends WNode {
             codes,
             type: this.type.toEncoding(),
             signatureId: this.signatureId,
+            lineIdx,
         });
     }
 

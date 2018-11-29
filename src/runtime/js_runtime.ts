@@ -1,4 +1,5 @@
 import * as Long from "long";
+import {Scope} from "../codegen/scope";
 import {F32Binary, F32Unary, F64Binary, F64Unary, I32Binary, I32Unary, I64Binary, I64Unary, WType} from "../wasm";
 import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "../wasm/calculator";
 import {
@@ -21,6 +22,7 @@ type WASMNumber = number | Long;
 
 export interface StackItem {
     fn: WASMJSONFunction;
+    scope: Scope | null;
     pc: number;
     locals: WASMNumber[];
     stack: WASMNumber[];
@@ -29,6 +31,12 @@ export interface StackItem {
 
 export interface JSRuntimeOptions extends RuntimeOptions {
     program: WASMJSON;
+    scope: Scope;
+}
+
+interface RunFunctionOptions {
+    initHeap: boolean;
+
 }
 
 export class JSRuntime extends Runtime {
@@ -41,11 +49,13 @@ export class JSRuntime extends Runtime {
     public options: JSRuntimeOptions;
     public spIndex: number;
     public returnValue: number;
+    public rootScope: Scope;
 
     constructor(options: JSRuntimeOptions) {
         super(options);
         this.options = options;
         this.program = options.program;
+        this.rootScope = options.scope;
         this.stack = [];
         this.spIndex = -1;
         for (let i = 0; i < this.program.globals.length; i++) {
@@ -77,6 +87,7 @@ export class JSRuntime extends Runtime {
             locals: [],
             stack: [],
             controlFlow: [],
+            scope: this.rootScope,
         }];
         this.stackTop = this.stack[0];
     }
@@ -245,12 +256,16 @@ export class JSRuntime extends Runtime {
             args.reverse(); // inverse call std
             if (funcIdx >= this.program.imports.length) {
                 // internal call
+                const fn = this.program.functions[funcIdx - this.program.imports.length];
+                const scope = fn.name.substring(0, 2) === "::" ?
+                    this.rootScope.getScope(fn.name.split("::").slice(1)) : null;
                 this.stack.push({
-                    fn: this.program.functions[funcIdx - this.program.imports.length],
+                    fn,
                     pc: -1,
                     stack: [],
                     controlFlow: [],
                     locals: args,
+                    scope,
                 });
                 this.stackTop = this.stack[this.stack.length - 1];
                 for (let i = 0; i < this.stackTop.fn.locals.length; i++) {
@@ -296,7 +311,7 @@ export class JSRuntime extends Runtime {
         return true;
     }
 
-    public runFunction(entry: string, initHeap: boolean = false) {
+    public prepareRunFunction(entry: string, initHeap: boolean = false) {
         if (!this.program.exports.hasOwnProperty(entry)) {
             throw new Error(`no entry:${entry} found`);
         }
@@ -310,8 +325,13 @@ export class JSRuntime extends Runtime {
             locals: [],
             stack: [],
             controlFlow: [],
+            scope: this.rootScope,
         }];
         this.stackTop = this.stack[this.stack.length - 1];
+    }
+
+    public runFunction(entry: string, initHeap: boolean = false) {
+        this.prepareRunFunction(entry, initHeap);
         while (this.runStep()) { continue; }
     }
 
@@ -321,6 +341,27 @@ export class JSRuntime extends Runtime {
         this.runFunction("$start", true);
         this.runFunction(this.entry, false);
         this.files.map((file) => file.flush());
+    }
+
+   // public getRuntimeInfo(): RuntimeInfo {
+
+   // }
+
+    public startRunSingleStepMode() {
+        this.heapStart = this.heapPointer = this.options.heapStart;
+        this.runFunction("$start", true);
+        this.prepareRunFunction(this.entry, false);
+    }
+
+    public runSingleStepMode(): boolean {
+        while (this.runStep()) {
+            if (this.stackTop.fn.lineIdx.has(this.stackTop.pc)) {
+                this.files.map((file) => file.flush());
+                return true;
+            }
+        }
+        this.files.map((file) => file.flush());
+        return false;
     }
 
 }

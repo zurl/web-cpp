@@ -113,7 +113,8 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
 
     // 4. merge scope map
 
-    // TODO::
+    // Nope, we use only the main scope
+    const scope = objects[objects.length - 1].scope;
 
     // 5. add import memory
 
@@ -171,6 +172,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         heapStart,
         entry: entry[0],
         sourceMap,
+        scope,
         binary: emitter.buffer.slice(0, emitter.now),
         json: jsonEmitter.getJSON(),
     };

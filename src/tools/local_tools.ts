@@ -15,6 +15,7 @@ import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
 import {NativeRuntime} from "../runtime/native_runtime";
 import {CommandOutputFile, NoInputFile  } from "../runtime/vmfile";
+import {Scope} from "../codegen/scope";
 
 const BINARY_VERSION = 3;
 
@@ -41,6 +42,7 @@ export function loadBinaryFile(fileName: string): BinaryObject {
         heapStart,
         fileName,
         json,
+        scope: new Scope("", null, true),
     };
 }
 

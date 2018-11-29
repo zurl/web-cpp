@@ -65,6 +65,7 @@ async function testJsRun(source, options){
             memorySize: 10 * 65536,
             entry: bin.entry,
             heapStart: bin.heapStart,
+            scope: bin.scope,
             files: [
                 new StringInputFile(options.input),
                 new StringOutputFile(result),

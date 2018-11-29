@@ -152,6 +152,7 @@ export class CompileContext {
             source: this.source,
             sourceMap: this.sourceMap,
             requiredWASMFuncTypes: this.requiredWASMFuncTypes,
+            scope: this.scopeManager.root,
         };
     }
 

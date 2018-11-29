@@ -272,6 +272,7 @@ export interface WASMJSONFunction {
     codes: WASMInstruction[];
     type: string;
     signatureId: number;
+    lineIdx: Set<number>;
 }
 
 export interface WASMJSON {
@@ -314,6 +315,7 @@ export class JSONEmitter extends WASMEmitter {
     public emitIns(ins: WASMInstruction): void {
         this.insBuffer.push(ins);
     }
+
     public setBuffer(insBuffer: WASMInstruction[]) {
         this.insBuffer = insBuffer;
     }

@@ -1,6 +1,6 @@
 import * as Poly from 'babel-polyfill';
 import * as Ace from "./ace/ace";
-import * as AceMonokai from "./ace/theme-monokai"
+import * as AceTomorrow from "./ace/theme-tomorrow"
 import * as AceCCpp from "./ace/mode-c_cpp";
 import {version} from "./version";
 document.getElementById("version-text").innerText = "v" + version;
@@ -40,8 +40,8 @@ function showMessage(type, message){
 
 function showError(error){
     selectDiv("message");
-    messageTA.value += error.toString();
-    messageTA.value += ">> " + error.errorLine;
+    messageTA.value += error.toString() + "\n";
+    messageTA.value += ">> " + error.errorLine + "\n";
     messageTA.scrollTop = 1000000;
 }
 
@@ -74,7 +74,7 @@ async function run() {
         showMessage("compiler", "downloading compiler");
         isFirst = false;
     }
-    const {NativeRuntime, importObj,StringInputFile, compileFile,CompilerError, CallbackOutputFile} = await import("../../src/tools/compiler");
+    const {NativeRuntime, importObj, StringInputFile, compileFile, CompilerError, CallbackOutputFile} = await import("../../src/tools/compiler");
     showMessage("compiler", "cc -o main main.cpp");
     try {
         const obj = compileFile("main.cpp", editor.getValue());
@@ -96,6 +96,7 @@ async function run() {
             ],
         });
         selectDiv("output");
+        // todo::
         await runtime.run();
         showMessage("runtime", "code return with code 0");
         selectDiv("output");
@@ -121,6 +122,7 @@ async function run() {
         reportError(errorjson);
     }
 }
+
 
 function doSave(){
     window.localStorage.setItem("code", editor.getValue());
