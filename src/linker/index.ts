@@ -157,6 +157,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     mod.emit(emitter);
 
     const jsonEmitter = new JSONEmitter();
+    jsonEmitter.sourceMap = sourceMap;
     mod.emitJSON(jsonEmitter);
 
     if (option.debug) {

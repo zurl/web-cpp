@@ -300,6 +300,7 @@ export interface WASMJSON {
 export class JSONEmitter extends WASMEmitter {
     public insBuffer: WASMInstruction[];
     public wasmJSON: WASMJSON;
+    public sourceMapConsumer: SourceMapConsumer | null;
     public constructor() {
         super();
         this.insBuffer = [];
@@ -311,7 +312,17 @@ export class JSONEmitter extends WASMEmitter {
             data: [],
             exports: {},
         };
+        this.sourceMapConsumer = null;
     }
+
+    public setSourceMap(fileName: string) {
+        if (fileName && this.sourceMap && this.sourceMap.get(fileName)) {
+            this.sourceMapConsumer = new SourceMapConsumer(this.sourceMap.get(fileName)!.sourceMap.toString());
+        } else {
+            this.sourceMapConsumer = null;
+        }
+    }
+
     public emitIns(ins: WASMInstruction): void {
         this.insBuffer.push(ins);
     }

@@ -105,3 +105,17 @@
     text-align: left;
     width: 200px;
 }
+
+.current-line{
+    position:absolute;
+    background:rgba(100,200,100,0.5);
+    z-index:20
+}
+
+.mdl-data-table td {
+    text-align: left !important;
+}
+
+.mdl-data-table th {
+    text-align: left !important;
+}

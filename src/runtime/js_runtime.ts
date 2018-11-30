@@ -1,5 +1,6 @@
-import * as Long from "long";
+import Long = require("long");
 import {Scope} from "../codegen/scope";
+import {AddressType, Variable} from "../common/symbol";
 import {F32Binary, F32Unary, F64Binary, F64Unary, I32Binary, I32Unary, I64Binary, I64Unary, WType} from "../wasm";
 import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "../wasm/calculator";
 import {
@@ -11,11 +12,11 @@ import {
     I32,
     I32Convert,
     I64,
-    I64Convert, OpCodes,
+    I64Convert,
     WLoadIns,
     WStoreIns,
 } from "../wasm/constant";
-import {WASMInstruction, WASMJSON, WASMJSONFunction} from "../wasm/emitter";
+import {WASMJSON, WASMJSONFunction} from "../wasm/emitter";
 import {Runtime, RuntimeOptions} from "./runtime";
 
 type WASMNumber = number | Long;
@@ -343,11 +344,22 @@ export class JSRuntime extends Runtime {
         this.files.map((file) => file.flush());
     }
 
+    public getValueOfVariable(v: Variable, s: StackItem) {
+        switch (v.addressType) {
+            case AddressType.CONSTANT:
+
+        }
+    }
+
    // public getRuntimeInfo(): RuntimeInfo {
 
    // }
 
-    public startRunSingleStepMode() {
+    public getCurrentLine(){
+        return this.stackTop.fn.codes[this.stackTop.pc][2];
+    }
+
+    public prepareRunSingleStepMode() {
         this.heapStart = this.heapPointer = this.options.heapStart;
         this.runFunction("$start", true);
         this.prepareRunFunction(this.entry, false);

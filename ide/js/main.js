@@ -12,6 +12,7 @@ const editor = ace.edit("editor", {
     minLines: 30,
     autoScrollEditorIntoView: true
 });
+const Range = ace.require('ace/range').Range;
 
 const var_ins_content = document.getElementById("var-ins-content");
 document.getElementById("var-ins-switcter").addEventListener('change', function(e){
@@ -48,9 +49,6 @@ function showError(error){
 function showOutput(message){
     outputTA.value += message;
 }
-
-let isFirst = true;
-
 function reportError(errorJson){
     fetch('http://er.zhangcy.cn/report', {
         body: JSON.stringify({
@@ -68,13 +66,104 @@ function reportError(errorJson){
     });
 }
 
-async function run() {
-    outputTA.value = "";
-    if(isFirst){
-        showMessage("compiler", "downloading compiler");
-        isFirst = false;
+async function downloadCompiler(){
+    showMessage("compiler", "downloading compiler");
+    return await import("../../src/tools/compiler");
+}
+
+function processError(e, CompilerError){
+    let errorjson = {};
+    if( e instanceof CompilerError ) {
+        errorjson = {
+            type: 'ce',
+            error: e.toString(),
+            errorLine: e.errorLine,
+            source: editor.getValue()
+        };
+        showError(e);
     }
-    const {NativeRuntime, importObj, StringInputFile, compileFile, CompilerError, CallbackOutputFile} = await import("../../src/tools/compiler");
+    else {
+        errorjson = {
+            type: 'oe',
+            error: e.toString(),
+            source: editor.getValue()
+        };
+        showMessage("error", e.toString());
+    }
+    reportError(errorjson);
+}
+let compiler = null;
+let singleRuntime = null;
+let markerId = null;
+let isLock = false;
+async function runSingleStep(){
+    if(isLock) return;
+    isLock = true;
+    if(!compiler){
+        compiler = await downloadCompiler();
+    }
+    const {JSRuntime, importObj, StringInputFile, compileFile,
+        CompilerError, CallbackOutputFile} = compiler;
+    if(!singleRuntime){
+        outputTA.value = "";
+        showMessage("compiler", "cc -o main main.cpp");
+        try {
+            const obj = compileFile("main.cpp", editor.getValue());
+            if (obj == null) {
+                showMessage("runtime", "no compiled object");
+                return;
+            }
+            showMessage("runtime", "run main");
+            singleRuntime = new JSRuntime({
+                importObjects: importObj,
+                program: obj.json,
+                scope: obj.scope,
+                memorySize: 10 * 65536,
+                entry: obj.entry,
+                heapStart: obj.heapStart,
+                files: [
+                    new StringInputFile(inputTA.value),
+                    new CallbackOutputFile(x => showOutput(x)),
+                    new CallbackOutputFile(x => showOutput(x)),
+                ],
+            });
+            showMessage("runtime", "start running");
+            singleRuntime.prepareRunSingleStepMode();
+            const line = singleRuntime.getCurrentLine();
+            markerId = editor.getSession().addMarker(new Range(line, 0, line, 3000), "current-line", "fullLine", true);
+        }catch(e){
+            console.log(CompilerError);
+            processError(e, CompilerError);
+        }
+    } else {
+        const ret = singleRuntime.runSingleStepMode();
+        if (ret) {
+            const line = singleRuntime.getCurrentLine();
+            if(markerId){
+                editor.getSession().removeMarker(markerId);
+            }
+            markerId = editor.getSession().addMarker(new Range(line, 0, line, 3000), "current-line", "fullLine", true);
+        } else {
+            if(markerId){
+                editor.getSession().removeMarker(markerId);
+            }
+            showMessage("runtime", "code return with code 0");
+            selectDiv("output");
+            singleRuntime = null;
+        }
+    }
+    isLock = false;
+}
+
+async function run() {
+    if(isLock) return;
+    isLock = true;
+    if(!compiler){
+        compiler = await downloadCompiler();
+    }
+    const {NativeRuntime, importObj, StringInputFile, compileFile,
+        CompilerError, CallbackOutputFile} = compiler;
+    outputTA.value = "";
     showMessage("compiler", "cc -o main main.cpp");
     try {
         const obj = compileFile("main.cpp", editor.getValue());
@@ -101,26 +190,9 @@ async function run() {
         showMessage("runtime", "code return with code 0");
         selectDiv("output");
     }catch(e){
-        let errorjson = {};
-        if( e instanceof CompilerError ) {
-            errorjson = {
-                type: 'ce',
-                error: e.toString(),
-                errorLine: e.errorLine,
-                source: editor.getValue()
-            };
-            showError(e);
-        }
-        else {
-            errorjson = {
-                type: 'oe',
-                error: e.toString(),
-                source: editor.getValue()
-            };
-            showMessage("error", e.toString());
-        }
-        reportError(errorjson);
+        processError(e, CompilerError);
     }
+    isLock = false;
 }
 
 
@@ -128,7 +200,9 @@ function doSave(){
     window.localStorage.setItem("code", editor.getValue());
 }
 window.run = run;
+window.runSingleStep = runSingleStep;
 window.doSave = doSave;
+window.aceeditor = editor;
 
 setInterval(doSave, 1000 * 15); // save per 15 seconds
 

@@ -8,6 +8,7 @@ import {Buffer} from "buffer";
 import {readFileSync, writeFileSync} from "fs";
 import {codegen} from "../codegen";
 import {CompileContext} from "../codegen/context";
+import {Scope} from "../codegen/scope";
 import {BinaryObject} from "../common/object";
 import {Impls, JsAPIMap} from "../library";
 import {link} from "../linker";
@@ -15,7 +16,6 @@ import {CParser} from "../parser";
 import {preprocess} from "../preprocessor";
 import {NativeRuntime} from "../runtime/native_runtime";
 import {CommandOutputFile, NoInputFile  } from "../runtime/vmfile";
-import {Scope} from "../codegen/scope";
 
 const BINARY_VERSION = 3;
 

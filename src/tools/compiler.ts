@@ -51,4 +51,5 @@ for (const key of Object.keys(JsAPIMap)) {
 
 export {CompilerError} from "../common/error";
 export {NativeRuntime} from "../runtime/native_runtime";
+export {JSRuntime} from "../runtime/js_runtime";
 export {VMFile, StringOutputFile, StringInputFile, CallbackOutputFile, NoInputFile} from "../runtime/vmfile";

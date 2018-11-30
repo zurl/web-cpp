@@ -121,7 +121,7 @@ export class ClassType extends Type {
     }
 
     public toMangledName() {
-        return "$" + this.fullName.replace(/::/g, "!!");
+        return "$" + this.fullName.replace(/::/g, "!!") + "$";
     }
 
     public isDefine(): boolean {

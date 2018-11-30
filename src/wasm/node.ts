@@ -22,8 +22,10 @@ export abstract class WNode {
 
     public abstract dump(e: Emitter): void;
 
-    public getStartLine(): number {
-        if (this.location) { return this.location.start.line; }
+    public getStartLine(e: JSONEmitter): number {
+        if (this.location && e.sourceMapConsumer) {
+            return e.sourceMapConsumer.originalPositionFor(this.location.start).line;
+        }
         return -1;
     }
 
