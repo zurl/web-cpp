@@ -210,7 +210,7 @@ export class WASMEmitter implements Emitter {
         for (let i = 0; i < this.dumpIndent; i++) {
             indent += " ";
         }
-        if (this.sourceMap && loc) {
+        if (this.sourceMap && loc && loc.start.line >= 1) {
             if (!this.lastFile || loc.fileName !== this.lastFile) {
                 this.lastFile = loc.fileName;
                 if ( this.sourceMap.has(this.lastFile)) {

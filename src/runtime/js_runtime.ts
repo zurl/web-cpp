@@ -1,7 +1,7 @@
 import Long = require("long");
 import {FunctionLookUpResult, Scope, ScopeManager} from "../codegen/scope";
 import {AddressType, Variable} from "../common/symbol";
-import {PointerType} from "../type/compound_type";
+import {ArrayType, PointerType, ReferenceType} from "../type/compound_type";
 import {
     CharType, Int16Type, Int32Type, Int64Type,
     UnsignedCharType,
@@ -402,7 +402,7 @@ export class JSRuntime extends Runtime {
     }
 
     public formatVariableOutput(v: Variable, value: number | Long): string {
-        if (v.type instanceof PointerType) {
+        if (v.type instanceof PointerType || v.type instanceof ReferenceType) {
             return "0x" + this.padDigits(value.toString(16), 8);
         } else {
             return value.toString();

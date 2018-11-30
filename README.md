@@ -122,7 +122,7 @@ of WebAssembly.
 ## Version
 
 - [X] 0.4 Classic C with class support
-- [ ] 0.5 With interpreter runtime
+- [X] 0.5 With interpreter runtime
 - [ ] 0.6 (DLC1) With template
 - [ ] 0.7 (DLC2) With std library (some)
 
