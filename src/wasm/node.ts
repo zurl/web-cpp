@@ -23,7 +23,7 @@ export abstract class WNode {
     public abstract dump(e: Emitter): void;
 
     public getStartLine(e: JSONEmitter): number {
-        if (this.location && e.sourceMapConsumer) {
+        if (this.location && e.sourceMapConsumer && this.location.fileName) {
             return e.sourceMapConsumer.originalPositionFor(this.location.start).line;
         }
         return -1;

@@ -130,6 +130,7 @@ export function declareFunction(ctx: CompileContext, functionType: FunctionType,
 export function defineFunction(ctx: CompileContext, functionType: FunctionType,
                                body: Array<Statement | Declaration>, accessControl: AccessControl,
                                node: Node) {
+    const emptyLocation = Node.getEmptyLocation();
     const realName = functionType.name + "@" + functionType.toMangledName();
     const fullName = ctx.scopeManager.getFullName(realName);
     const functionEntity = new FunctionEntity(realName, fullName,
@@ -193,15 +194,15 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
     // bp = $sp
     ctx.submitStatement(
         new WSetLocal(WType.u32, functionEntity.$sp,
-            new WGetGlobal(WType.u32, "$sp", node.location), node.location));
+            new WGetGlobal(WType.u32, "$sp", emptyLocation), emptyLocation));
 
     // $sp = $sp - 0
-    const offsetNode = new WConst(WType.i32, "0", node.location);
+    const offsetNode = new WConst(WType.i32, "0", emptyLocation);
     ctx.submitStatement(
         new WSetGlobal(WType.u32, "$sp",
             new WBinaryOperation(I32Binary.add,
-                new WGetLocal(WType.u32, functionEntity.$sp, node.location),
-                offsetNode, node.location), node.location));
+                new WGetLocal(WType.u32, functionEntity.$sp, emptyLocation),
+                offsetNode, emptyLocation), emptyLocation));
 
     if (functionType.cppFunctionType === CppFunctionType.Constructor) {
         const ctorStmts = getCtorStmts(ctx, functionEntity, node);
@@ -242,7 +243,7 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         }
         if (bodyStatements.length > 0 && bodyStatements[bodyStatements.length - 1] instanceof WIfElseBlock) {
             // should do auto injection A FAKE INTEM;
-            new ReturnStatement(node.location, IntegerConstant.getZero()).codegen(ctx);
+            new ReturnStatement(emptyLocation, IntegerConstant.getZero()).codegen(ctx);
         }
     }
     ctx.exitFunction();

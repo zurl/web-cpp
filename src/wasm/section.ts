@@ -88,7 +88,6 @@ export class WFunction extends WNode {
                 lineIdx.add(i);
             }
         }
-        console.log(this.fileName);
         e.getJSON().functions.push({
             name: this.name,
             fileName: this.fileName,

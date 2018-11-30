@@ -56,7 +56,16 @@ export class SourceLocation {
     }
 }
 
+const EmptyLocation = new SourceLocation("", "",
+    new Position(1, -1, 1),
+    new Position(1, -1, 1),
+);
+
 export abstract class Node {
+
+    public static getEmptyLocation() {
+        return EmptyLocation;
+    }
     public location: SourceLocation;
 
     protected constructor(location: SourceLocation) {
@@ -140,11 +149,6 @@ export class IntegerConstant extends Constant {
     }
 
 }
-
-const EmptyLocation = new SourceLocation("", "",
-    new Position(1, 1, 1),
-    new Position(1, 1, 1),
-    );
 
 const ZeroConstant = IntegerConstant.fromNumber(EmptyLocation, 0);
 

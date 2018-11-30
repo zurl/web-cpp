@@ -39,6 +39,8 @@ function testMatchClassName(fullName: string, classFullName: string, anyName: st
 export function getCtorStmts(ctx: CompileContext,
                              entity: FunctionEntity,
                              node: Node): Statement[] {
+    const emptyLocation = Node.getEmptyLocation();
+
     if (entity.type.cppFunctionType !== CppFunctionType.Constructor
         || entity.type.referenceClass === null) {
         throw new InternalError(`getCtorStmts()`);
@@ -76,11 +78,11 @@ export function getCtorStmts(ctx: CompileContext,
                         throw new SyntaxError(`the base class ${initItem.key.name}` +
                             ` construtor parameters mismatch`, node);
                     }
-                    baseCtorStmts[i] = new ExpressionStatement(node.location,
-                        new CallExpression(node.location,
-                            new Identifier(node.location, fullName),
+                    baseCtorStmts[i] = new ExpressionStatement(emptyLocation,
+                        new CallExpression(emptyLocation,
+                            new Identifier(emptyLocation, fullName),
                             [
-                                new Identifier(node.location, "this"),
+                                new Identifier(emptyLocation, "this"),
                                 ...initItem.value,
                             ]));
                     hasFound = true;
@@ -103,22 +105,22 @@ export function getCtorStmts(ctx: CompileContext,
                 throw new SyntaxError(`the base class ${baseType.name}` +
                     ` contains not constructor`, node);
             }
-            baseCtorStmts[i] = new ExpressionStatement(node.location,
-                new CallExpression(node.location,
-                    new Identifier(node.location, fullName),
+            baseCtorStmts[i] = new ExpressionStatement(emptyLocation,
+                new CallExpression(emptyLocation,
+                    new Identifier(emptyLocation, fullName),
                     [
-                        new Identifier(node.location, "this"),
+                        new Identifier(emptyLocation, "this"),
                     ]));
         }
     }
     const ctorStmts = [ ...baseCtorStmts ] as Statement[];
 
     for (const field of classType.fields) {
-        const left = new MemberExpression(node.location, new Identifier(node.location, "this"),
-            true, new Identifier(node.location, field.name));
+        const left = new MemberExpression(emptyLocation, new Identifier(emptyLocation, "this"),
+            true, new Identifier(emptyLocation, field.name));
         if (initMap.get(field.name) !== undefined) {
-            ctorStmts.push(new ExpressionStatement(node.location,
-                new AssignmentExpression(node.location, "=",
+            ctorStmts.push(new ExpressionStatement(emptyLocation,
+                new AssignmentExpression(emptyLocation, "=",
                     left, initMap.get(field.name)!)));
         } else if (field.initializer !== null) {
             if (field.initializer instanceof ObjectInitializer) {
@@ -126,24 +128,24 @@ export function getCtorStmts(ctx: CompileContext,
                     throw new SyntaxError(`only class type could apply object initializer`, node);
                 }
                 const ctorName = field.type.fullName + "::#" + field.type.name;
-                const callee = new Identifier(node.location, ctorName);
-                const thisPtr = new UnaryExpression(node.location, "&",
+                const callee = new Identifier(emptyLocation, ctorName);
+                const thisPtr = new UnaryExpression(emptyLocation, "&",
                     left);
-                const expr = new CallExpression(node.location, callee, [thisPtr, ...field.initializer.argus]);
-                ctorStmts.push(new ExpressionStatement(node.location, expr));
+                const expr = new CallExpression(emptyLocation, callee, [thisPtr, ...field.initializer.argus]);
+                ctorStmts.push(new ExpressionStatement(emptyLocation, expr));
             } else {
-                ctorStmts.push(new ExpressionStatement(node.location,
-                    new AssignmentExpression(node.location, "=",
+                ctorStmts.push(new ExpressionStatement(emptyLocation,
+                    new AssignmentExpression(emptyLocation, "=",
                         left, field.initializer)));
             }
         } else {
             if (field.type instanceof ClassType) {
                 const name = classType.fullName + "#" + classType.name;
                 if (isFunctionExists(ctx, name, [new PointerType(classType)])) {
-                    ctorStmts.push(new ExpressionStatement(node.location,
-                        new CallExpression(node.location,
-                            new Identifier(node.location, name),
-                            [new UnaryExpression(node.location, "&", left)],
+                    ctorStmts.push(new ExpressionStatement(emptyLocation,
+                        new CallExpression(emptyLocation,
+                            new Identifier(emptyLocation, name),
+                            [new UnaryExpression(emptyLocation, "&", left)],
                         )));
                 }
             }
@@ -151,23 +153,23 @@ export function getCtorStmts(ctx: CompileContext,
     }
 
     if (classType.requireVPtr) {
-        const thisPtrExpr = new Identifier(node.location, "this").codegen(ctx);
+        const thisPtrExpr = new Identifier(emptyLocation, "this").codegen(ctx);
         thisPtrExpr.type = new PointerType(PrimitiveTypes.char);
-        const vPtrExpr = new BinaryExpression(node.location, "+",
-            new AnonymousExpression(node.location, thisPtrExpr),
-            IntegerConstant.fromNumber(node.location, classType.VPtrOffset)).codegen(ctx);
+        const vPtrExpr = new BinaryExpression(emptyLocation, "+",
+            new AnonymousExpression(emptyLocation, thisPtrExpr),
+            IntegerConstant.fromNumber(emptyLocation, classType.VPtrOffset)).codegen(ctx);
         vPtrExpr.type = new PointerType(PrimitiveTypes.int32);
-        const lhs = new UnaryExpression(node.location, "*", new AnonymousExpression(
-            node.location, vPtrExpr,
+        const lhs = new UnaryExpression(emptyLocation, "*", new AnonymousExpression(
+            emptyLocation, vPtrExpr,
         ));
-        const vTableAddr = new WGetAddress(WMemoryLocation.DATA, node.location);
+        const vTableAddr = new WGetAddress(WMemoryLocation.DATA, emptyLocation);
         vTableAddr.offset = classType.vTablePtr;
-        const rhs = new AnonymousExpression(node.location, {
+        const rhs = new AnonymousExpression(emptyLocation, {
             type: PrimitiveTypes.int32,
             expr: vTableAddr,
             isLeft: false,
         });
-        ctorStmts.push(new ExpressionStatement(node.location, new AssignmentExpression(node.location,
+        ctorStmts.push(new ExpressionStatement(emptyLocation, new AssignmentExpression(emptyLocation,
             "=", lhs, rhs,
         )));
     }
@@ -177,6 +179,7 @@ export function getCtorStmts(ctx: CompileContext,
 export function getDtorStmts(ctx: CompileContext,
                              entity: FunctionEntity,
                              node: Node): Statement[] {
+    const emptyLocation = Node.getEmptyLocation();
     if (entity.type.cppFunctionType !== CppFunctionType.Destructor
         || entity.type.referenceClass === null) {
         throw new InternalError(`getDtorStmts()`);
@@ -186,15 +189,15 @@ export function getDtorStmts(ctx: CompileContext,
     const classType = entity.type.referenceClass!;
 
     for (const field of classType.fields) {
-        const left = new MemberExpression(node.location, new Identifier(node.location, "this"),
-            true, new Identifier(node.location, field.name));
+        const left = new MemberExpression(emptyLocation, new Identifier(emptyLocation, "this"),
+            true, new Identifier(emptyLocation, field.name));
         if (field.type instanceof ClassType) {
             const name = classType.fullName + "~" + classType.name;
             if (isFunctionExists(ctx, name, [], classType)) {
-                dtorStmts.push(new ExpressionStatement(node.location,
-                    new CallExpression(node.location,
-                        new Identifier(node.location, name),
-                        [new UnaryExpression(node.location, "&", left)],
+                dtorStmts.push(new ExpressionStatement(emptyLocation,
+                    new CallExpression(emptyLocation,
+                        new Identifier(emptyLocation, name),
+                        [new UnaryExpression(emptyLocation, "&", left)],
                     )));
             }
         }
@@ -204,11 +207,11 @@ export function getDtorStmts(ctx: CompileContext,
         const fullName = item.classType.fullName + "::~" + item.classType.name;
         const nret = ctx.scopeManager.lookupFullName(fullName);
         if (nret !== null) {
-            dtorStmts.push(new ExpressionStatement(node.location,
-                new CallExpression(node.location,
-                    new MemberExpression(node.location,
-                        new Identifier(node.location, "this"),
-                        true, new Identifier(node.location, "~" + item.classType.name)),
+            dtorStmts.push(new ExpressionStatement(emptyLocation,
+                new CallExpression(emptyLocation,
+                    new MemberExpression(emptyLocation,
+                        new Identifier(emptyLocation, "this"),
+                        true, new Identifier(emptyLocation, "~" + item.classType.name)),
                     [])));
         }
     }
@@ -217,6 +220,7 @@ export function getDtorStmts(ctx: CompileContext,
 }
 
 export function triggerDestructor(ctx: CompileContext, obj: Variable, node: Node) {
+    const emptyLocation = Node.getEmptyLocation();
     const classType = obj.type;
     if (!(classType instanceof ClassType)) {
         throw new InternalError(`triggerDestructor()`);
@@ -227,9 +231,9 @@ export function triggerDestructor(ctx: CompileContext, obj: Variable, node: Node
         return;
     }
     recycleExpressionResult(ctx, node,
-        new CallExpression(node.location,
-            new MemberExpression(node.location, new Identifier(node.location, obj.name),
-                false, new Identifier(node.location, "~" + classType.name)), [],
+        new CallExpression(emptyLocation,
+            new MemberExpression(emptyLocation, new Identifier(emptyLocation, obj.name),
+                false, new Identifier(emptyLocation, "~" + classType.name)), [],
         ).codegen(ctx));
 
 }

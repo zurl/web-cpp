@@ -432,7 +432,6 @@ export class JSRuntime extends Runtime {
         } else if (v.type instanceof PointerType) {
             return this.formatVariableOutput(v, this.memory.getUint32(addr, true));
         } else {
-            console.log(v.type);
             return "N/A";
         }
     }
@@ -456,7 +455,6 @@ export class JSRuntime extends Runtime {
                 return this.getValueOfVariableFromAddress(v,
                     this.stackTop.fn.bssStart + (v.location as number));
             default:
-                console.log(v.addressType);
                 return "N/A";
         }
     }
