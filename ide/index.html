@@ -20,12 +20,22 @@ locked at the top -->
             <!-- Add spacer, to align navigation to the right -->
             <div class="mdl-layout-spacer"></div>
             <!-- Navigation -->
-            <nav class="mdl-navigation">
-                <button onclick="run()">run</button>
-                <button onclick="runSingleStep()">runSingle</button>
-                <a class="mdl-navigation__link" href="">Link</a>
-                <a class="mdl-navigation__link" href="">Link</a>
-                <a class="mdl-navigation__link" href="">Link</a>
+            <nav class="mdl-navigation" style="margin-right: 40px;">
+                <div class="nav-button">
+                    <button onclick="run()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">play_arrow</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="runSingleStep()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">bug_report</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="doSave()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">save</i>
+                    </button>
+                </div>
             </nav>
         </div>
     </header>

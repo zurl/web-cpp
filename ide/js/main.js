@@ -129,7 +129,7 @@ async function runSingleStep(){
                     new CallbackOutputFile(x => showOutput(x)),
                 ],
             });
-            showMessage("runtime", "start running");
+            showMessage("runtime", "start debugging");
             singleRuntime.prepareRunSingleStepMode();
             const line = singleRuntime.getCurrentLine();
             editor.scrollToLine(line);

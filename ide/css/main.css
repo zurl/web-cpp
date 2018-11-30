@@ -119,3 +119,7 @@
 .mdl-data-table th {
     text-align: left !important;
 }
+
+.nav-button{
+    margin: 10px 10px;
+}
