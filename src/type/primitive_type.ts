@@ -9,9 +9,6 @@ import {Type} from "./index";
  */
 
 export abstract class PrimitiveType extends Type {
-    public toString() {
-        return this.constructor.name.replace("Type", "");
-    }
 }
 
 export class VoidType extends PrimitiveType {
@@ -26,6 +23,10 @@ export class VoidType extends PrimitiveType {
     public toMangledName(): string {
         return "v";
     }
+
+    public toString() {
+        return "void";
+    }
 }
 
 export class NullptrType extends PrimitiveType {
@@ -38,6 +39,10 @@ export class NullptrType extends PrimitiveType {
     }
 
     public toMangledName(): string {
+        return "nullptr";
+    }
+
+    public toString() {
         return "nullptr";
     }
 }
@@ -75,6 +80,10 @@ export class BoolType extends UnsignedIntegerType {
     public toMangledName(): string {
         return "b";
     }
+
+    public toString() {
+        return "bool";
+    }
 }
 
 // HACK: Char = Signed Char
@@ -90,6 +99,10 @@ export class CharType extends SignedIntegerType {
     public toMangledName(): string {
         return "c";
     }
+
+    public toString() {
+        return "char";
+    }
 }
 
 export class Int16Type extends SignedIntegerType {
@@ -103,6 +116,10 @@ export class Int16Type extends SignedIntegerType {
 
     public toMangledName(): string {
         return "s";
+    }
+
+    public toString() {
+        return "short";
     }
 }
 
@@ -118,6 +135,10 @@ export class Int32Type extends SignedIntegerType {
     public toMangledName(): string {
         return "i";
     }
+
+    public toString() {
+        return "int";
+    }
 }
 
 export class Int64Type extends SignedIntegerType {
@@ -131,6 +152,10 @@ export class Int64Type extends SignedIntegerType {
 
     public toMangledName(): string {
         return "l";
+    }
+
+    public toString() {
+        return "long long";
     }
 }
 
@@ -146,6 +171,10 @@ export class UnsignedCharType extends UnsignedIntegerType {
     public toMangledName(): string {
         return "uc";
     }
+
+    public toString() {
+        return "unsigned char";
+    }
 }
 
 export class UnsignedInt16Type extends UnsignedIntegerType {
@@ -159,6 +188,10 @@ export class UnsignedInt16Type extends UnsignedIntegerType {
 
     public toMangledName(): string {
         return "us";
+    }
+
+    public toString() {
+        return "unsigned short";
     }
 }
 
@@ -174,6 +207,10 @@ export class UnsignedInt32Type extends UnsignedIntegerType {
     public toMangledName(): string {
         return "ui";
     }
+
+    public toString() {
+        return "unsigned int";
+    }
 }
 
 export class UnsignedInt64Type extends UnsignedIntegerType {
@@ -187,6 +224,10 @@ export class UnsignedInt64Type extends UnsignedIntegerType {
 
     public toMangledName(): string {
         return "ul";
+    }
+
+    public toString() {
+        return "unsigned long long";
     }
 }
 
@@ -202,6 +243,10 @@ export class FloatType extends FloatingType {
     public toMangledName(): string {
         return "f";
     }
+
+    public toString() {
+        return "float";
+    }
 }
 
 export class DoubleType extends FloatingType {
@@ -215,6 +260,10 @@ export class DoubleType extends FloatingType {
 
     public toMangledName(): string {
         return "d";
+    }
+
+    public toString() {
+        return "double";
     }
 }
 

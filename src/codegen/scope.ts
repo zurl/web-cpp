@@ -109,16 +109,28 @@ export class Scope {
             }
             return realScope.lookup(token[token.length - 1]);
         }
-        const array = this.map.get(token[0]);
-        if (!array) {
+        if (token[0].includes("@")) {
+            const array = this.map.get(token[0].split("@")[0]);
+            if (!array) {
+                return null;
+            }
+            for (const item of array) {
+                if (item instanceof FunctionEntity && item.name === token[0]) {
+                    return new FunctionLookUpResult([item]);
+                }
+            }
             return null;
-        }
-        if (array[0] instanceof FunctionEntity) {
-            return new FunctionLookUpResult(array as FunctionEntity[]);
         } else {
-            return array[0] as Type | Variable;
+            const array = this.map.get(token[0]);
+            if (!array) {
+                return null;
+            }
+            if (array[0] instanceof FunctionEntity) {
+                return new FunctionLookUpResult(array as FunctionEntity[]);
+            } else {
+                return array[0] as Type | Variable;
+            }
         }
-
     }
 }
 

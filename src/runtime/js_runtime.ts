@@ -1,6 +1,14 @@
 import Long = require("long");
-import {Scope} from "../codegen/scope";
+import {FunctionLookUpResult, Scope, ScopeManager} from "../codegen/scope";
 import {AddressType, Variable} from "../common/symbol";
+import {PointerType} from "../type/compound_type";
+import {
+    CharType, Int16Type, Int32Type, Int64Type,
+    UnsignedCharType,
+    UnsignedInt16Type,
+    UnsignedInt32Type,
+    UnsignedInt64Type,
+} from "../type/primitive_type";
 import {F32Binary, F32Unary, F64Binary, F64Unary, I32Binary, I32Unary, I64Binary, I64Unary, WType} from "../wasm";
 import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "../wasm/calculator";
 import {
@@ -25,6 +33,7 @@ export interface StackItem {
     fn: WASMJSONFunction;
     scope: Scope | null;
     pc: number;
+    sp: number;
     locals: WASMNumber[];
     stack: WASMNumber[];
     controlFlow: number[];
@@ -33,11 +42,13 @@ export interface StackItem {
 export interface JSRuntimeOptions extends RuntimeOptions {
     program: WASMJSON;
     scope: Scope;
+    entryFileName: string;
 }
 
-interface RunFunctionOptions {
-    initHeap: boolean;
-
+export interface JSRuntimeItemInfo {
+    name: string;
+    type: string;
+    value: string;
 }
 
 export class JSRuntime extends Runtime {
@@ -51,12 +62,16 @@ export class JSRuntime extends Runtime {
     public spIndex: number;
     public returnValue: number;
     public rootScope: Scope;
+    public scopeManager: ScopeManager;
 
     constructor(options: JSRuntimeOptions) {
         super(options);
         this.options = options;
         this.program = options.program;
         this.rootScope = options.scope;
+        this.scopeManager = new ScopeManager(true);
+        this.scopeManager.root = this.rootScope;
+
         this.stack = [];
         this.spIndex = -1;
         for (let i = 0; i < this.program.globals.length; i++) {
@@ -76,6 +91,9 @@ export class JSRuntime extends Runtime {
                 return parseFloat(x.init);
             }
         });
+        for (const fn of this.program.functions) {
+            fn.displayName = this.getDisplayName(fn.name);
+        }
         this.returnValue = 0;
         this.convertArray = new ArrayBuffer(64);
         this.convertDataView = new DataView(this.convertArray);
@@ -85,12 +103,22 @@ export class JSRuntime extends Runtime {
         this.stack = [{
             fn: this.program.functions[0],
             pc: 0,
+            sp: this.sp,
             locals: [],
             stack: [],
             controlFlow: [],
             scope: this.rootScope,
         }];
         this.stackTop = this.stack[0];
+    }
+
+    public getDisplayName(fullName: string): string {
+        const ret = this.scopeManager.lookupFullName(fullName);
+        if (ret && ret instanceof FunctionLookUpResult) {
+            const fn = ret.functions[0];
+            return fn.type.toString();
+        }
+        return fullName;
     }
 
     public get sp(): number {
@@ -263,6 +291,7 @@ export class JSRuntime extends Runtime {
                 this.stack.push({
                     fn,
                     pc: -1,
+                    sp: this.sp,
                     stack: [],
                     controlFlow: [],
                     locals: args,
@@ -320,9 +349,11 @@ export class JSRuntime extends Runtime {
         if (initHeap) {
             this.heapAllocator.init(this);
         }
+        const fn = this.program.functions[this.program.exports[entry] - this.program.imports.length];
         this.stack = [{
-            fn: this.program.functions[this.program.exports[entry] - this.program.imports.length],
+            fn,
             pc: 0,
+            sp: this.sp,
             locals: [],
             stack: [],
             controlFlow: [],
@@ -344,18 +375,7 @@ export class JSRuntime extends Runtime {
         this.files.map((file) => file.flush());
     }
 
-    public getValueOfVariable(v: Variable, s: StackItem) {
-        switch (v.addressType) {
-            case AddressType.CONSTANT:
-
-        }
-    }
-
-   // public getRuntimeInfo(): RuntimeInfo {
-
-   // }
-
-    public getCurrentLine(){
+    public getCurrentLine() {
         return this.stackTop.fn.codes[this.stackTop.pc][2];
     }
 
@@ -367,13 +387,95 @@ export class JSRuntime extends Runtime {
 
     public runSingleStepMode(): boolean {
         while (this.runStep()) {
-            if (this.stackTop.fn.lineIdx.has(this.stackTop.pc)) {
+            if (this.stackTop.fn.fileName === this.options.entryFileName
+                && this.stackTop.fn.lineIdx.has(this.stackTop.pc)) {
                 this.files.map((file) => file.flush());
                 return true;
             }
         }
         this.files.map((file) => file.flush());
         return false;
+    }
+
+    public padDigits(str: string, digits: number) {
+        return Array(Math.max(digits - str.length + 1, 0)).join("0") + str;
+    }
+
+    public formatVariableOutput(v: Variable, value: number | Long): string {
+        if (v.type instanceof PointerType) {
+            return "0x" + this.padDigits(value.toString(16), 8);
+        } else {
+            return value.toString();
+        }
+    }
+
+    public getValueOfVariableFromAddress(v: Variable, addr: number): string {
+        if (v.type instanceof UnsignedCharType) {
+            return this.formatVariableOutput(v, this.memory.getUint8(addr));
+        } else if (v.type instanceof UnsignedInt16Type) {
+            return  this.formatVariableOutput(v, this.memory.getUint16(addr, true));
+        } else if (v.type instanceof UnsignedInt32Type) {
+            return  this.formatVariableOutput(v, this.memory.getUint32(addr, true));
+        } else if (v.type instanceof UnsignedInt64Type) {
+            return  this.formatVariableOutput(v, Long.fromBits(this.memory.getUint32(addr, true),
+                this.memory.getUint32(addr + 4, true),
+                true));
+        } else if (v.type instanceof CharType) {
+            return  this.formatVariableOutput(v, this.memory.getInt8(addr));
+        } else if (v.type instanceof Int16Type) {
+            return  this.formatVariableOutput(v, this.memory.getInt16(addr, true));
+        } else if (v.type instanceof Int32Type) {
+            return  this.formatVariableOutput(v, this.memory.getInt32(addr, true));
+        } else if (v.type instanceof Int64Type) {
+            return  this.formatVariableOutput(v, Long.fromBits(this.memory.getUint32(addr, true),
+                this.memory.getUint32(addr + 4, true)));
+        } else if (v.type instanceof PointerType) {
+            return this.formatVariableOutput(v, this.memory.getUint32(addr, true));
+        } else {
+            console.log(v.type);
+            return "N/A";
+        }
+    }
+
+    public getValueOfVariable(v: Variable): string {
+        switch (v.addressType) {
+            case AddressType.LOCAL:
+                return this.formatVariableOutput(v, this.stackTop.locals[v.location as number]);
+            case AddressType.GLOBAL:
+                return  this.formatVariableOutput(v, this.globals[v.location as number]);
+            case AddressType.GLOBAL_SP:
+                return this.getValueOfVariableFromAddress(v,
+                    this.sp + (v.location as number));
+            case AddressType.STACK:
+                return this.getValueOfVariableFromAddress(v,
+                    this.stackTop.sp + (v.location as number));
+            case AddressType.MEMORY_DATA:
+                return this.getValueOfVariableFromAddress(v,
+                    this.stackTop.fn.dataStart + (v.location as number));
+            case AddressType.MEMORY_BSS:
+                return this.getValueOfVariableFromAddress(v,
+                    this.stackTop.fn.bssStart + (v.location as number));
+            default:
+                console.log(v.addressType);
+                return "N/A";
+        }
+    }
+
+    public getScopeInfo(scope: Scope): JSRuntimeItemInfo[] {
+        const result: JSRuntimeItemInfo[] = [];
+        if (!scope) { return []; }
+        for (const item of scope.map) {
+            for (const subItem of item[1]) {
+                if (subItem instanceof Variable) {
+                    result.push({
+                        name: subItem.name,
+                        type: subItem.type.toString(),
+                        value: this.getValueOfVariable(subItem),
+                    });
+                }
+            }
+        }
+        return result;
     }
 
 }

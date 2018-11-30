@@ -61,6 +61,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     for (const object of objects) {
         for (const func of object.functions) {
             func.dataStart = dataNow;
+            func.fileName = object.fileName;
             if (/^::main@.*/.test(func.name)) {
                 entry.push(func.name);
             }

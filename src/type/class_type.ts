@@ -117,7 +117,7 @@ export class ClassType extends Type {
     }
 
     public toString() {
-        return `[Class ${this.name}]`;
+        return this.name;
     }
 
     public toMangledName() {

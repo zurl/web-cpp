@@ -3,6 +3,7 @@ import * as Ace from "./ace/ace";
 import * as AceTomorrow from "./ace/theme-tomorrow"
 import * as AceCCpp from "./ace/mode-c_cpp";
 import {version} from "./version";
+import {updateInspector} from "./inspector";
 document.getElementById("version-text").innerText = "v" + version;
 
 const editor = ace.edit("editor", {
@@ -119,6 +120,7 @@ async function runSingleStep(){
                 program: obj.json,
                 scope: obj.scope,
                 memorySize: 10 * 65536,
+                entryFileName: "main.cpp",
                 entry: obj.entry,
                 heapStart: obj.heapStart,
                 files: [
@@ -130,7 +132,9 @@ async function runSingleStep(){
             showMessage("runtime", "start running");
             singleRuntime.prepareRunSingleStepMode();
             const line = singleRuntime.getCurrentLine();
+            editor.scrollToLine(line);
             markerId = editor.getSession().addMarker(new Range(line, 0, line, 3000), "current-line", "fullLine", true);
+            updateInspector(singleRuntime);
         }catch(e){
             console.log(CompilerError);
             processError(e, CompilerError);
@@ -142,13 +146,16 @@ async function runSingleStep(){
             if(markerId){
                 editor.getSession().removeMarker(markerId);
             }
+            editor.scrollToLine(line);
             markerId = editor.getSession().addMarker(new Range(line, 0, line, 3000), "current-line", "fullLine", true);
+            updateInspector(singleRuntime);
         } else {
             if(markerId){
                 editor.getSession().removeMarker(markerId);
             }
             showMessage("runtime", "code return with code 0");
             selectDiv("output");
+            updateInspector(null);
             singleRuntime = null;
         }
     }

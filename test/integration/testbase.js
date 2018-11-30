@@ -63,6 +63,7 @@ async function testJsRun(source, options){
             importObjects: importObj,
             program: bin.json,
             memorySize: 10 * 65536,
+            entryFileName: 'main.cpp',
             entry: bin.entry,
             heapStart: bin.heapStart,
             scope: bin.scope,

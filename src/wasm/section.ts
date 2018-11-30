@@ -88,15 +88,18 @@ export class WFunction extends WNode {
                 lineIdx.add(i);
             }
         }
-
+        console.log(this.fileName);
         e.getJSON().functions.push({
             name: this.name,
             fileName: this.fileName,
+            displayName: this.name,
             locals: this.local.map((x) => getNativeType(x)),
             codes,
             type: this.type.toEncoding(),
             signatureId: this.signatureId,
             lineIdx,
+            dataStart: this.dataStart,
+            bssStart: this.bssStart,
         });
     }
 

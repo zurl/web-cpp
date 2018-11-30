@@ -63,7 +63,16 @@ export class FunctionType extends Type {
     }
 
     public toString() {
-        return "[Function]";
+        let name = this.name;
+        if (this.cppFunctionType === CppFunctionType.Constructor) {
+            name = this.referenceClass!.name + "::" + this.referenceClass!.name;
+        } else if (this.cppFunctionType === CppFunctionType.Destructor) {
+            name = "~" + this.referenceClass!.name + "::" + this.referenceClass!.name;
+        } else if (this.cppFunctionType === CppFunctionType.MemberFunction) {
+            name = this.referenceClass!.name + "::" + name;
+        }
+        return this.returnType.toString() + " " + name + "(" +
+            this.parameterTypes.map((x) => x.toString()).join(", ") + ")";
     }
 
     public toWType(): WType {

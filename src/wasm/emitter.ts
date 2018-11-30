@@ -268,11 +268,14 @@ export type WASMInstruction = [number, number | string, number];
 export interface WASMJSONFunction {
     name: string;
     fileName: string;
+    displayName: string;
     locals: number[];
     codes: WASMInstruction[];
     type: string;
     signatureId: number;
     lineIdx: Set<number>;
+    dataStart: number;
+    bssStart: number;
 }
 
 export interface WASMJSON {
