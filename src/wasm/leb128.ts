@@ -104,7 +104,6 @@ export function getLeb128UintLength(number: number): number {
     let result = 0;
     const num = new Bn(number);
     while (true) {
-        const i = num.maskn(7).toNumber();
         num.ishrn(7);
         if (num.isZero()) {
             result++;

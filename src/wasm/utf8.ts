@@ -3,8 +3,6 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-
-import { TextDecoder, TextEncoder} from "text-encoding";
 import {getLeb128UintLength, readLeb128Uint, writeLeb128Uint} from "./leb128";
 
 export interface ByteStream {
