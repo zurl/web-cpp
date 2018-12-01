@@ -10,12 +10,12 @@ export function updateInspector(runtime){
     for(let i = stack.length - 1; i >= 0; i--){
         const item = stack[i];
         result += `<tr><td colspan="3">==>${item.fn.displayName} #${i}</td></tr>`;
-        for(const subitem of runtime.getScopeInfo(item.scope)){
+        for(const subitem of runtime.getScopeInfo(item.scope, item)){
             result += `<tr><td>${subitem.name}</td><td>${subitem.type}</td><td>${subitem.value}</td></tr>`;
         }
     }
     result += `<tr><td colspan="3">==>global</td></tr>`;
-    for(const subitem of runtime.getScopeInfo(runtime.rootScope)){
+    for(const subitem of runtime.getScopeInfo(runtime.rootScope, null)){
         result += `<tr><td>${subitem.name}</td><td>${subitem.type}</td><td>${subitem.value}</td></tr>`;
     }
     tbody.innerHTML = result;

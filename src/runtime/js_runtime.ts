@@ -436,18 +436,20 @@ export class JSRuntime extends Runtime {
         }
     }
 
-    public getValueOfVariable(v: Variable): string {
+    public getValueOfVariable(v: Variable, stack: StackItem | null): string {
         switch (v.addressType) {
             case AddressType.LOCAL:
-                return this.formatVariableOutput(v, this.stackTop.locals[v.location as number]);
+                if (!stack) { return "N/A"; }
+                return this.formatVariableOutput(v, stack.locals[v.location as number]);
             case AddressType.GLOBAL:
                 return  this.formatVariableOutput(v, this.globals[v.location as number]);
             case AddressType.GLOBAL_SP:
                 return this.getValueOfVariableFromAddress(v,
                     this.sp + (v.location as number));
             case AddressType.STACK:
+                if (!stack) { return "N/A"; }
                 return this.getValueOfVariableFromAddress(v,
-                    this.stackTop.sp + (v.location as number));
+                    stack.sp + (v.location as number));
             case AddressType.MEMORY_DATA:
                 return this.getValueOfVariableFromAddress(v,
                     this.stackTop.fn.dataStart + (v.location as number));
@@ -459,7 +461,7 @@ export class JSRuntime extends Runtime {
         }
     }
 
-    public getScopeInfo(scope: Scope): JSRuntimeItemInfo[] {
+    public getScopeInfo(scope: Scope, stack: StackItem | null): JSRuntimeItemInfo[] {
         const result: JSRuntimeItemInfo[] = [];
         if (!scope) { return []; }
         for (const item of scope.map) {
@@ -468,7 +470,7 @@ export class JSRuntime extends Runtime {
                     result.push({
                         name: subItem.name,
                         type: subItem.type.toString(),
-                        value: this.getValueOfVariable(subItem),
+                        value: this.getValueOfVariable(subItem, stack),
                     });
                 }
             }

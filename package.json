@@ -1,6 +1,6 @@
 {
   "name": "web-cpp",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "description": "a c++ compiler in typescript",
   "main": "index.js",
   "scripts": {
