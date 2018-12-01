@@ -25,7 +25,7 @@
     "@types/long": "^4.0.0",
     "@types/node": "^10.5.1",
     "@types/pegjs": "^0.10.1",
-    "@types/source-map": "^0.5.0",
+    "@types/source-map": "0.5.0",
     "@types/webassembly-js-api": "^0.0.2",
     "babel-core": "^6.26.3",
     "chai": "^4.1.2",
