@@ -119,14 +119,6 @@ UnaryOperator
     = [*+\\-~!]
     / SingleAnd
 
-
-TypeQualifier
-    = ('const'
-    / 'restrict'
-    / 'volatile') !IdentifierPart {
-        return text();
-    }
-
 CCharSequence
     = chars:CChar+ {
         return chars.join('');

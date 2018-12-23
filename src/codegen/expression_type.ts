@@ -12,7 +12,7 @@ import {
     ParenthesisExpression,
     PostfixExpression,
     StringLiteral,
-    SubscriptExpression, TypedefName,
+    SubscriptExpression,
     TypeName,
     UnaryExpression,
 } from "../common/ast";
@@ -283,16 +283,7 @@ ConditionalExpression.prototype.deduceType = function(ctx: CompileContext): Type
 };
 
 ConstructorCallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
-    if ( this.name instanceof TypedefName ) {
-        const name = this.name.name;
-        const item = ctx.scopeManager.lookupAnyName(name);
-        if (!(item instanceof ClassType)) {
-            throw new SyntaxError(`constructor call must be class type`, this);
-        }
-        return item;
-    } else {
-        return getPrimitiveTypeFromSpecifiers([this.name])!;
-    }
+    return this.name.codegen(ctx) as Type;
 };
 
 NewExpression.prototype.deduceType = function(ctx: CompileContext): Type {

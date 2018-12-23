@@ -98,16 +98,13 @@ JumpStatement
 
 
 UsingStatements
-    = 'using' _ name:Identifier _ '=' _ decl:TypeName _ ';'{
-        currScope.typedefNames.set(name.name, true);
+    = 'using' _ name:Id _ '=' _ decl:TypeName _ ';'{
+        currScope.names.set(name.name, TYPE_NAME);
         return new AST.UsingStatement(getLocation(), name, decl);
     }
-    / 'using' _ name:TypedefName _ ';'{
-        return new AST.UsingItemStatement(getLocation(), name.name);
-    }
-    / 'using' _ name:Identifier _ ';'{
+    / 'using' _ name:(Identifier/TypeIdentifier/TemplateIdentifier) _ ';'{
         return new AST.UsingItemStatement(getLocation(), name);
     }
-    / 'using' _ 'namespace' _ name:TypedefName _ ';'{
+    / 'using' _ 'namespace' _ name:TypeIdentifier _ ';'{
         return new AST.UsingNamespaceStatement(getLocation(), name);
     }

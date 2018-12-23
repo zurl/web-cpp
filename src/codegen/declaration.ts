@@ -21,8 +21,7 @@ import {
     Pointer,
     PointerDeclarator,
     SpecifierType, SubscriptExpression,
-    TranslationUnit,
-    TypedefName, UnaryExpression,
+    TranslationUnit, TypeIdentifier, UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
@@ -40,6 +39,24 @@ import {declareFunction} from "./function";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
 
+// use in parser
+
+function getDeclaratorIdentifierName(declarator: Declarator | null): string {
+    if ( !declarator ) {
+        return "";
+    }
+    return declarator instanceof IdentifierDeclarator ? declarator.identifier.name
+        : getDeclaratorIdentifierName(declarator.declarator);
+}
+
+Declaration.prototype.getTypedefName = function(): string[] {
+    if (this.specifiers.includes("typedef")) {
+        return this.initDeclarators.map((decl) => getDeclaratorIdentifierName(decl));
+    } else {
+        return [];
+    }
+};
+
 export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: SpecifierType[], nodeForError: Node): Type {
     let resultType: Type | null = null;
     const typeNodes = specifiers.filter((x) => typeof(x) !== "string");
@@ -51,7 +68,7 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
         const node = typeNodes[0];
         if ( node instanceof ClassSpecifier) {
             resultType = node.codegen(ctx) as Type;
-        } else if ( node instanceof TypedefName) {
+        } else if ( node instanceof TypeIdentifier) {
             resultType = node.codegen(ctx) as Type;
         } else if ( node instanceof EnumSpecifier) {
             resultType = node.codegen(ctx) as Type;
@@ -336,7 +353,7 @@ export function parseAbstractDeclarator(ctx: CompileContext, node: AbstractDecla
     }
 }
 
-TypedefName.prototype.codegen = function(ctx: CompileContext) {
+TypeIdentifier.prototype.codegen = function(ctx: CompileContext) {
     const item = this.name.slice(0, 2) === "::" ?
         ctx.scopeManager.lookupFullName(this.name) :
         ctx.scopeManager.lookupShortName(this.name);

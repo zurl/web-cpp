@@ -7,11 +7,9 @@ import {InternalError} from "./error";
 
 export type SpecifierType =
     string
-    | AtomicTypeSpecifier
+    | TypeIdentifier
     | ClassSpecifier
-    | EnumSpecifier
-    | TypedefName
-    | AlignmentSpecifier;
+    | EnumSpecifier;
 
 export type ExternalDeclartions
     = FunctionDefinition | Declaration | UsingStatement | UsingNamespaceStatement | NameSpaceBlock;
@@ -97,6 +95,35 @@ export class Expression extends Node {
 }
 
 export class Identifier extends Expression {
+    public name: string;
+
+    constructor(location: SourceLocation, name: string) {
+        super(location);
+        this.name = name;
+    }
+}
+
+export class TypeID extends Node {
+    public specs: SpecifierType[];
+    public decl: AbstractDeclarator | null ;
+
+    constructor(location: SourceLocation, specs: SpecifierType[], decl: AbstractDeclarator | null) {
+        super(location);
+        this.specs = specs;
+        this.decl = decl;
+    }
+}
+
+export class TypeIdentifier extends Node {
+    public name: string;
+
+    constructor(location: SourceLocation, name: string) {
+        super(location);
+        this.name = name;
+    }
+}
+
+export class TemplateIdentifier extends Node {
     public name: string;
 
     constructor(location: SourceLocation, name: string) {
@@ -223,10 +250,10 @@ export class CallExpression extends Expression {
 }
 
 export class ConstructorCallExpression extends Expression {
-    public name: TypedefName | string;
+    public name: TypeIdentifier;
     public arguments: Expression[];
 
-    constructor(location: SourceLocation, name: TypedefName | string, myArguments: Expression[]) {
+    constructor(location: SourceLocation, name: TypeIdentifier, myArguments: Expression[]) {
         super(location);
         this.name = name;
         this.arguments = myArguments;
@@ -336,14 +363,9 @@ export class Declaration extends Node {
         this.specifiers = specifiers;
         this.initDeclarators = initDeclarators;
     }
-}
 
-export class AtomicTypeSpecifier extends Node {
-    public typeName: TypeName;
-
-    constructor(location: SourceLocation, typeName: TypeName) {
-        super(location);
-        this.typeName = typeName;
+    public getTypedefName(): string[] {
+        return [];
     }
 }
 
@@ -351,9 +373,9 @@ type ClassDirectives = Declaration | FunctionDefinition | ConstructorOrDestructo
 
 export class BaseSpecifier extends Node {
     public accessControl: string;
-    public className: TypedefName;
+    public className: TypeIdentifier;
 
-    constructor(location: SourceLocation, accessControl: string, className: TypedefName) {
+    constructor(location: SourceLocation, accessControl: string, className: TypeIdentifier) {
         super(location);
         this.accessControl = accessControl;
         this.className = className;
@@ -397,24 +419,6 @@ export class Enumerator extends Node {
         super(location);
         this.identifier = identifier;
         this.value = value;
-    }
-}
-
-export class TypedefName extends Node {
-    public name: string;
-
-    constructor(location: SourceLocation, name: string) {
-        super(location);
-        this.name = name;
-    }
-}
-
-export class AlignmentSpecifier extends Node {
-    public alignment: TypeName | Expression;
-
-    constructor(location: SourceLocation, alignment: TypeName | Expression) {
-        super(location);
-        this.alignment = alignment;
     }
 }
 
@@ -791,17 +795,14 @@ export class TranslationUnit extends Node {
 }
 
 export class FunctionDefinition extends Node {
-    public specifiers: Array<string | AtomicTypeSpecifier | ClassSpecifier | EnumSpecifier
-        | TypedefName | AlignmentSpecifier>;
+    public specifiers: SpecifierType[];
     public declarator: Declarator;
     public declarations: Declaration[] | null;
     public body: CompoundStatement;
     public parameterNames: string[];
     public name: string;
 
-    constructor(location: SourceLocation, specifiers: Array<string |
-                    AtomicTypeSpecifier | ClassSpecifier | EnumSpecifier |
-                    TypedefName | AlignmentSpecifier>,
+    constructor(location: SourceLocation, specifiers: SpecifierType[],
                 declarator: Declarator,
                 declarations: Declaration[] | null, body: CompoundStatement) {
         super(location);
@@ -816,13 +817,13 @@ export class FunctionDefinition extends Node {
 
 export class ConstructorOrDestructorDeclaration extends Node {
     public isCtor: boolean;
-    public name: TypedefName;
+    public name: TypeIdentifier;
     public param: ParameterList | null;
     public initList: ConstructorInitializeItem[] | null;
     public body: CompoundStatement | null;
     public isVirtual: boolean;
 
-    constructor(location: SourceLocation, isCtor: boolean, name: TypedefName, param: ParameterList | null,
+    constructor(location: SourceLocation, isCtor: boolean, name: TypeIdentifier, param: ParameterList | null,
                 initList: ConstructorInitializeItem[] | null, body: CompoundStatement | null,
                 isVirtual: boolean) {
         super(location);
@@ -836,13 +837,15 @@ export class ConstructorOrDestructorDeclaration extends Node {
 }
 
 export class ConstructorInitializeItem extends Node {
-    public key: Identifier | TypedefName;
+    public key: Identifier;
     public value: Expression[];
+    public isType: boolean;
 
-    constructor(location: SourceLocation, key: Identifier | TypedefName, value: Expression[]) {
+    constructor(location: SourceLocation, key: Identifier, value: Expression[], isType: boolean) {
         super(location);
         this.key = key;
         this.value = value;
+        this.isType = isType;
     }
 }
 
@@ -884,9 +887,9 @@ export class UsingStatement extends Node {
 }
 
 export class UsingNamespaceStatement extends Node {
-    public namespace: TypedefName;
+    public namespace: Identifier;
 
-    constructor(location: SourceLocation, namespace: TypedefName) {
+    constructor(location: SourceLocation, namespace: Identifier) {
         super(location);
         this.namespace = namespace;
     }

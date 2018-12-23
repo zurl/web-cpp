@@ -1,24 +1,18 @@
 ClassSpecifier
-    = classKey:ClassKey _ identifier:TypedIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
+    = classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
         return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
     }
-    / classKey:ClassKey _ identifier:TypedIdentifier {
+    / classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier {
         return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
     }
 
-TypedIdentifier
-    = identifier:Identifier{
-        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
-        return identifier;
-    }
-
-ClassKey
+ClassKeyword
     = ('struct' / 'class' / 'union') !IdentifierPart {
         return text();
     }
 
 BaseSpecifier
-    = lb:AccessControlKey? _ className:TypedefName{
+    = lb:AccessControlKey? _ className:TypeIdentifier{
         return new AST.BaseSpecifier(getLocation(), lb || "", className);
     }
 
@@ -35,22 +29,22 @@ StructDeclarationList
 AccessControlKey = 'public' / 'private' / 'protect'
 
 StructDeclaration
-    = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
+    = id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
     }
-    / id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
+    / id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
     }
-    / isVirtual:'virtual'? _ '~' id:TypedefName _ '(' _ ')' _ body:CompoundStatement{
+    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ body:CompoundStatement{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
     }
-    / isVirtual:'virtual'? _ '~' id:TypedefName _ '(' _ ')' _ ';'{
+    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ ';'{
         return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
     }
     / label:AccessControlKey _ ':' {
         return new AST.AccessControlLabel(getLocation(), label);
     }
-    / decl:ExternalDeclaration {
+    / decl:Declaration {
         return decl;
     }
 
@@ -61,17 +55,18 @@ ConstructorInitializeList
 
 ConstructorInitializeItem
     = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
-        return new AST.ConstructorInitializeItem(getLocation(), key, value);
+        return new AST.ConstructorInitializeItem(getLocation(), key, value, false);
     }
-    / key:TypedefName _ '(' _ value:ArgumentExpressionList _ ')' {
-        return new AST.ConstructorInitializeItem(getLocation(), key, value);
+    / key:TypeIdentifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value, true);
     }
 
 SpecifierQualifierList
     = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
-        hasTypeSpecifier = false;
         return buildList(head, tail, 1);
     }
+
+
 
 // ADDED
 // REORDER: TypeQualifier / TypeSpecifier

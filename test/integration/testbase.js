@@ -28,6 +28,7 @@ function compile(name, source, options = {}) {
             e.location.start.line = newStart.line;
             e.location.start.column = newStart.column;
         }
+        console.log(e);
         throw e;
     }
 }

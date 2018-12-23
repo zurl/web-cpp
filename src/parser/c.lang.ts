@@ -1,11 +1,6 @@
 /* tslint:disable */
 // generate from resource/grammar        
 export default `{
-    function getDeclaratorIdentifierName(declarator) {
-        return declarator instanceof AST.IdentifierDeclarator ? declarator.identifier.name
-            : getDeclaratorIdentifierName(declarator.declarator);
-    }
-
     function newPosition(position) {
         // For compatibility with source map.
         return new AST.Position(position.offset, position.line, position.column - 1);
@@ -48,33 +43,142 @@ export default `{
         return String.fromCharCode(charCode);
     }
 
-    let hasTypeSpecifier = false;
-
-    let scopeRoot = { parent: null, typedefNames: new Map() };
+    let scopeRoot = { parent: null, names: new Map() };
     let currScope = scopeRoot;
 
     function enterScope() {
-        currScope = { parent: currScope, typedefNames: new Map() };
+        currScope = { parent: currScope, names: new Map() };
     }
 
     function exitScope() {
         currScope = currScope.parent;
     }
 
-    function isTypedefName(name) {
+    let ID_NAME = 0;
+    let TYPE_NAME = 1;
+    let TEMPLATE_NAME = 2;
+
+    function getTypeOfName(name, type) {
         let c = currScope;
         while(c != null) {
-            if (c.typedefNames.has(name)) {
-                //console.log(name, 'is typedef name');
-                return c.typedefNames.get(name);
+            if (c.names.has(name)) {
+                return c.names.get(name);
             }
             c = c.parent;
         }
-        //console.log(name, 'is not typedef name');
-        return false;
+        return ID_NAME;
     }
 }
 Start = TranslationUnit
+ClassSpecifier
+    = classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
+        return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
+    }
+    / classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier {
+        return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
+    }
+
+ClassKeyword
+    = ('struct' / 'class' / 'union') !IdentifierPart {
+        return text();
+    }
+
+BaseSpecifier
+    = lb:AccessControlKey? _ className:TypeIdentifier{
+        return new AST.BaseSpecifier(getLocation(), lb || "", className);
+    }
+
+BaseClause
+    = ':' _ head:BaseSpecifier tail:(_ ',' _ BaseSpecifier)* {
+        return buildList(head, tail, 1);
+    }
+
+StructDeclarationList
+    = head:StructDeclaration tail:(_ StructDeclaration)* {
+        return buildList(head, tail, 1);
+    }
+
+AccessControlKey = 'public' / 'private' / 'protect'
+
+StructDeclaration
+    = id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
+    }
+    / id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
+    }
+    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
+    }
+    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
+    }
+    / label:AccessControlKey _ ':' {
+        return new AST.AccessControlLabel(getLocation(), label);
+    }
+    / decl:Declaration {
+        return decl;
+    }
+
+ConstructorInitializeList
+    = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
+         return buildList(head, tail, 3);
+    }
+
+ConstructorInitializeItem
+    = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value, false);
+    }
+    / key:TypeIdentifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value, true);
+    }
+
+SpecifierQualifierList
+    = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
+        return buildList(head, tail, 1);
+    }
+
+
+
+// ADDED
+// REORDER: TypeQualifier / TypeSpecifier
+SpecifierQualifier
+    = TypeQualifier
+    / TypeSpecifier
+
+StructDeclaratorList
+    = head:StructDeclarator tail:(_ ',' _ StructDeclarator)* {
+        return buildList(head, tail, 3);
+    }
+
+StructDeclarator
+    = ':' _ width:ConstantExpression {
+        return new AST.StructDeclarator(getLocation(), null, width, null);
+    }
+    / declarator:Declarator _ initDeclarators:InitDeclaratorList? width:(_ ':' _ ConstantExpression)? {
+        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3), initDeclarators);
+    }
+
+EnumSpecifier
+    = 'enum' !IdentifierPart _ identifier:Identifier? _ '{' _ enumerators:EnumeratorList _ ','? _ &!'}' {
+        return new AST.EnumSpecifier(getLocation(), identifier, enumerators);
+    }
+    / 'enum' !IdentifierPart _ identifier:Identifier {
+        return new AST.EnumSpecifier(getLocation(), identifier, null);
+    }
+
+EnumeratorList
+    = head:Enumerator tail:(_ comma:','? _ enumerator:Enumerator)* {
+        return buildList(head, tail, 3);
+    }
+
+// MODIFICATION: EnumerationConstant => Identifier
+Enumerator
+    = identifier:Identifier value:(_ '=' _ ConstantExpression)? {
+        return new AST.Enumerator(getLocation(), identifier, extractOptional(value, 3));
+    }
+
+
 Constant
     = FloatingConstant
     / IntegerConstant
@@ -196,14 +300,6 @@ UnaryOperator
     = [*+\\-~!]
     / SingleAnd
 
-
-TypeQualifier
-    = ('const'
-    / 'restrict'
-    / 'volatile') !IdentifierPart {
-        return text();
-    }
-
 CCharSequence
     = chars:CChar+ {
         return chars.join('');
@@ -282,392 +378,6 @@ Sign
 DigitSequence
     = Digit+
 
-ClassSpecifier
-    = classKey:ClassKey _ identifier:TypedIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
-        return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
-    }
-    / classKey:ClassKey _ identifier:TypedIdentifier {
-        return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
-    }
-
-TypedIdentifier
-    = identifier:Identifier{
-        if( options.isCpp ) { currScope.typedefNames.set(identifier.name, true); }
-        return identifier;
-    }
-
-ClassKey
-    = ('struct' / 'class' / 'union') !IdentifierPart {
-        return text();
-    }
-
-BaseSpecifier
-    = lb:AccessControlKey? _ className:TypedefName{
-        return new AST.BaseSpecifier(getLocation(), lb || "", className);
-    }
-
-BaseClause
-    = ':' _ head:BaseSpecifier tail:(_ ',' _ BaseSpecifier)* {
-        return buildList(head, tail, 1);
-    }
-
-StructDeclarationList
-    = head:StructDeclaration tail:(_ StructDeclaration)* {
-        return buildList(head, tail, 1);
-    }
-
-AccessControlKey = 'public' / 'private' / 'protect'
-
-StructDeclaration
-    = id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
-    }
-    / id:TypedefName _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
-    }
-    / isVirtual:'virtual'? _ '~' id:TypedefName _ '(' _ ')' _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
-    }
-    / isVirtual:'virtual'? _ '~' id:TypedefName _ '(' _ ')' _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
-    }
-    / label:AccessControlKey _ ':' {
-        return new AST.AccessControlLabel(getLocation(), label);
-    }
-    / decl:ExternalDeclaration {
-        return decl;
-    }
-
-ConstructorInitializeList
-    = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
-         return buildList(head, tail, 3);
-    }
-
-ConstructorInitializeItem
-    = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
-        return new AST.ConstructorInitializeItem(getLocation(), key, value);
-    }
-    / key:TypedefName _ '(' _ value:ArgumentExpressionList _ ')' {
-        return new AST.ConstructorInitializeItem(getLocation(), key, value);
-    }
-
-SpecifierQualifierList
-    = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
-        hasTypeSpecifier = false;
-        return buildList(head, tail, 1);
-    }
-
-// ADDED
-// REORDER: TypeQualifier / TypeSpecifier
-SpecifierQualifier
-    = TypeQualifier
-    / TypeSpecifier
-
-StructDeclaratorList
-    = head:StructDeclarator tail:(_ ',' _ StructDeclarator)* {
-        return buildList(head, tail, 3);
-    }
-
-StructDeclarator
-    = ':' _ width:ConstantExpression {
-        return new AST.StructDeclarator(getLocation(), null, width, null);
-    }
-    / declarator:Declarator _ initDeclarators:InitDeclaratorList? width:(_ ':' _ ConstantExpression)? {
-        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3), initDeclarators);
-    }
-
-EnumSpecifier
-    = 'enum' !IdentifierPart _ identifier:Identifier? _ '{' _ enumerators:EnumeratorList _ ','? _ &!'}' {
-        return new AST.EnumSpecifier(getLocation(), identifier, enumerators);
-    }
-    / 'enum' !IdentifierPart _ identifier:Identifier {
-        return new AST.EnumSpecifier(getLocation(), identifier, null);
-    }
-
-EnumeratorList
-    = head:Enumerator tail:(_ comma:','? _ enumerator:Enumerator)* {
-        return buildList(head, tail, 3);
-    }
-
-// MODIFICATION: EnumerationConstant => Identifier
-Enumerator
-    = identifier:Identifier value:(_ '=' _ ConstantExpression)? {
-        return new AST.Enumerator(getLocation(), identifier, extractOptional(value, 3));
-    }
-
-
-Declaration 'declaration'
-    = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList? _ ';' {
-        let declaration = new AST.Declaration(getLocation(), specifiers, initDeclarators || []);
-        try {
-            if(declaration.specifiers.includes('typedef')){
-                for (const initDeclarator of declaration.initDeclarators) {
-                    const name = getDeclaratorIdentifierName(initDeclarator.declarator);
-                    currScope.typedefNames.set(name, isTypedefName);
-                }
-            }
-        } catch (e) { /*hide error until at syntax-check */ }
-        return declaration;
-    }
-
-DeclarationSpecifiers
-    = head:DeclarationSpecifier tail:(_ DeclarationSpecifier)* {
-        hasTypeSpecifier = false;
-        return buildList(head, tail, 1);
-    }
-
-DeclarationSpecifier
-    = StorageClassSpecifier
-    / TypeQualifier
-    / FunctionSpecifier
-    / TypeSpecifier
-
-
-Declarator
-    = pointer:(Pointer _)? declarator:DirectDeclarator {
-        return pointer ? new AST.PointerDeclarator(getLocation(), declarator, extractOptional(pointer, 0)) : declarator;
-    }
-
-DirectDeclarator
-    = head:(identifier:Identifier {
-        return new AST.IdentifierDeclarator(getLocation(), identifier);
-    } / '(' _ declarator:Declarator _ ')' {
-        return declarator;
-    } ) tail:(_ (
-        '[' _ length:AssignmentExpression? _ &!']' {
-            return {
-                location: getLocation(),
-                type: AST.ArrayDeclarator,
-                arguments: [false, [], length, false]
-            };
-        }
-        / '(' _ parameters: ParameterList? _ ')' {
-            return {
-                location: getLocation(),
-                type: AST.FunctionDeclarator,
-                arguments: [parameters || new AST.ParameterList(getLocation())]
-            }
-        }
-    ))* {
-        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
-    }
-
-Pointer
-    = '*' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
-        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '*');
-    }
-    /
-    '&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
-        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&');
-    }
-    /
-    '&&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
-        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&&');
-    }
-
-DeclarationWithoutSemicolon
-    = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList?
-
-DeclarationMissingSemicolon 'declaration'
-    = decl:DeclarationWithoutSemicolon {
-        error('Missing \\';\\' at end of declaration');
-    }
-
-
-FunctionSpecifier = ('inline' / '__libcall')
-
-// ADDED
-// REORDER: * / TypeSpecifier
-InitDeclaratorList
-    = head:InitDeclarator tail:(_ ',' _ InitDeclarator)* {
-        return buildList(head, tail, 3);
-    }
-
-InitDeclarator
-    = declarator:Declarator initializer:CppInitializer? {
-        return new AST.InitDeclarator(getLocation(), declarator, initializer || null);
-    }
-    
-CppInitializer
-    = _'=' _ init:Initializer{
-        return init;
-    }
-    / _ '(' _ arguments_:ArgumentExpressionList? _ ')' {
-        return new AST.ObjectInitializer(getLocation(),  arguments_ || []);  
-    }
-
-TypeSpecifier
-    = typeSpecifier:(
-    PrimitiveTypeSpecifier
-    / ClassSpecifier
-    / EnumSpecifier
-    / (!{
-        return hasTypeSpecifier;
-    } typedefName:TypedefName {
-        return typedefName;
-    })) {
-        hasTypeSpecifier = true;
-        return typeSpecifier;
-    }
-
-TypeQualifierList
-    = head:TypeQualifier tail:(_ TypeQualifier)* {
-        return buildList(head, tail, 1);
-    }
-
-// MERGED: ParameterTypeList => ParameterList
-ParameterList
-    = head:ParameterDeclaration tail:(_ ',' _ ParameterDeclaration)* ellipsis:(_ ',' _ '...')? {
-        return new AST.ParameterList(getLocation(), buildList(head, tail, 3), !!ellipsis);
-    }
-
-ParameterDeclaration
-    = specifiers:DeclarationSpecifiers _ declarator:(Declarator / AbstractDeclarator)? {
-        return new AST.ParameterDeclaration(getLocation(), specifiers, declarator);
-    }
-
-IdentifierList
-    = head:Identifier tail:(_ ',' _ Identifier)* {
-        return buildList(head, tail, 3);
-    }
-
-
-Initializer
-    = AssignmentExpression
-    / '{' _ initializerList:InitializerList _ ','? _ &!'}' {
-        return initializerList;
-    }
-
-InitializerList
-    = head:InitializerListItem tail:(_ ',' _ InitializerListItem)* {
-        return new AST.InitializerList(getLocation(), buildList(head, tail, 3));
-    }
-
-// ADDED
-InitializerListItem
-    = designators:(Designation _)? initializer:Initializer {
-        return new AST.InitializerListItem(getLocation(), extractOptional(designators, 0) || [], initializer);
-    }
-
-Designation
-    = designators:DesignatorList _ '=' {
-        return designators;
-    }
-
-DesignatorList
-    = head:Designator tail:(_ Designator)* {
-        return buildList(head, tail, 1);
-    }
-
-Designator
-    = '[' _ subscript:ConstantExpression _ &!']' {
-        return new AST.SubscriptDesignator(getLocation(), subscript);
-    }
-    / '.' _ member:Identifier {
-        return new AST.MemberDesignator(getLocation(), member);
-    }
-
-
-// A.2.3 Statements
-
-// A.2.4 External definitions
-
-TranslationUnit 
-    = list:ExternalDeclarationList{
-        return new AST.TranslationUnit(getLocation(), list);
-    }
-ExternalDeclarationList
-    = _ head:ExternalDeclaration tail:(_ ExternalDeclaration)* _ {
-        return buildList(head, tail, 1);
-    }
-
-// REORDER: Declaration / FunctionDefinition (Don't know if necessary)
-ExternalDeclaration
-    = Declaration
-    / FunctionDefinition
-    / DeclarationMissingSemicolon
-    / UsingStatements
-    / 'namespace' _ name:Identifier _ '{' _ list:ExternalDeclarationList? _'}'{
-        currScope.typedefNames.set(name.name, true); 
-        return new AST.NameSpaceBlock(getLocation(), name, list || []);
-    }
-
-FunctionDefinition 'function definition'
-    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:DeclarationList? _ body:CompoundStatement {
-        return new AST.FunctionDefinition(getLocation(), specifiers, declarator, declarations, body);
-    }
-
-DeclarationList
-    = head:Declaration tail:(_ Declaration)* {
-        return buildList(head, tail, 1);
-    }
-
-
-NewTypeName
-    =  specifierQualifiers:SpecifierQualifierList _ declarator:NewDeclarator? {
-        return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
-    }
-
-TypeName
-    = specifierQualifiers:SpecifierQualifierList _ declarator:AbstractDeclarator? {
-        return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
-    }
-
-NewDeclarator
-    = pointer:Pointer declarator:(_ DirectNewDeclarator)? {
-        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
-    }
-    / declarator:DirectNewDeclarator {
-        return declarator;
-    }
-
-AbstractDeclarator
-    = pointer:Pointer declarator:(_ DirectAbstractDeclarator)? {
-        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
-    }
-    / declarator:DirectAbstractDeclarator {
-        return declarator;
-    }
-
-DirectNewDeclarator
-    = head:(element:DirectNewDeclaratorElement {
-            return new element.type(getLocation(), null, ...element.arguments)
-        }
-    ) tail:(_ DirectNewDeclaratorElement)* {
-        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
-    }
-
-DirectAbstractDeclarator
-    = head:(
-        '(' _ declarator:AbstractDeclarator _ ')' {
-            return declarator;
-        }
-        / element:DirectAbstractDeclaratorElement {
-            return new element.type(getLocation(), null, ...element.arguments)
-        }
-    ) tail:(_ DirectAbstractDeclaratorElement)* {
-        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
-    }
-
-DirectNewDeclaratorElement
-    = '[' _ length:AssignmentExpression? _ &!']' {
-        return {
-            location: getLocation(),
-            type: AST.AbstractArrayDeclarator,
-            arguments: [false, [], length, false]
-        };
-    }
-
-// ADDED
-DirectAbstractDeclaratorElement
-    = '(' _ parameters:ParameterList? _ ')' {
-        return {
-            location: getLocation(),
-            type: AST.AbstractFunctionDeclarator,
-            arguments: [parameters || new AST.ParameterList(getLocation())]
-        }
-    }
-    / DirectNewDeclaratorElement
 TryBlock
     = 'try' _ body:CompoundStatement _ handlers:HandlerSeq {
         return new AST.TryBlock(getLocation(), body, handlers);
@@ -714,7 +424,7 @@ ConditionalExpression
 
 
 ConstructorCallExpression
-    = name:(TypedefName / PrimitiveTypeSpecifier)  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+    = name:TypeIdentifier  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
         return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || []);
     }
 
@@ -864,6 +574,275 @@ DeleteExpression
     / 'delete[]' _ expr:AssignmentExpression {
         return new AST.DeleteExpression(getLocation(), expr, true);
     }
+TranslationUnit
+    = list:DeclarationList{
+        return new AST.TranslationUnit(getLocation(), list);
+    }
+
+DeclarationList
+    = _ head:Declaration tail:(_ Declaration)* _ {
+        return buildList(head, tail, 1);
+    }
+
+Declaration
+    = BlockDeclaration
+    / FunctionDefinition
+    / NamespaceDefinition
+    / DeclarationMissingSemicolon
+
+BlockDeclaration
+    = SimpleDeclaration
+    / UsingStatements
+
+BlockDeclarationList
+    = head:BlockDeclaration tail:(_ BlockDeclaration)*{
+        return buildList(head, tail, 1);
+    }
+
+NamespaceDefinition
+    = 'namespace' _ name:Identifier _ '{' _ list:DeclarationList? _'}'{
+        currScope.names.set(name.name, TYPE_NAME);
+        return new AST.NameSpaceBlock(getLocation(), name, list || []);
+    }
+
+SimpleDeclaration
+    = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList? _ ';' {
+        const declaration = new AST.Declaration(getLocation(), specifiers, initDeclarators || []);
+        declaration.getTypedefName().map(name => currScope.names.set(name, TYPE_NAME));
+        return declaration;
+    }
+
+DeclarationSpecifiers
+    = head:DeclarationSpecifier tail:(_ DeclarationSpecifier)* {
+        return buildList(head, tail, 1);
+    }
+
+DeclarationSpecifier
+    = StorageClassSpecifier
+    / FunctionSpecifier
+    / TypeSpecifier
+
+TypeSpecifierList
+    = head:TypeSpecifier tail:( _ TypeSpecifier)* {
+        return buildList(head, tail, 3);
+    }
+
+TypeSpecifier
+    = ClassSpecifier
+    / EnumSpecifier
+    / SimpleTypeSpecifier
+    / TypenameSpecifier
+    / TypeQualifier
+
+SimpleTypeSpecifier
+    = PrimitiveTypeSpecifier
+    / TypeIdentifier
+
+TypenameSpecifier
+    = 'typename' id:TypeIdentifier{
+        return id;
+    }
+
+TypeQualifier
+    = ('const' / 'volatile') !IdentifierPart {
+        return text();
+    }
+
+TypeQualifierList
+    = head:TypeQualifier tail:(_ TypeQualifier)* {
+        return buildList(head, tail, 1);
+    }
+
+Declarator
+    = pointer:(Pointer _)? declarator:DirectDeclarator {
+        return pointer ? new AST.PointerDeclarator(getLocation(), declarator, extractOptional(pointer, 0)) : declarator;
+    }
+
+DirectDeclarator
+    = head:(identifier:Identifier {
+        return new AST.IdentifierDeclarator(getLocation(), identifier);
+    } / '(' _ declarator:Declarator _ ')' {
+        return declarator;
+    } ) tail:(_ (
+        '[' _ length:AssignmentExpression? _ &!']' {
+            return {
+                location: getLocation(),
+                type: AST.ArrayDeclarator,
+                arguments: [false, [], length, false]
+            };
+        }
+        / '(' _ parameters: ParameterList? _ ')' {
+            return {
+                location: getLocation(),
+                type: AST.FunctionDeclarator,
+                arguments: [parameters || new AST.ParameterList(getLocation())]
+            }
+        }
+    ))* {
+        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
+    }
+
+Pointer
+    = '*' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '*');
+    }
+    /
+    '&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&');
+    }
+    /
+    '&&' _ qualifiers:TypeQualifierList? _ pointer:Pointer? {
+        return new AST.Pointer(getLocation(), qualifiers || [], pointer, '&&');
+    }
+
+DeclarationWithoutSemicolon
+    = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList?
+
+DeclarationMissingSemicolon
+    = decl:DeclarationWithoutSemicolon {
+        error('Missing \\';\\' at end of declaration');
+    }
+
+FunctionSpecifier = ('inline' / '__libcall')
+
+InitDeclaratorList
+    = head:InitDeclarator tail:(_ ',' _ InitDeclarator)* {
+        return buildList(head, tail, 3);
+    }
+
+InitDeclarator
+    = declarator:Declarator initializer:CppInitializer? {
+        return new AST.InitDeclarator(getLocation(), declarator, initializer || null);
+    }
+    
+CppInitializer
+    = _'=' _ init:Initializer{
+        return init;
+    }
+    / _ '(' _ arguments_:ArgumentExpressionList? _ ')' {
+        return new AST.ObjectInitializer(getLocation(),  arguments_ || []);  
+    }
+
+
+ParameterList
+    = head:ParameterDeclaration tail:(_ ',' _ ParameterDeclaration)* ellipsis:(_ ',' _ '...')? {
+        return new AST.ParameterList(getLocation(), buildList(head, tail, 3), !!ellipsis);
+    }
+
+ParameterDeclaration
+    = specifiers:DeclarationSpecifiers _ declarator:(Declarator / AbstractDeclarator)? {
+        return new AST.ParameterDeclaration(getLocation(), specifiers, declarator);
+    }
+
+IdentifierList
+    = head:Identifier tail:(_ ',' _ Identifier)* {
+        return buildList(head, tail, 3);
+    }
+
+
+Initializer
+    = AssignmentExpression
+    / '{' _ initializerList:InitializerList _ ','? _ &!'}' {
+        return initializerList;
+    }
+
+InitializerList
+    = head:InitializerListItem tail:(_ ',' _ InitializerListItem)* {
+        return new AST.InitializerList(getLocation(), buildList(head, tail, 3));
+    }
+
+InitializerListItem
+    = designators:(Designation _)? initializer:Initializer {
+        return new AST.InitializerListItem(getLocation(), extractOptional(designators, 0) || [], initializer);
+    }
+
+Designation
+    = designators:DesignatorList _ '=' {
+        return designators;
+    }
+
+DesignatorList
+    = head:Designator tail:(_ Designator)* {
+        return buildList(head, tail, 1);
+    }
+
+Designator
+    = '[' _ subscript:ConstantExpression _ &!']' {
+        return new AST.SubscriptDesignator(getLocation(), subscript);
+    }
+    / '.' _ member:Identifier {
+        return new AST.MemberDesignator(getLocation(), member);
+    }
+
+FunctionDefinition
+    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:BlockDeclarationList? _ body:CompoundStatement {
+        return new AST.FunctionDefinition(getLocation(), specifiers, declarator, declarations, body);
+    }
+
+NewTypeName
+    =  specifierQualifiers:SpecifierQualifierList _ declarator:NewDeclarator? {
+        return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
+    }
+
+TypeName
+    = specifierQualifiers:SpecifierQualifierList _ declarator:AbstractDeclarator? {
+        return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
+    }
+
+NewDeclarator
+    = pointer:Pointer declarator:(_ DirectNewDeclarator)? {
+        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
+    }
+    / declarator:DirectNewDeclarator {
+        return declarator;
+    }
+
+AbstractDeclarator
+    = pointer:Pointer declarator:(_ DirectAbstractDeclarator)? {
+        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
+    }
+    / declarator:DirectAbstractDeclarator {
+        return declarator;
+    }
+
+DirectNewDeclarator
+    = head:(element:DirectNewDeclaratorElement {
+            return new element.type(getLocation(), null, ...element.arguments)
+        }
+    ) tail:(_ DirectNewDeclaratorElement)* {
+        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
+    }
+
+DirectAbstractDeclarator
+    = head:(
+        '(' _ declarator:AbstractDeclarator _ ')' {
+            return declarator;
+        }
+        / element:DirectAbstractDeclaratorElement {
+            return new element.type(getLocation(), null, ...element.arguments)
+        }
+    ) tail:(_ DirectAbstractDeclaratorElement)* {
+        return extractList(tail, 1).reduce((result, element) => new element.type(element.location, result, ...element.arguments), head);
+    }
+
+DirectNewDeclaratorElement
+    = '[' _ length:AssignmentExpression? _ &!']' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractArrayDeclarator,
+            arguments: [false, [], length, false]
+        };
+    }
+
+DirectAbstractDeclaratorElement
+    = '(' _ parameters:ParameterList? _ ')' {
+        return {
+            location: getLocation(),
+            type: AST.AbstractFunctionDeclarator,
+            arguments: [parameters || new AST.ParameterList(getLocation())]
+        }
+    }
+    / DirectNewDeclaratorElement
 Id
     = !Keyword head:IdentifierNondigit tail:IdentifierPart* {
         return new AST.Identifier(getLocation(), head + tail.join(''));
@@ -871,7 +850,21 @@ Id
 
 SingleIdentifier
     = id:Id &{
-        return !isTypedefName(id.name)
+        return getTypeOfName(id.name) === ID_NAME;
+    } {
+        return id;
+    }
+
+SingleTypeIdentifier
+    =  id:Id &{ //precondition
+        return getTypeOfName(id.name) === TYPE_NAME;
+    } {
+        return id;
+    }
+
+SingleTemplateIdentifier
+    =  id:Id &{ //precondition
+        return getTypeOfName(id.name) === TEMPLATE_NAME;
     } {
         return id;
     }
@@ -885,18 +878,36 @@ Identifier
         name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
         return name;
     }
-    / '~' name:TypedefName {
+    / '~' name:TypeIdentifier {
         name.identifier.name = '~' + name.identifier.name;
         return name.identifier;
     }
 
-TypedefName
-    =  identifier:Id &{ //precondition
-        return isTypedefName(identifier.name);
-    } {
-        return new AST.TypedefName(getLocation(), identifier.name);
+TypeIdentifier
+    = isFullName:'::'? namespace:(Id '::')* name:SingleTypeIdentifier {
+        const prefix = isFullName === "::" ? "::" : "";
+        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return new AST.TypeIdentifier(getLocation(), id);
     }
 
+TemplateIdentifier
+    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateIdentifier {
+        const prefix = isFullName === "::" ? "::" : "";
+        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return new AST.TemplateIdentifier(getLocation(), id);
+    }
+
+TypeDeclarationIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.names.set(identifier.name, TYPE_NAME); }
+        return identifier;
+    }
+
+TemplateDeclarationIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.names.set(identifier.name, TEMPLATE_NAME); }
+        return identifier;
+    }
 
 WhiteSpace = [ \\t\\n\\v\\f]
 
@@ -967,7 +978,9 @@ PrimitiveTypeSpecifier
     / 'double'
     / 'signed'
     / 'unsigned'
-    / 'bool') !IdentifierPart { return text(); }
+    / 'bool') !IdentifierPart {
+        return text();
+     }
 
 OverloadOperator
     = '+' / '-' / '*' / '/' / '%' / '&' / '<' / '>' / '<=' / '>=' / '==' / '!='
@@ -1137,16 +1150,38 @@ JumpStatement
 
 
 UsingStatements
-    = 'using' _ name:Identifier _ '=' _ decl:TypeName _ ';'{
-        currScope.typedefNames.set(name.name, true);
+    = 'using' _ name:Id _ '=' _ decl:TypeName _ ';'{
+        currScope.names.set(name.name, TYPE_NAME);
         return new AST.UsingStatement(getLocation(), name, decl);
     }
-    / 'using' _ name:TypedefName _ ';'{
-        return new AST.UsingItemStatement(getLocation(), name.name);
-    }
-    / 'using' _ name:Identifier _ ';'{
+    / 'using' _ name:(Identifier/TypeIdentifier/TemplateIdentifier) _ ';'{
         return new AST.UsingItemStatement(getLocation(), name);
     }
-    / 'using' _ 'namespace' _ name:TypedefName _ ';'{
+    / 'using' _ 'namespace' _ name:TypeIdentifier _ ';'{
         return new AST.UsingNamespaceStatement(getLocation(), name);
-    }`        
+    }
+// define
+
+TemplateDeclaration
+    = 'template' _ '<' _ param:TemplateParameterList _ '>' decl:Declaration {
+        return new AST.TemplateDeclaration(getLocation(), param, decl);
+    }
+
+TemplateParameterList
+    = head:TemplateParameter tail:(_ ',' _ TemplateParameter)* {
+        return new AST.TemplateParameterList(getLocation(), buildList(head, tail, 3));
+    }
+
+TemplateParameter
+    = TypeParameter
+    / ParameterDeclaration;
+
+TypeNameKeyword = 'class' / 'typename'
+
+// TODO:: identifier is optional?
+TypeParameter
+    = TypeNameKeyword _ id:Identifier ( _ '=' _ init:TypeName)? {
+        return new AST.TypeParameter(getLocation(), id, init);
+    }
+
+`        

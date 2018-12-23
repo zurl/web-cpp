@@ -45,28 +45,18 @@ export function getStorageClassSpecifierFromSpecifiers(specifiers: SpecifierType
     return storageClassSpecifiers[0] || null;
 }
 
-function getDeclaratorIdentifierName(declarator: Declarator | null): string {
-    if ( !declarator ) {
-        return "";
-    }
-    return declarator instanceof IdentifierDeclarator ? declarator.identifier.name
-        : getDeclaratorIdentifierName(declarator.declarator);
-}
-
 function parseUniversalCharacter(hexSequence: string) {
     // SAFE_NUMBER: At most 0xFFFFFFFF.
     const charCode = Number.parseInt(hexSequence, 16);
     return String.fromCharCode(charCode);
 }
 const Helper_ = {
-    getDeclaratorIdentifierName,
     parseUniversalCharacter,
 };
 
 function loadParser(source: string, query: any) {
     const Long = Long_;
     const AST = CTree_;
-    const Helper = Helper_;
 
     // cache
     if ((global as any)["window"] === undefined && fs.existsSync("/tmp/" + query.parserName + ".js")) {

@@ -1,0 +1,24 @@
+// define
+
+TemplateDeclaration
+    = 'template' _ '<' _ param:TemplateParameterList _ '>' decl:Declaration {
+        return new AST.TemplateDeclaration(getLocation(), param, decl);
+    }
+
+TemplateParameterList
+    = head:TemplateParameter tail:(_ ',' _ TemplateParameter)* {
+        return new AST.TemplateParameterList(getLocation(), buildList(head, tail, 3));
+    }
+
+TemplateParameter
+    = TypeParameter
+    / ParameterDeclaration;
+
+TypeNameKeyword = 'class' / 'typename'
+
+// TODO:: identifier is optional?
+TypeParameter
+    = TypeNameKeyword _ id:Identifier ( _ '=' _ init:TypeName)? {
+        return new AST.TypeParameter(getLocation(), id, init);
+    }
+

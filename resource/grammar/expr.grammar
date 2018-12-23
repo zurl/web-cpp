@@ -17,7 +17,7 @@ ConditionalExpression
 
 
 ConstructorCallExpression
-    = name:(TypedefName / PrimitiveTypeSpecifier)  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
+    = name:TypeIdentifier  _ '(' _ arguments_:ArgumentExpressionList? _ &!')' {
         return new AST.ConstructorCallExpression(getLocation(), name, arguments_ || []);
     }
 

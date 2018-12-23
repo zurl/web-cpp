@@ -1,29 +1,81 @@
-Declaration 'declaration'
+TranslationUnit
+    = list:DeclarationList{
+        return new AST.TranslationUnit(getLocation(), list);
+    }
+
+DeclarationList
+    = _ head:Declaration tail:(_ Declaration)* _ {
+        return buildList(head, tail, 1);
+    }
+
+Declaration
+    = BlockDeclaration
+    / FunctionDefinition
+    / NamespaceDefinition
+    / DeclarationMissingSemicolon
+
+BlockDeclaration
+    = SimpleDeclaration
+    / UsingStatements
+
+BlockDeclarationList
+    = head:BlockDeclaration tail:(_ BlockDeclaration)*{
+        return buildList(head, tail, 1);
+    }
+
+NamespaceDefinition
+    = 'namespace' _ name:Identifier _ '{' _ list:DeclarationList? _'}'{
+        currScope.names.set(name.name, TYPE_NAME);
+        return new AST.NameSpaceBlock(getLocation(), name, list || []);
+    }
+
+SimpleDeclaration
     = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList? _ ';' {
-        let declaration = new AST.Declaration(getLocation(), specifiers, initDeclarators || []);
-        try {
-            if(declaration.specifiers.includes('typedef')){
-                for (const initDeclarator of declaration.initDeclarators) {
-                    const name = getDeclaratorIdentifierName(initDeclarator.declarator);
-                    currScope.typedefNames.set(name, isTypedefName);
-                }
-            }
-        } catch (e) { /*hide error until at syntax-check */ }
+        const declaration = new AST.Declaration(getLocation(), specifiers, initDeclarators || []);
+        declaration.getTypedefName().map(name => currScope.names.set(name, TYPE_NAME));
         return declaration;
     }
 
 DeclarationSpecifiers
     = head:DeclarationSpecifier tail:(_ DeclarationSpecifier)* {
-        hasTypeSpecifier = false;
         return buildList(head, tail, 1);
     }
 
 DeclarationSpecifier
     = StorageClassSpecifier
-    / TypeQualifier
     / FunctionSpecifier
     / TypeSpecifier
 
+TypeSpecifierList
+    = head:TypeSpecifier tail:( _ TypeSpecifier)* {
+        return buildList(head, tail, 3);
+    }
+
+TypeSpecifier
+    = ClassSpecifier
+    / EnumSpecifier
+    / SimpleTypeSpecifier
+    / TypenameSpecifier
+    / TypeQualifier
+
+SimpleTypeSpecifier
+    = PrimitiveTypeSpecifier
+    / TypeIdentifier
+
+TypenameSpecifier
+    = 'typename' id:TypeIdentifier{
+        return id;
+    }
+
+TypeQualifier
+    = ('const' / 'volatile') !IdentifierPart {
+        return text();
+    }
+
+TypeQualifierList
+    = head:TypeQualifier tail:(_ TypeQualifier)* {
+        return buildList(head, tail, 1);
+    }
 
 Declarator
     = pointer:(Pointer _)? declarator:DirectDeclarator {
@@ -70,16 +122,13 @@ Pointer
 DeclarationWithoutSemicolon
     = specifiers:DeclarationSpecifiers _ initDeclarators:InitDeclaratorList?
 
-DeclarationMissingSemicolon 'declaration'
+DeclarationMissingSemicolon
     = decl:DeclarationWithoutSemicolon {
         error('Missing \\';\\' at end of declaration');
     }
 
-
 FunctionSpecifier = ('inline' / '__libcall')
 
-// ADDED
-// REORDER: * / TypeSpecifier
 InitDeclaratorList
     = head:InitDeclarator tail:(_ ',' _ InitDeclarator)* {
         return buildList(head, tail, 3);
@@ -98,26 +147,7 @@ CppInitializer
         return new AST.ObjectInitializer(getLocation(),  arguments_ || []);  
     }
 
-TypeSpecifier
-    = typeSpecifier:(
-    PrimitiveTypeSpecifier
-    / ClassSpecifier
-    / EnumSpecifier
-    / (!{
-        return hasTypeSpecifier;
-    } typedefName:TypedefName {
-        return typedefName;
-    })) {
-        hasTypeSpecifier = true;
-        return typeSpecifier;
-    }
 
-TypeQualifierList
-    = head:TypeQualifier tail:(_ TypeQualifier)* {
-        return buildList(head, tail, 1);
-    }
-
-// MERGED: ParameterTypeList => ParameterList
 ParameterList
     = head:ParameterDeclaration tail:(_ ',' _ ParameterDeclaration)* ellipsis:(_ ',' _ '...')? {
         return new AST.ParameterList(getLocation(), buildList(head, tail, 3), !!ellipsis);
@@ -145,7 +175,6 @@ InitializerList
         return new AST.InitializerList(getLocation(), buildList(head, tail, 3));
     }
 
-// ADDED
 InitializerListItem
     = designators:(Designation _)? initializer:Initializer {
         return new AST.InitializerListItem(getLocation(), extractOptional(designators, 0) || [], initializer);
@@ -169,41 +198,10 @@ Designator
         return new AST.MemberDesignator(getLocation(), member);
     }
 
-
-// A.2.3 Statements
-
-// A.2.4 External definitions
-
-TranslationUnit 
-    = list:ExternalDeclarationList{
-        return new AST.TranslationUnit(getLocation(), list);
-    }
-ExternalDeclarationList
-    = _ head:ExternalDeclaration tail:(_ ExternalDeclaration)* _ {
-        return buildList(head, tail, 1);
-    }
-
-// REORDER: Declaration / FunctionDefinition (Don't know if necessary)
-ExternalDeclaration
-    = Declaration
-    / FunctionDefinition
-    / DeclarationMissingSemicolon
-    / UsingStatements
-    / 'namespace' _ name:Identifier _ '{' _ list:ExternalDeclarationList? _'}'{
-        currScope.typedefNames.set(name.name, true); 
-        return new AST.NameSpaceBlock(getLocation(), name, list || []);
-    }
-
-FunctionDefinition 'function definition'
-    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:DeclarationList? _ body:CompoundStatement {
+FunctionDefinition
+    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:BlockDeclarationList? _ body:CompoundStatement {
         return new AST.FunctionDefinition(getLocation(), specifiers, declarator, declarations, body);
     }
-
-DeclarationList
-    = head:Declaration tail:(_ Declaration)* {
-        return buildList(head, tail, 1);
-    }
-
 
 NewTypeName
     =  specifierQualifiers:SpecifierQualifierList _ declarator:NewDeclarator? {
@@ -260,7 +258,6 @@ DirectNewDeclaratorElement
         };
     }
 
-// ADDED
 DirectAbstractDeclaratorElement
     = '(' _ parameters:ParameterList? _ ')' {
         return {

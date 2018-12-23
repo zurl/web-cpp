@@ -5,7 +5,21 @@ Id
 
 SingleIdentifier
     = id:Id &{
-        return !isTypedefName(id.name)
+        return getTypeOfName(id.name) === ID_NAME;
+    } {
+        return id;
+    }
+
+SingleTypeIdentifier
+    =  id:Id &{ //precondition
+        return getTypeOfName(id.name) === TYPE_NAME;
+    } {
+        return id;
+    }
+
+SingleTemplateIdentifier
+    =  id:Id &{ //precondition
+        return getTypeOfName(id.name) === TEMPLATE_NAME;
     } {
         return id;
     }
@@ -19,18 +33,36 @@ Identifier
         name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
         return name;
     }
-    / '~' name:TypedefName {
+    / '~' name:TypeIdentifier {
         name.identifier.name = '~' + name.identifier.name;
         return name.identifier;
     }
 
-TypedefName
-    =  identifier:Id &{ //precondition
-        return isTypedefName(identifier.name);
-    } {
-        return new AST.TypedefName(getLocation(), identifier.name);
+TypeIdentifier
+    = isFullName:'::'? namespace:(Id '::')* name:SingleTypeIdentifier {
+        const prefix = isFullName === "::" ? "::" : "";
+        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return new AST.TypeIdentifier(getLocation(), id);
     }
 
+TemplateIdentifier
+    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateIdentifier {
+        const prefix = isFullName === "::" ? "::" : "";
+        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return new AST.TemplateIdentifier(getLocation(), id);
+    }
+
+TypeDeclarationIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.names.set(identifier.name, TYPE_NAME); }
+        return identifier;
+    }
+
+TemplateDeclarationIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) { currScope.names.set(identifier.name, TEMPLATE_NAME); }
+        return identifier;
+    }
 
 WhiteSpace = [ \\t\\n\\v\\f]
 
@@ -101,7 +133,9 @@ PrimitiveTypeSpecifier
     / 'double'
     / 'signed'
     / 'unsigned'
-    / 'bool') !IdentifierPart { return text(); }
+    / 'bool') !IdentifierPart {
+        return text();
+     }
 
 OverloadOperator
     = '+' / '-' / '*' / '/' / '%' / '&' / '<' / '>' / '<=' / '>=' / '==' / '!='

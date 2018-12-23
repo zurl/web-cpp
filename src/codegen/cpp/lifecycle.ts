@@ -53,7 +53,7 @@ export function getCtorStmts(ctx: CompileContext,
 
     // prepreprocess initList
     for (const initItem of initList) {
-        if (initItem.key instanceof Identifier) {
+        if (!initItem.isType) {
             const key = initItem.key.name;
             if (initItem.value.length !== 1) {
                 throw new SyntaxError(`the number of argument to init `
