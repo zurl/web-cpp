@@ -7,8 +7,8 @@ import * as Long from "long";
 import {
     AssignmentExpression,
     BinaryExpression, CallExpression,
-    CastExpression, CharacterConstant, ConditionalExpression, DeleteExpression,
-    ExpressionResult, ExpressionStatement,
+    CastExpression, CharacterConstant, ConditionalExpression,
+    ExpressionResult,
     FloatingConstant, Identifier,
     IntegerConstant, MemberExpression,
     Node,
@@ -16,8 +16,8 @@ import {
     SubscriptExpression, TemplateFuncInstanceIdentifier,
     UnaryExpression,
 } from "../common/ast";
-import {InternalError, LanguageError, SyntaxError} from "../common/error";
-import {AddressType, Variable} from "../common/symbol";
+import {InternalError, SyntaxError} from "../common/error";
+import {AddressType} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
@@ -32,13 +32,13 @@ import {
     UnsignedInt32Type,
     UnsignedInt64Type,
 } from "../type/primitive_type";
-import {I32Binary, I32Unary, WCall, WLoad, WType, WUnaryOperation} from "../wasm";
+import {I32Binary, I32Unary, WType, WUnaryOperation} from "../wasm";
 import {BinaryOperator, getOpFromStr} from "../wasm/constant";
 import {WBinaryOperation, WConditionalExpression, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {doConversion, doReferenceTransform, doValueTransform} from "./conversion";
-import {doFunctionOverloadResolution, isFunctionExists} from "./cpp/overload";
+import {isFunctionExists} from "./cpp/overload";
 import {doReferenceBinding} from "./cpp/reference";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";

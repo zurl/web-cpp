@@ -10,9 +10,11 @@ import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType, ReferenceType} from "../../type/compound_type";
 import {FunctionType} from "../../type/function_type";
+import {PrimitiveTypes} from "../../type/primitive_type";
 import {FunctionTemplate} from "../../type/template_type";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult} from "../scope";
+import {createDeferInstantiationTask, deduceFunctionTemplateParameters} from "./template";
 
 export function doStrictTypeMatch(dst: Type, src: Type): boolean {
     if (dst instanceof ReferenceType) {
@@ -57,8 +59,10 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
     // 1.1 lookup instance template function
     const signatureBase = funcs.templateArguments.map((x) => x.toString()).join(",");
     const t0 = [] as FunctionEntity[];
+    const templates = [] as FunctionTemplate[];
     for (const func of funcs.functions) {
         if (func instanceof FunctionTemplate) {
+            templates.push(func);
             for (const funcIns of func.instanceMap.keys()) {
                 if (funcs.templateArguments.length === 0
                     || funcIns.startsWith(signatureBase)) {
@@ -76,10 +80,6 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
         || (!func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length)
         || func.type.variableArguments,
     );
-
-    if (f1.length === 0) {
-        throw new SyntaxError(`no matching function for ${funcs.functions[0].name}`, node);
-    }
 
     // 2. strong type match
 
@@ -116,7 +116,17 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
     }
 
     // 5. passive template instance
-    // TODO::
+    for (const item of templates) {
+        const mockFunctionType = new FunctionType("", PrimitiveTypes.void,
+            argus, [], false);
+        const params = deduceFunctionTemplateParameters(item, mockFunctionType, funcs.templateArguments, true);
+        if (params !== null) {
+            // apply instance creation
+            createDeferInstantiationTask(ctx, item, params);
+            const signature = params.map((x) => x.toString()).join(",");
+            return item.instanceMap.get(signature)!;
+        }
+    }
 
     throw new SyntaxError(`no matching function for ${funcs.functions[0].name}`, node);
 }

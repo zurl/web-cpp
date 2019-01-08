@@ -395,7 +395,6 @@ Declaration
     / NamespaceDefinition
     / TemplateDeclaration
     / ExplicitInstantiation
-    / ExplicitSpecialization
     / DeclarationMissingSemicolon
 
 BlockDeclaration
@@ -1240,12 +1239,4 @@ ExplicitInstantiation
 FunctionTemplateInstantiation
     = 'template' _ specifiers:DeclarationSpecifiers _ declarator:Declarator _ ';'{
         return new AST.FunctionTemplateInstantiation(getLocation(), specifiers, declarator);
-    }
-
-ExplicitSpecialization
-    = FunctionTemplateSpecialization
-
-FunctionTemplateSpecialization
-    = 'template' _ '<' _ '>' _ func:FunctionDefinition {
-        return new AST.FunctionTemplateSpecialization(getLocation(), func);
     }`        

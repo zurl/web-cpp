@@ -123,8 +123,9 @@ of WebAssembly.
 
 - [X] 0.4 Classic C with class support
 - [X] 0.5 With interpreter runtime
-- [ ] 0.6 (DLC1) With template
-- [ ] 0.7 (DLC2) With std library (some)
+- [ ] 0.6 With function template
+- [ ] 0.7 With class template
+- [ ] 0.8 With std library (some)
 
 ## C language
 
@@ -133,4 +134,99 @@ of WebAssembly.
 - [X] ++ --
 - [X] \+ \- ! ~
 - [X] += -= *= /= ...
-- [X]
+- [X] vm
+- [X] array
+- [X] sizeof
+- [X] typedef
+- [X] union
+- [X] js native function
+- [X] string
+- [X] var initilizer
+- [X] data segment data
+- [X] doConstant about < > <= >= == & && | || >> << ...
+- [X] struct / class
+- [X] cast ope (hard)
+- [X] void return type;
+- [X] function call parameter type conversion
+- [X] var args
+- [X] allocator
+- [X] char * a = "123"
+- [X] write, read
+- [X] printf
+- [X] postfix ++ --
+- [X] do-while
+- [X] break continue
+- [deprecated] goto label
+- [X] switch case
+- [X] enum
+- [X] non-return detect
+- [X] js highlevel api
+- [X] constant fold on tree
+- [X] init instructions
+- [X] print sourceMap
+- [X] cc-cli
+- [X] local address
+- [X] const
+- [X] malloc need
+- [X] & array alias
+- [X] &
+- [X] int64
+- [X] ?:
+- [X] function pointer
+- [X] array initial list
+- [X] multi-dim array
+- [ ] #if #elif
+- [ ] bit field of struct
+- [ ] #line __line__ __file__
+- [ ] remove Long.js
+- [X] debuginfo
+- [ ] repeative param name detect
+## C++ Language
+- [X] default parameter
+- [X] default constructor
+- [X] copy-constructor(use memcpy)
+- [X] temporary object destruction
+- [X] destructor
+- [X] left reference
+- [X] static member variable
+- [X] A a(c,d)
+- [X] ctor
+- [X] inner scope
+- [X] DTOR
+- [X] ctor initialize list
+- [X] copy-ctor
+- [X] copy-assignment-ctor
+- [X] static member function
+- [X] member function
+- [X] function overload
+- [X] member function overload
+- [X] __cxx_global_var_init
+- [X] inheriant
+- [X] operator overload => working, bin->ok, unary->working, syntax
+- [X] implict this
+- [ ] public/private/ protect, access control (syntax ok, todo)
+- [X] new/delete
+- [X] new array []
+- [X] using
+- [X] namespace
+- [X] virtual member function
+- [ ] cast overload， like if(object) { ... }
+- [not support by wasm] exception handling
+- [ ] function template
+- [ ] const/override/virtual member function
+- [ ] class template
+- [ ] typeinfo
+- [ ] static_cast / dynamic_cast / reinterpret_cast
+- [ ] mangled/demangled
+- [ ] virtual inheriant
+- [ ] seperate define class function
+- [ ] operator new/ placement new
+- [ ] warning
+
+
+## Miscellaneous
+
+This project is my thesis of my bachelor's degree, which is inspired by
+the rapid development of online programing education. This project is
+targeted to improve the C++ learning experience for new students,
+thanks to everyone who helps me in the development of this project.

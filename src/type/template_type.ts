@@ -64,6 +64,7 @@ export class FunctionTemplate extends FunctionEntity {
     public templateParams: TemplateParameter[];
     public functionBody: FunctionDefinition;
     public instanceMap: Map<string, FunctionEntity>;
+    public specializationMap: Map<string, FunctionDefinition>;
     public contextScope: Scope;
 
     constructor(name: string, fullName: string, fileName: string,
@@ -73,6 +74,7 @@ export class FunctionTemplate extends FunctionEntity {
         this.templateParams = templateParams;
         this.functionBody = functionBody;
         this.instanceMap = new Map<string, FunctionEntity>();
+        this.specializationMap = new Map<string, FunctionDefinition>();
         this.contextScope = contextScope;
     }
 }
