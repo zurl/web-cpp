@@ -233,7 +233,6 @@ TemplateFuncInstanceIdentifier.prototype.codegen = function(ctx: CompileContext)
 };
 
 BinaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
-    // 救救刘人语小姐姐
 
     if (this.operator === ",") {
         recycleExpressionResult(ctx, this, this.left.codegen(ctx));
