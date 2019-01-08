@@ -9,6 +9,8 @@ import {FunctionEntity} from "../../common/symbol";
 import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType, ReferenceType} from "../../type/compound_type";
+import {FunctionType} from "../../type/function_type";
+import {FunctionTemplate} from "../../type/template_type";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult} from "../scope";
 
@@ -47,10 +49,29 @@ export function doFunctionFilter(func: FunctionEntity, argus: Type[],
     }
 }
 
-export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
+export function doFunctionOverloadResolution(ctx: CompileContext,
+                                             funcs: FunctionLookUpResult,
                                              argus: Type[], node: Node): FunctionEntity {
     // 1. filter parameter number
-    const f1 = funcs.functions.filter((func) =>
+
+    // 1.1 lookup instance template function
+    const signatureBase = funcs.templateArguments.map((x) => x.toString()).join(",");
+    const t0 = [] as FunctionEntity[];
+    for (const func of funcs.functions) {
+        if (func instanceof FunctionTemplate) {
+            for (const funcIns of func.instanceMap.keys()) {
+                if (funcs.templateArguments.length === 0
+                    || funcIns.startsWith(signatureBase)) {
+                    t0.push(func.instanceMap.get(funcIns)!);
+                }
+            }
+        }
+    }
+    const t1 = funcs.functions.filter((x) => !(x instanceof FunctionTemplate));
+    // make template after normal
+
+    const t2 = t1.concat(t0);
+    const f1 = t2.filter((func) =>
         (func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length + 1)
         || (!func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length)
         || func.type.variableArguments,
@@ -64,7 +85,10 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
 
     const f2 = f1.filter((func) => doFunctionFilter(func, argus, funcs, doStrictTypeMatch));
 
-    if (f2.length === 1) {
+    if (f2.length >= 1) {
+        if (f2.length > 1) {
+            ctx.raiseWarning(`call for ${funcs.functions[0].name} is ambiguous`, node);
+        }
         return f2[0];
     }
 
@@ -72,7 +96,10 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
 
     const f3 = f1.filter((func) => doFunctionFilter(func, argus, funcs, doWeakTypeMatch));
 
-    if (f3.length === 1) {
+    if (f3.length >= 1) {
+        if (f3.length > 1) {
+            ctx.raiseWarning(`call for ${funcs.functions[0].name} is ambiguous`, node);
+        }
         return f3[0];
     }
 
@@ -80,13 +107,16 @@ export function doFunctionOverloadResolution(funcs: FunctionLookUpResult,
 
     const f4 = f1.filter((x) => x.type.variableArguments);
 
-    if (f4.length === 1) {
+    // TODO:: not match the c++ standard
+    if (f4.length >= 1) {
+        if (f4.length > 1) {
+            ctx.raiseWarning(`call for ${funcs.functions[0].name} is ambiguous`, node);
+        }
         return f4[0];
     }
 
-    if (f2.length > 1 || f3.length > 1 || f4.length > 1) {
-        throw new SyntaxError(`call to ${funcs.functions[0].name} is ambiguous`, node);
-    }
+    // 5. passive template instance
+    // TODO::
 
     throw new SyntaxError(`no matching function for ${funcs.functions[0].name}`, node);
 }
@@ -98,7 +128,7 @@ export function isFunctionExists(ctx: CompileContext, name: string, argus: Type[
     if ( !(lookupResult instanceof FunctionLookUpResult)) { return false; }
     try {
         lookupResult.instanceType = instanceType;
-        doFunctionOverloadResolution(lookupResult, argus, {} as Node);
+        doFunctionOverloadResolution(ctx, lookupResult, argus, {} as Node);
         return true;
     } catch (e) {
         return false;

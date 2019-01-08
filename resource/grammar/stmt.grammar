@@ -102,7 +102,7 @@ UsingStatements
         currScope.names.set(name.name, TYPE_NAME);
         return new AST.UsingStatement(getLocation(), name, decl);
     }
-    / 'using' _ name:(Identifier/TypeIdentifier/TemplateIdentifier) _ ';'{
+    / 'using' _ name:(Identifier/TypeIdentifier/TemplateClassIdentifier/TemplateFuncIdentifier) _ ';'{
         return new AST.UsingItemStatement(getLocation(), name);
     }
     / 'using' _ 'namespace' _ name:TypeIdentifier _ ';'{

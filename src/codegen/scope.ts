@@ -4,11 +4,12 @@
  *  Created at 19/07/2018
  */
 
-import {Node} from "../common/ast";
-import {LanguageError, SyntaxError} from "../common/error";
+import {Node, TemplateArgument} from "../common/ast";
+import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {FunctionEntity, Symbol, Variable} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
+import {EvaluatedTemplateArgument} from "../type/template_type";
 import {WAddressHolder} from "./address";
 
 export class Scope {
@@ -88,6 +89,13 @@ export class Scope {
         }
     }
 
+    public getFullName(shortName: string) {
+        if (shortName.slice(0, 2) === "::") {
+            return shortName;
+        }
+        return this.fullName + "::" + shortName;
+    }
+
     public getScope(tokens: string[]): Scope | null {
         if (tokens.length === 0) {
             return this;
@@ -139,12 +147,14 @@ export class FunctionLookUpResult {
     public instanceType: ClassType | null;
     public isDynamicCall: boolean;
     public functions: FunctionEntity[];
+    public templateArguments: EvaluatedTemplateArgument[];
 
     constructor(functions: FunctionEntity[]) {
         this.functions = functions;
         this.instance = null;
         this.instanceType = null;
         this.isDynamicCall = false;
+        this.templateArguments = [];
     }
 }
 
@@ -159,6 +169,7 @@ export class ScopeManager {
     public isCpp: boolean;
     public tmpVarId: number;
     public tmpActiveScopes: Scope[];
+    public savedScope: Scope[];
 
     constructor(isCpp: boolean) {
         this.isCpp = isCpp;
@@ -168,6 +179,7 @@ export class ScopeManager {
         this.scopeId = 0;
         this.tmpVarId = 0;
         this.tmpActiveScopes = [];
+        this.savedScope = [];
     }
 
     public enterUnnamedScope() {
@@ -321,6 +333,20 @@ export class ScopeManager {
         this.activeScopes.add(scope);
         return true;
     }
+
+    public enterTempScope(scope: Scope) {
+        this.savedScope.push(this.currentScope);
+        this.currentScope = scope;
+    }
+
+    public exitTempScope() {
+        const popedScope = this.savedScope.pop();
+        if (!popedScope) {
+            throw new InternalError(`exitTempScope`);
+        }
+        this.currentScope = popedScope;
+    }
+
     private innerLookUp(shortName: string): Symbol | null {
         const realName = shortName.split("@")[0];
         const result = this.lookupFullName(this.currentScope.fullName
@@ -337,16 +363,5 @@ export class ScopeManager {
         }
         return item;
     }
-
-    // // Member Lookuppppp
-    // public isScopeActive(scopeName: string) {
-    //
-    // }
-    //
-
-    //
-    // public deactiveScope(scopeName: string) {
-    //
-    // }
 
 }

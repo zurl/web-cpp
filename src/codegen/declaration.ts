@@ -5,23 +5,39 @@
  */
 import {
     AbstractArrayDeclarator,
-    AbstractDeclarator, AbstractFunctionDeclarator, AbstractPointerDeclarator,
+    AbstractDeclarator,
+    AbstractFunctionDeclarator,
+    AbstractPointerDeclarator,
     ArrayDeclarator,
-    AssignmentExpression, CallExpression,
+    AssignmentExpression,
+    CallExpression,
     ClassSpecifier,
     Declaration,
-    Declarator, EnumSpecifier, Expression, ExpressionResult,
+    Declarator,
+    EnumSpecifier,
+    Expression,
+    ExpressionResult,
     ExpressionStatement,
     FunctionDeclarator,
+    FunctionDefinition,
     Identifier,
-    IdentifierDeclarator, InitializerList,
-    IntegerConstant, Node,
+    IdentifierDeclarator,
+    InitializerList,
+    IntegerConstant,
+    Node,
     ObjectInitializer,
     ParameterList,
     Pointer,
     PointerDeclarator,
-    SpecifierType, SubscriptExpression,
-    TranslationUnit, TypeIdentifier, UnaryExpression,
+    SpecifierType,
+    SubscriptExpression, TemplateArgument,
+    TemplateClassIdentifier,
+    TemplateDeclaration,
+    TemplateFuncIdentifier,
+    TemplateFuncInstanceIdentifier,
+    TranslationUnit,
+    TypeIdentifier,
+    UnaryExpression,
 } from "../common/ast";
 import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
@@ -35,19 +51,53 @@ import {WConst} from "../wasm";
 import {WExpression} from "../wasm/node";
 import {KeyWords} from "./constant";
 import {CompileContext} from "./context";
-import {declareFunction} from "./function";
+import {declareFunction, parseFunctionDeclarator} from "./function";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
 
 // use in parser
 
-function getDeclaratorIdentifierName(declarator: Declarator | null): string {
+export function getIdentifierName(declarator: IdentifierDeclarator): string {
+    if (declarator.identifier instanceof Identifier) {
+        return declarator.identifier.name;
+    } else {
+        return declarator.identifier.name.name;
+    }
+}
+
+export function getDeclaratorIdentifierName(declarator: Declarator | null): string {
     if ( !declarator ) {
         return "";
     }
-    return declarator instanceof IdentifierDeclarator ? declarator.identifier.name
-        : getDeclaratorIdentifierName(declarator.declarator);
+    if (declarator instanceof IdentifierDeclarator) {
+        return getIdentifierName(declarator);
+    } else {
+        return getDeclaratorIdentifierName(declarator.declarator);
+    }
 }
+
+export function getDeclaratorIdentifierArguments(declarator: Declarator | null): TemplateArgument[] {
+    if ( !declarator ) {
+        return [];
+    }
+    if (declarator instanceof IdentifierDeclarator) {
+        if (declarator.identifier instanceof Identifier) {
+            return [];
+        } else {
+            return declarator.identifier.args;
+        }
+    } else {
+        return getDeclaratorIdentifierArguments(declarator.declarator);
+    }
+}
+
+TemplateDeclaration.prototype.getTemplateNames = function(): string[] {
+    if (this.decl instanceof FunctionDefinition) {
+        return [getDeclaratorIdentifierName(this.decl.declarator)];
+    } else {
+        return [this.decl.typeName];
+    }
+};
 
 Declaration.prototype.getTypedefName = function(): string[] {
     if (this.specifiers.includes("typedef")) {
@@ -100,29 +150,39 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
     return resultType;
 }
 
-export function parseDeclarator(ctx: CompileContext, node: Declarator, resultType: Type): [Type, string] {
+export function parseDeclarator(ctx: CompileContext, node: Declarator, baseType: Type): [Type, string] {
     if (node === null) {
-        return [resultType, ""];
+        return [baseType, ""];
     } else if (node instanceof IdentifierDeclarator) {
-        if (KeyWords.includes(node.identifier.name)) {
-            throw new SyntaxError(`variable name could not be '${node.identifier.name}'`, node);
+        const name = getIdentifierName(node);
+        if (KeyWords.includes(name)) {
+            throw new SyntaxError(`variable name could not be '${name}'`, node);
         }
-        return [resultType, node.identifier.name];
+        return [baseType, name];
     } else if (node.declarator != null) {
-        const newResultType = mergeTypeWithDeclarator(ctx, resultType, node);
+        const newResultType = mergeTypeWithDeclarator(ctx, baseType, node);
         return parseDeclarator(ctx, node.declarator, newResultType);
     } else {
         throw new SyntaxError("UnsupportNodeType:" + node.constructor.name, node);
     }
 }
 
+export function parseDeclaratorOrAbstractDeclarator(
+    ctx: CompileContext, decl: Declarator | AbstractDeclarator | null,
+    baseType: Type): [Type, string | null] {
+    if (decl === null) {
+        return [baseType, null];
+    } else if ( decl instanceof Declarator) {
+        return parseDeclarator(ctx, decl, baseType);
+    } else {
+        return [parseAbstractDeclarator(ctx, decl, baseType), null];
+    }
+}
+
 export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
                                         declarator: Declarator | AbstractDeclarator): Type {
     if (declarator instanceof FunctionDeclarator || declarator instanceof AbstractFunctionDeclarator) {
-        assertType(declarator.parameters, ParameterList);
-        const [parameterTypes, parameterNames, variableArguments]
-            = (declarator.parameters as ParameterList).codegen(ctx);
-        return new FunctionType("", type, parameterTypes, parameterNames, variableArguments);
+        return parseFunctionDeclarator(ctx, declarator, type);
     } else if (declarator instanceof PointerDeclarator || declarator instanceof AbstractPointerDeclarator) {
         let pointer = declarator.pointer as Pointer | null;
         let result = type;
@@ -162,7 +222,7 @@ export function mergeTypeWithDeclarator(ctx: CompileContext, type: Type,
             throw new SyntaxError("length of array must be integer", declarator);
         }
         if (declarator.qualifiers.length !== 0) {
-            ctx.raiseWarning("unsupport array qualifier");
+            ctx.raiseWarning("unsupport array qualifier", declarator);
         }
         return new ArrayType(type, parseInt(length.expr.constant));
     } else {

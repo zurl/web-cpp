@@ -103,13 +103,8 @@ export function printf(this: Runtime): number {
                 }
             } else if (chr2 === "f") {
                 let str: string;
-                if (!isLong) {
-                    str = this.memory.getFloat32(sp, true).toString();
-                    sp += 4;
-                } else {
-                    str = this.memory.getFloat64(sp, true).toString();
-                    sp += 8;
-                }
+                str = this.memory.getFloat64(sp, true).toString();
+                sp += 8;
                 if ( floatPart !== 0) {
                     const tokens = str.split(".");
                     if (tokens.length >= 2) {

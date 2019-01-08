@@ -1,13 +1,19 @@
-// define
-
 TemplateDeclaration
-    = 'template' _ '<' _ param:TemplateParameterList _ '>' decl:Declaration {
-        return new AST.TemplateDeclaration(getLocation(), param, decl);
+    = 'template' _ '<' _ &{
+        enterScope();
+        return true;
+    } param:TemplateParameterList? _ &!'>' _ decl:(FunctionDefinition/ClassSpecifier) {
+        exitScope();
+        const result = new AST.TemplateDeclaration(getLocation(), decl, param || []);
+        const names = result.getTemplateNames();
+        const typeId = (decl instanceof AST.FunctionDefinition) ? TEMPLATE_FUNC_NAME : TEMPLATE_CLASS_NAME;
+        names.map(name => currScope.names.set(name, typeId));
+        return result;
     }
 
 TemplateParameterList
     = head:TemplateParameter tail:(_ ',' _ TemplateParameter)* {
-        return new AST.TemplateParameterList(getLocation(), buildList(head, tail, 3));
+        return buildList(head, tail, 3);
     }
 
 TemplateParameter
@@ -18,7 +24,41 @@ TypeNameKeyword = 'class' / 'typename'
 
 // TODO:: identifier is optional?
 TypeParameter
-    = TypeNameKeyword _ id:Identifier ( _ '=' _ init:TypeName)? {
-        return new AST.TypeParameter(getLocation(), id, init);
+    = TypeNameKeyword _ id:TypeDeclarationIdentifier init:( _ '=' _ TypeName)? {
+        return new AST.TypeParameter(getLocation(), id, init ? init[3] : null);
     }
 
+TemplateFuncInstanceIdentifier
+    = id:TemplateFuncIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
+        return new AST.TemplateFuncInstanceIdentifier(getLocation(), id, opt ? (opt[3] || []) : []);
+    }
+
+TemplateClassInstanceIdentifier
+    = id:TemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
+        return new AST.TemplateClassInstanceIdentifier(getLocation(), id, opt ? (opt[3] || []) : []);
+    }
+
+TemplateArgumentList
+    = head:TemplateArgument tail:(_ ',' _ TemplateArgument)* {
+        return buildList(head, tail, 3);
+    }
+
+TemplateArgument
+    = TypeName
+    / AdditiveExpression
+
+ExplicitInstantiation
+    = FunctionTemplateInstantiation
+
+FunctionTemplateInstantiation
+    = 'template' _ specifiers:DeclarationSpecifiers _ declarator:Declarator _ ';'{
+        return new AST.FunctionTemplateInstantiation(getLocation(), specifiers, declarator);
+    }
+
+ExplicitSpecialization
+    = FunctionTemplateSpecialization
+
+FunctionTemplateSpecialization
+    = 'template' _ '<' _ '>' _ func:FunctionDefinition {
+        return new AST.FunctionTemplateSpecialization(getLocation(), func);
+    }

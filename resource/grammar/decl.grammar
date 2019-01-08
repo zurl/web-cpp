@@ -12,6 +12,9 @@ Declaration
     = BlockDeclaration
     / FunctionDefinition
     / NamespaceDefinition
+    / TemplateDeclaration
+    / ExplicitInstantiation
+    / ExplicitSpecialization
     / DeclarationMissingSemicolon
 
 BlockDeclaration
@@ -154,8 +157,8 @@ ParameterList
     }
 
 ParameterDeclaration
-    = specifiers:DeclarationSpecifiers _ declarator:(Declarator / AbstractDeclarator)? {
-        return new AST.ParameterDeclaration(getLocation(), specifiers, declarator);
+    = specifiers:DeclarationSpecifiers _ declarator:(Declarator / AbstractDeclarator)? init:( _ '=' _ AssignmentExpression)?{
+        return new AST.ParameterDeclaration(getLocation(), specifiers, declarator, init ? init[3] : null);
     }
 
 IdentifierList

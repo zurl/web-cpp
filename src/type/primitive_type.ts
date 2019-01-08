@@ -1,5 +1,4 @@
 import {WType} from "../wasm";
-import {PointerType} from "./compound_type";
 import {Type} from "./index";
 
 /**

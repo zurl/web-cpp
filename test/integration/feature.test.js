@@ -191,5 +191,16 @@ describe('feature integration test', function () {
         const expectOutput = `A()\nA()\nA()\n~A()\n~A()\n~A()`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
-
+    it('test convert',async function() {
+        const testCode = `
+        int a = 1;
+        int b = 2;
+        printf("%f", (float)(a+b));
+        float c = 1;
+        float d = 2;
+        printf("%d", (int)(c+d));
+        `;
+        const expectOutput = `33`;
+        return await TestBase.testRunCompareResult(testCode, expectOutput);
+    });
 });

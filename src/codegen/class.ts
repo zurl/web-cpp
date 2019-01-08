@@ -220,9 +220,9 @@ ClassSpecifier.prototype.codegen = function(ctx: CompileContext): Type {
             if (decl.isCtor) {
                 const parameterTypes: Type[] = [new PointerType(newItem)], parameterNames: string[] = ["this"];
                 if (decl.param !== null) {
-                    const [realParameterTypes, realParameterNames] = decl.param!.codegen(ctx);
-                    parameterTypes.push(...realParameterTypes);
-                    parameterNames.push(...realParameterNames);
+                    const {types, names} = decl.param!.codegen(ctx);
+                    parameterTypes.push(...types);
+                    parameterNames.push(...names);
                 }
                 funcType = new FunctionType("#" + name, PrimitiveTypes.void, parameterTypes, parameterNames, false);
                 funcType.cppFunctionType = CppFunctionType.Constructor;

@@ -17,7 +17,7 @@ import {
     IdentifierDeclarator, InitDeclarator,
     IntegerConstant, MemberExpression, NewExpression,
     Node,
-    ParameterList,
+    ParameterList, ParameterListParseResult,
     ReturnStatement,
     Statement, SubscriptExpression,
     UnaryExpression,
@@ -28,7 +28,7 @@ import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
 import {CppFunctionType, FunctionType} from "../type/function_type";
-import {PrimitiveTypes} from "../type/primitive_type";
+import {ArithmeticType, PrimitiveTypes} from "../type/primitive_type";
 import {
     I32Binary,
     WBinaryOperation,
@@ -50,7 +50,7 @@ import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {
     doConversion,
-    doReferenceTransform,
+    doReferenceTransform, doTypePromote,
     doTypeTransfrom,
     doValuePromote,
     doValueTransform,
@@ -58,19 +58,40 @@ import {
 } from "./conversion";
 import {getCtorStmts, getDtorStmts} from "./cpp/lifecycle";
 import {doFunctionOverloadResolution, isFunctionExists} from "./cpp/overload";
-import {doReferenceBinding} from "./cpp/reference";
-import {mergeTypeWithDeclarator, parseDeclarator, parseTypeFromSpecifiers} from "./declaration";
+import {
+    getDeclaratorIdentifierName,
+    mergeTypeWithDeclarator,
+    parseDeclarator, parseDeclaratorOrAbstractDeclarator,
+    parseTypeFromSpecifiers,
+} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
 import {recycleExpressionResult} from "./statement";
 
 export function parseFunctionDeclarator(ctx: CompileContext, node: Declarator,
                                         resultType: Type): FunctionType {
-    if (node instanceof FunctionDeclarator && node.declarator instanceof IdentifierDeclarator) {
+    if (node instanceof FunctionDeclarator) {
         assertType(node.parameters, ParameterList);
-        const [parameterTypes, parameterNames, variableArguments] = (node.parameters as ParameterList).codegen(ctx);
-        const result = new FunctionType(node.declarator.identifier.name,
-            resultType, parameterTypes,
-            parameterNames, variableArguments);
+        const {types, names, inits, isVariableArguments} = (node.parameters as ParameterList).codegen(ctx);
+        const funcName = node.declarator instanceof IdentifierDeclarator ?
+            getDeclaratorIdentifierName(node.declarator) : "";
+        const result = new FunctionType(funcName,
+            resultType, types, names, isVariableArguments);
+        // check legal or not of init
+        let ix = result.parameterInits.length - 1;
+        for (; ix >= 0; ix--) {
+            if (result.parameterInits[ix] === null) { break; }
+            if (isVariableArguments) {
+                throw new SyntaxError(`var argument function could not apply default param`, node);
+            }
+        }
+        ix --;
+        for (; ix >= 0; ix--) {
+            if (result.parameterInits[ix] !== null) {
+                throw new SyntaxError(`illegal init expression`, node);
+            }
+        }
+        // end of check
+        result.parameterInits = inits;
         if (resultType.isStatic) {
             result.isStatic = true;
             resultType.isStatic = false;
@@ -258,14 +279,32 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
     ));
 }
 
-ParameterList.prototype.codegen = function(ctx: CompileContext): [Type[], string[], boolean] {
+export function evaluateConstantExpression(ctx: CompileContext, exp: Expression, node: Node): string {
+    const expr = exp.codegen(ctx);
+    if (expr.expr instanceof FunctionLookUpResult) {
+        throw new SyntaxError(`illegal template parameter`, node);
+    }
+    if (!(expr.type instanceof ArithmeticType)) {
+        throw new SyntaxError(`illegal template parameter`, node);
+    }
+    const wexpr = expr.expr.fold();
+    if (!(wexpr instanceof WConst)) {
+        throw new SyntaxError(`template parameter must be static value`, node);
+    }
+    return wexpr.constant;
+}
+
+ParameterList.prototype.codegen = function(ctx: CompileContext): ParameterListParseResult {
     // TODO:: deal with abstract Declarator
     const parameters = this.parameters.map((parameter) =>
-        parseDeclarator(ctx, parameter.declarator as Declarator,
+        parseDeclaratorOrAbstractDeclarator(ctx, parameter.declarator,
             parseTypeFromSpecifiers(ctx, parameter.specifiers, this)));
-    const parameterTypes = parameters.map((x) => x[0]);
-    const parameterNames = parameters.map((x) => x[1]);
-    return [parameterTypes, parameterNames, this.variableArguments];
+    const types = parameters.map((x) => x[0]);
+    const names = parameters.map((x) => x[1] ? x[1] : "");
+    const inits = this.parameters.map((x) =>
+        x.init ? evaluateConstantExpression(ctx, x.init, this) : null);
+    const isVariableArguments = this.variableArguments;
+    return { types, names, inits, isVariableArguments };
 };
 
 FunctionDefinition.prototype.codegen = function(ctx: CompileContext) {
@@ -303,7 +342,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         let entity: FunctionEntity | null = lookUpResult.functions[0];
 
         if (ctx.isCpp()) {
-            entity = doFunctionOverloadResolution(lookUpResult,
+            entity = doFunctionOverloadResolution(ctx, lookUpResult,
                 this.arguments.map((x) => doTypeTransfrom(x.deduceType(ctx))), this);
         }
 
@@ -347,15 +386,60 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
         throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
 
     }
+    // lookup end
 
+    // Compute stack offset in advance
+    let stackSize = 0;
+    const arguExprTypes = [...thisPtrs.map((x) => x.type),
+        ... this.arguments.map((x) => x.deduceType(ctx))];
+    if (funcType.variableArguments) {
+        for (let i = arguExprTypes.length - 1; i > funcType.parameterTypes.length - 1; i--) {
+            const src = arguExprTypes[i];
+            if (src instanceof ClassType) {
+                throw new SyntaxError(`class type could not be variable arguments`, this);
+            }
+            const newSrc = doTypePromote(ctx, src, this);
+            stackSize += getInStackSize(newSrc.length);
+        }
+    }
+    for (let i = funcType.parameterTypes.length - 1; i >= 0; i--) {
+        let dstType = funcType.parameterTypes[i];
+        if (dstType instanceof ArrayType) {
+            dstType = new PointerType(dstType.elementType);
+        }
+        if (dstType instanceof ClassType) {
+            stackSize += getInStackSize(dstType.length);
+        } else {
+            if (funcType.variableArguments) {
+                stackSize += getInStackSize(dstType.length);
+            }
+        }
+    }
+    // compute finish
+
+    ctx.memory.usedStackSize -= stackSize;
     const arguExprs = [...thisPtrs, ... this.arguments.map((x) => x.codegen(ctx))];
+    ctx.memory.usedStackSize += stackSize;
 
     if (funcType.parameterTypes.length > arguExprs.length) {
-        throw new SyntaxError(`function call parameters number mismatch`, this);
+        // could be default parameters
+        for (let i = arguExprs.length; i < funcType.parameterTypes.length; i++) {
+            const init = funcType.parameterInits[i];
+            if (init !== null) {
+                arguExprs.push({
+                    type: funcType.parameterTypes[i],
+                    expr: new WConst(funcType.parameterTypes[i].toWType(),
+                        init, this.location),
+                    isLeft: false,
+                });
+            } else {
+                throw new SyntaxError(`function call parameters number mismatch`, this);
+            }
+        }
     }
 
     const argus: WExpression[] = [];
-    let stackOffset = 0;
+    let stackOffset = ctx.memory.usedStackSize;
 
     if (funcType.variableArguments) {
         for (let i = arguExprs.length - 1; i > funcType.parameterTypes.length - 1; i--) {

@@ -10,6 +10,7 @@ import {FunctionType} from "../type/function_type";
 import {PrimitiveTypes} from "../type/primitive_type";
 import {classes} from "./class";
 import {CompileContext} from "./context";
+import {executeDeferFunctionTemplateInstantiation, template} from "./cpp/template";
 import {declaration} from "./declaration";
 import {expression} from "./expression";
 import {expression_type} from "./expression_type";
@@ -23,6 +24,7 @@ function loadCodegen() {
     expression();
     expression_type();
     classes();
+    template();
 }
 
 loadCodegen();
@@ -49,4 +51,7 @@ export function codegen(root: Node, ctx: CompileContext) {
             true, AccessControl.Public, root);
     }
     root.codegen(ctx);
+    if (ctx.isCpp()) {
+        executeDeferFunctionTemplateInstantiation(ctx);
+    }
 }

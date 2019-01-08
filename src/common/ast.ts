@@ -123,7 +123,16 @@ export class TypeIdentifier extends Node {
     }
 }
 
-export class TemplateIdentifier extends Node {
+export class TemplateFuncIdentifier extends Node {
+    public name: string;
+
+    constructor(location: SourceLocation, name: string) {
+        super(location);
+        this.name = name;
+    }
+}
+
+export class TemplateClassIdentifier extends Node {
     public name: string;
 
     constructor(location: SourceLocation, name: string) {
@@ -477,9 +486,10 @@ export class Pointer extends Node {
 }
 
 export class IdentifierDeclarator extends Declarator {
-    public identifier: Identifier;
+    public identifier: Identifier | TemplateClassInstanceIdentifier | TemplateFuncInstanceIdentifier;
 
-    constructor(location: SourceLocation, identifier: Identifier) {
+    constructor(location: SourceLocation,
+                identifier: Identifier | TemplateClassInstanceIdentifier | TemplateFuncInstanceIdentifier) {
         super(location, null);
         this.identifier = identifier;
     }
@@ -511,6 +521,13 @@ export class FunctionDeclarator extends Declarator {
     }
 }
 
+export interface ParameterListParseResult {
+    types: Type[];
+    names: string[];
+    inits: Array<string | null>;
+    isVariableArguments: boolean;
+}
+
 export class ParameterList extends Node {
     public parameters: ParameterDeclaration[];
     public variableArguments: boolean;
@@ -520,17 +537,24 @@ export class ParameterList extends Node {
         this.parameters = parameters;
         this.variableArguments = variableArguments;
     }
+
+    public codegen(ctx: CompileContext): ParameterListParseResult {
+        return {types: [], names: [], inits: [], isVariableArguments: false};
+    }
 }
 
+// TODO:: init param
 export class ParameterDeclaration extends Node {
     public specifiers: SpecifierType[];
     public declarator: Declarator | AbstractDeclarator | null;
+    public init: AssignmentExpression | null;
 
     constructor(location: SourceLocation, specifiers: SpecifierType[],
-                declarator: Declarator | AbstractDeclarator | null) {
+                declarator: Declarator | AbstractDeclarator | null, init: AssignmentExpression | null) {
         super(location);
         this.specifiers = specifiers;
         this.declarator = declarator;
+        this.init = init;
     }
 }
 
@@ -944,5 +968,67 @@ export class NewExpression extends Expression {
             this.arraySize = this.name.declarator.length;
             this.name.declarator = null;
         }
+    }
+}
+
+export class TypeParameter extends Node {
+    public name: Identifier;
+    public init: TypeName | null;
+
+    constructor(location: SourceLocation, name: Identifier, init: TypeName | null) {
+        super(location);
+        this.name = name;
+        this.init = init;
+    }
+}
+
+export type TemplateParameterType = TypeParameter | ParameterDeclaration;
+export type TemplateArgument = TypeName | Expression;
+
+export class TemplateDeclaration extends Node {
+    public decl: ClassSpecifier | FunctionDefinition;
+    public args: TemplateParameterType[];
+
+    constructor(location: SourceLocation, decl: ClassSpecifier | FunctionDefinition, args: TemplateParameterType[]) {
+        super(location);
+        this.decl = decl;
+        this.args = args;
+    }
+
+    public getTemplateNames(): string[] {
+        return[];
+    }
+}
+
+export class TemplateClassInstanceIdentifier extends Node {
+    public name: TemplateClassIdentifier;
+    public args: TemplateArgument[];
+
+    constructor(location: SourceLocation, name: TemplateClassIdentifier, args: TemplateArgument[]) {
+        super(location);
+        this.name = name;
+        this.args = args;
+    }
+}
+
+export class TemplateFuncInstanceIdentifier extends Expression {
+    public name: TemplateFuncIdentifier;
+    public args: TemplateArgument[];
+
+    constructor(location: SourceLocation, name: TemplateFuncIdentifier, args: TemplateArgument[]) {
+        super(location);
+        this.name = name;
+        this.args = args;
+    }
+}
+
+export class FunctionTemplateInstantiation extends Node {
+    public specifiers: SpecifierType[];
+    public declarator: Declarator;
+
+    constructor(location: SourceLocation, specifiers: SpecifierType[], declarator: Declarator) {
+        super(location);
+        this.specifiers = specifiers;
+        this.declarator = declarator;
     }
 }

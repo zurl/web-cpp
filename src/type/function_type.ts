@@ -22,11 +22,38 @@ export enum CppFunctionType {
     MemberFunction,
 }
 
+export class TemplatePlaceholderType extends Type {
+
+    public index: number;
+
+    constructor(index: number) {
+        super();
+        this.index = index;
+    }
+
+    get length(): number {
+        throw new InternalError("unexpected");
+    }
+
+    public toMangledName(): string {
+        return "^$" + this.index + "^";
+    }
+
+    public toWType(): WType {
+        throw new InternalError("unexpected");
+    }
+
+    public toString(): string {
+        return `[${this.index}]`;
+    }
+}
+
 export class FunctionType extends Type {
     public name: string;
     public returnType: Type;
     public parameterTypes: Type[];
     public parameterNames: string[];
+    public parameterInits: Array<null | string>;
     public variableArguments: boolean;
     public cppFunctionType: CppFunctionType;
     public referenceClass: ClassType | null;
@@ -43,6 +70,7 @@ export class FunctionType extends Type {
         this.cppFunctionType = CppFunctionType.Normal;
         this.referenceClass = null;
         this.initList = [];
+        this.parameterInits = [];
         for (let i = 0; i < this.parameterTypes.length; i++) {
             const ty = this.parameterTypes[i];
             if (ty instanceof ArrayType) {

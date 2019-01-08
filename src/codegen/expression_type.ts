@@ -12,7 +12,7 @@ import {
     ParenthesisExpression,
     PostfixExpression,
     StringLiteral,
-    SubscriptExpression,
+    SubscriptExpression, TemplateFuncInstanceIdentifier,
     TypeName,
     UnaryExpression,
 } from "../common/ast";
@@ -31,10 +31,12 @@ import {
     UnsignedInt64Type,
     UnsignedIntegerType,
 } from "../type/primitive_type";
+import {FunctionTemplate} from "../type/template_type";
 import {CompileContext} from "./context";
 import {doTypeTransfrom} from "./conversion";
 import {doFunctionOverloadResolution} from "./cpp/overload";
-import {parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
+import {deduceFunctionTemplateParameters, evaluateTemplateArgument} from "./cpp/template";
+import {getDeclaratorIdentifierArguments, parseAbstractDeclarator, parseTypeFromSpecifiers} from "./declaration";
 import {FunctionLookUpResult} from "./scope";
 /**
  *  @file
@@ -73,6 +75,19 @@ Identifier.prototype.deduceType = function(ctx: CompileContext): Type {
     } else {
         return item.type;
     }
+};
+
+TemplateFuncInstanceIdentifier.prototype.deduceType = function(ctx: CompileContext): Type {
+    const name = this.name.name;
+    const lookupResult = ctx.scopeManager.lookupAnyName(name);
+    if (!lookupResult) {
+        throw new SyntaxError(`cannot find template ${name}`, this);
+    }
+    if (!(lookupResult instanceof FunctionLookUpResult)) {
+        throw new SyntaxError(`${name} is not template`, this);
+    }
+    lookupResult.templateArguments = this.args.map((arg) => evaluateTemplateArgument(ctx, arg, this));
+    return new UnresolvedFunctionOverloadType(lookupResult);
 };
 
 function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
@@ -196,7 +211,8 @@ CallExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     let entity: FunctionEntity | null = lookUpResult.functions[0];
 
     if ( ctx.isCpp() ) {
-        entity = doFunctionOverloadResolution(lookUpResult, this.arguments.map((x) => x.deduceType(ctx)), this);
+        entity = doFunctionOverloadResolution(ctx, lookUpResult,
+            this.arguments.map((x) => x.deduceType(ctx)), this);
     }
 
     if (entity === null ) {

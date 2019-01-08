@@ -10,7 +10,8 @@ import {CompiledObject, ImportSymbol} from "../common/object";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
-import {PrimitiveTypes} from "../type/primitive_type";
+import {FunctionType} from "../type/function_type";
+import {EvaluatedTemplateArgument, FunctionTemplate} from "../type/template_type";
 import {WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
 import {triggerDestructor} from "./cpp/lifecycle";
@@ -31,6 +32,12 @@ export interface SwitchContext {
     cases: CaseContext[];
 }
 
+export interface DeferInstantiationTask {
+    funcTemplate: FunctionTemplate;
+    type: FunctionType;
+    args: EvaluatedTemplateArgument[];
+}
+
 export class CompileContext {
 
     public fileName: string;
@@ -45,6 +52,7 @@ export class CompileContext {
     public breakStack: number[];
     public continueStack: number[];
     public requiredWASMFuncTypes: Set<string>;
+    public deferInstantiationTasks: DeferInstantiationTask[];
 
     // result
     public functions: WFunction[];
@@ -71,6 +79,7 @@ export class CompileContext {
         this.breakStack = [];
         this.continueStack = [];
         this.blockLevel = 0;
+        this.deferInstantiationTasks = [];
         this.requiredWASMFuncTypes = new Set<string>();
     }
 
@@ -136,7 +145,7 @@ export class CompileContext {
         this.functions.push(func);
     }
 
-    public raiseWarning(content: string) {
+    public raiseWarning(content: string, node: Node) {
         console.log("[Warning]: " + content);
     }
 
@@ -162,6 +171,9 @@ export class CompileContext {
             AddressType.STACK, this.memory.allocStack(type.length));
         this.scopeManager.define(varName, varEntity, node);
         return [varName, varEntity];
+    }
 
+    public submitDeferInstantiationTask(task: DeferInstantiationTask) {
+        this.deferInstantiationTasks.push(task);
     }
 }

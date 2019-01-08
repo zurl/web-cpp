@@ -122,7 +122,7 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
 
     if ( src.expr instanceof FunctionLookUpResult) {
         if ( dstType instanceof PointerType && dstType.elementType instanceof FunctionType) {
-            const item = doFunctionOverloadResolution(src.expr, dstType.elementType.parameterTypes, node);
+            const item = doFunctionOverloadResolution(ctx, src.expr, dstType.elementType.parameterTypes, node);
             return new WGetFunctionAddress(item.fullName, node.location);
         }
         throw new SyntaxError(`unsupport function name`, node);
@@ -204,6 +204,19 @@ export function doValuePromote(ctx: CompileContext, src: ExpressionResult, node:
     if ( src.type instanceof FloatType ) {
         src.expr = doConversion(ctx, PrimitiveTypes.double, src, node);
         src.type = PrimitiveTypes.double;
+    }
+    return src;
+}
+
+export function doTypePromote(ctx: CompileContext, src: Type, node: Node): Type {
+    if (src instanceof ArrayType) {
+        src = new PointerType(src.elementType);
+    }
+    if ( src instanceof IntegerType && src.length < 4 ) {
+        src = PrimitiveTypes.int32;
+    }
+    if ( src instanceof FloatType ) {
+        src = PrimitiveTypes.double;
     }
     return src;
 }

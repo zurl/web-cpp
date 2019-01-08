@@ -20,7 +20,7 @@ import {
     I32,
     I32Convert,
     I64,
-    I64Convert,
+    I64Convert, OpCodes,
     WLoadIns,
     WStoreIns,
 } from "../wasm/constant";
@@ -132,6 +132,11 @@ export class JSRuntime extends Runtime {
     public runStep(): boolean {
         // fetch
         const ins = this.stackTop.fn.codes[this.stackTop.pc];
+        // console.log(OpCodes.get(ins[0]));
+        // console.log({
+        //     pc: this.stackTop.pc,
+        //     sp: this.sp,
+        // });
         // decode & compute
         if (I32Binary.hasOwnProperty(ins[0]) || F32Binary.hasOwnProperty(ins[0]) || F64Binary.hasOwnProperty(ins[0])) {
             const b = this.stackTop.stack[this.stackTop.stack.length - 1] as number;
@@ -224,7 +229,7 @@ export class JSRuntime extends Runtime {
             } else if (ins[0] === I32.store16) { this.memory.setUint16(addr, data as number, true);
             } else if (ins[0] === I32.store) { this.memory.setInt32(addr, data as number, true);
             } else if (ins[0] === F32.store) { this.memory.setFloat32(addr, data as number, true);
-            } else if (ins[0] === F64.store) { this.memory.setFloat64(addr, data as number, true);
+            } else if (ins[0] === F64.store) {this.memory.setFloat64(addr, data as number, true);
             } else if (ins[0] === I64.store8) { this.memory.setUint8(addr, (data as Long).toNumber());
             } else if (ins[0] === I64.store16) { this.memory.setUint16(addr, (data as Long).toNumber(), true);
             } else if (ins[0] === I64.store32) { this.memory.setUint32(addr, (data as Long).toNumber(), true);

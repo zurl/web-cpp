@@ -13,7 +13,7 @@ import {
     IntegerConstant, MemberExpression,
     Node,
     ParenthesisExpression, PostfixExpression, StringLiteral,
-    SubscriptExpression,
+    SubscriptExpression, TemplateFuncInstanceIdentifier,
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, LanguageError, SyntaxError} from "../common/error";
@@ -21,6 +21,7 @@ import {AddressType, Variable} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
+import {UnresolvedFunctionOverloadType} from "../type/function_type";
 import {
     CharType,
     DoubleType, FloatingType,
@@ -220,6 +221,14 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
         type: item.type,
         expr: new WAddressHolder(item.location, item.addressType, this.location),
         isLeft: true,
+    };
+};
+
+TemplateFuncInstanceIdentifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
+    return {
+        type: PrimitiveTypes.void,
+        expr: (this.deduceType(ctx) as UnresolvedFunctionOverloadType).functionLookupResult,
+        isLeft: false,
     };
 };
 

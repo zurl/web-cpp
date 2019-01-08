@@ -54,7 +54,8 @@
 
     let ID_NAME = 0;
     let TYPE_NAME = 1;
-    let TEMPLATE_NAME = 2;
+    let TEMPLATE_FUNC_NAME = 2;
+    let TEMPLATE_CLASS_NAME = 3;
 
     function getTypeOfName(name, type) {
         let c = currScope;

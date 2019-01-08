@@ -11,15 +11,22 @@ SingleIdentifier
     }
 
 SingleTypeIdentifier
-    =  id:Id &{ //precondition
+    =  id:Id &{
         return getTypeOfName(id.name) === TYPE_NAME;
     } {
         return id;
     }
 
-SingleTemplateIdentifier
-    =  id:Id &{ //precondition
-        return getTypeOfName(id.name) === TEMPLATE_NAME;
+SingleTemplateFuncIdentifier
+    =  id:Id &{
+        return getTypeOfName(id.name) === TEMPLATE_FUNC_NAME;
+    } {
+        return id;
+    }
+
+SingleTemplateClassIdentifier
+    =  id:Id &{
+        return getTypeOfName(id.name) === TEMPLATE_CLASS_NAME;
     } {
         return id;
     }
@@ -37,6 +44,10 @@ Identifier
         name.identifier.name = '~' + name.identifier.name;
         return name.identifier;
     }
+    / id:TemplateFuncInstanceIdentifier{
+        return id;
+    }
+
 
 TypeIdentifier
     = isFullName:'::'? namespace:(Id '::')* name:SingleTypeIdentifier {
@@ -44,12 +55,22 @@ TypeIdentifier
         const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
         return new AST.TypeIdentifier(getLocation(), id);
     }
+    / id:TemplateClassInstanceIdentifier{
+        return id;
+    }
 
-TemplateIdentifier
-    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateIdentifier {
+TemplateFuncIdentifier
+    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateFuncIdentifier {
         const prefix = isFullName === "::" ? "::" : "";
         const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
-        return new AST.TemplateIdentifier(getLocation(), id);
+        return new AST.TemplateFuncIdentifier(getLocation(), id);
+    }
+
+TemplateClassIdentifier
+    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateClassIdentifier {
+        const prefix = isFullName === "::" ? "::" : "";
+        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
+        return new AST.TemplateClassIdentifier(getLocation(), id);
     }
 
 TypeDeclarationIdentifier
