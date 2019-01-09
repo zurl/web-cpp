@@ -158,6 +158,7 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         ctx.fileName, functionType, false, true, accessControl);
     ctx.scopeManager.define(realName, functionEntity, node);
     ctx.enterFunction(functionEntity);
+
     // alloc parameters
 
     const returnWTypes: WType[] = [];
@@ -270,6 +271,7 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
     ctx.setStatementContainer(savedStatements);
     ctx.submitFunction(new WFunction(
         functionEntity.fullName,
+        functionType.toString(),
         returnWTypes,
         parameterWTypes,
         ctx.memory.localTypes, // TODO:: add local

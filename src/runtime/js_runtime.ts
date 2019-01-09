@@ -91,9 +91,6 @@ export class JSRuntime extends Runtime {
                 return parseFloat(x.init);
             }
         });
-        for (const fn of this.program.functions) {
-            fn.displayName = this.getDisplayName(fn.name);
-        }
         this.returnValue = 0;
         this.convertArray = new ArrayBuffer(64);
         this.convertDataView = new DataView(this.convertArray);
@@ -110,15 +107,6 @@ export class JSRuntime extends Runtime {
             scope: this.rootScope,
         }];
         this.stackTop = this.stack[0];
-    }
-
-    public getDisplayName(fullName: string): string {
-        const ret = this.scopeManager.lookupFullName(fullName);
-        if (ret && ret instanceof FunctionLookUpResult) {
-            const fn = ret.functions[0];
-            return fn.type.toString();
-        }
-        return fullName;
     }
 
     public get sp(): number {

@@ -17,16 +17,18 @@ export class WFunction extends WNode {
     public local: WType[];
     public body: WStatement[];
     public signatureId: number;
+    public displayName: string;
 
     // fill in linking
     public dataStart: number;
     public bssStart: number;
     public fileName: string;
 
-    constructor(name: string, returnType: WType[], parameters: WType[],
+    constructor(name: string, displayName: string, returnType: WType[], parameters: WType[],
                 local: WType[], body: WStatement[], location?: SourceLocation) {
         super(location);
         this.name = name;
+        this.displayName = displayName;
         this.type = new WFunctionType(returnType, parameters, location);
         this.local = local;
         this.body = body;
@@ -91,7 +93,7 @@ export class WFunction extends WNode {
         e.getJSON().functions.push({
             name: this.name,
             fileName: this.fileName,
-            displayName: this.name,
+            displayName: this.displayName,
             locals: this.local.map((x) => getNativeType(x)),
             codes,
             type: this.type.toEncoding(),

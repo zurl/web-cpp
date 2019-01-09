@@ -69,7 +69,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         }
         data.push(new WDataSegment(dataNow, object.data.slice(0, object.dataSize)));
         const initFuncName = `$init$${object.fileName}`;
-        const initFunc = new WFunction(initFuncName,
+        const initFunc = new WFunction(initFuncName, initFuncName,
             [], [], [], object.globalStatements);
         initFunc.dataStart = dataNow;
         functions.push(initFunc);
@@ -85,7 +85,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         bssNow += object.dataSize;
     }
 
-    const startFunc = new WFunction("$start", [], [], [],
+    const startFunc = new WFunction("$start", "__start", [], [], [],
         initFuncNames.map((name) => new WCall(name, [], [])));
     functions.push(startFunc);
 
@@ -121,11 +121,11 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
 
     imports.push(new WImportMemory("system", "memory", 1, 10));
 
-    functions.push(new WFunction("$get_sp", [WType.u32], [], [], [
+    functions.push(new WFunction("$get_sp", "get_sp", [WType.u32], [], [], [
         new WReturn(new WGetGlobal(WType.u32,  "$sp")),
     ]));
 
-    functions.push(new WFunction("$set_sp", [], [WType.u32], [], [
+    functions.push(new WFunction("$set_sp", "set_sp", [], [WType.u32], [], [
         new WSetGlobal(WType.u32,  "$sp", new WGetLocal(WType.u32, 0)),
     ]));
 

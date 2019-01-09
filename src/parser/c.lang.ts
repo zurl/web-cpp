@@ -71,115 +71,6 @@ export default `{
     }
 }
 Start = TranslationUnit
-ClassSpecifier
-    = classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
-        return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
-    }
-    / classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier {
-        return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
-    }
-
-ClassKeyword
-    = ('struct' / 'class' / 'union') !IdentifierPart {
-        return text();
-    }
-
-BaseSpecifier
-    = lb:AccessControlKey? _ className:TypeIdentifier{
-        return new AST.BaseSpecifier(getLocation(), lb || "", className);
-    }
-
-BaseClause
-    = ':' _ head:BaseSpecifier tail:(_ ',' _ BaseSpecifier)* {
-        return buildList(head, tail, 1);
-    }
-
-StructDeclarationList
-    = head:StructDeclaration tail:(_ StructDeclaration)* {
-        return buildList(head, tail, 1);
-    }
-
-AccessControlKey = 'public' / 'private' / 'protect'
-
-StructDeclaration
-    = id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
-    }
-    / id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
-    }
-    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
-    }
-    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
-    }
-    / label:AccessControlKey _ ':' {
-        return new AST.AccessControlLabel(getLocation(), label);
-    }
-    / decl:Declaration {
-        return decl;
-    }
-
-ConstructorInitializeList
-    = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
-         return buildList(head, tail, 3);
-    }
-
-ConstructorInitializeItem
-    = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
-        return new AST.ConstructorInitializeItem(getLocation(), key, value, false);
-    }
-    / key:TypeIdentifier _ '(' _ value:ArgumentExpressionList _ ')' {
-        return new AST.ConstructorInitializeItem(getLocation(), key, value, true);
-    }
-
-SpecifierQualifierList
-    = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
-        return buildList(head, tail, 1);
-    }
-
-
-
-// ADDED
-// REORDER: TypeQualifier / TypeSpecifier
-SpecifierQualifier
-    = TypeQualifier
-    / TypeSpecifier
-
-StructDeclaratorList
-    = head:StructDeclarator tail:(_ ',' _ StructDeclarator)* {
-        return buildList(head, tail, 3);
-    }
-
-StructDeclarator
-    = ':' _ width:ConstantExpression {
-        return new AST.StructDeclarator(getLocation(), null, width, null);
-    }
-    / declarator:Declarator _ initDeclarators:InitDeclaratorList? width:(_ ':' _ ConstantExpression)? {
-        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3), initDeclarators);
-    }
-
-EnumSpecifier
-    = 'enum' !IdentifierPart _ identifier:Identifier? _ '{' _ enumerators:EnumeratorList _ ','? _ &!'}' {
-        return new AST.EnumSpecifier(getLocation(), identifier, enumerators);
-    }
-    / 'enum' !IdentifierPart _ identifier:Identifier {
-        return new AST.EnumSpecifier(getLocation(), identifier, null);
-    }
-
-EnumeratorList
-    = head:Enumerator tail:(_ comma:','? _ enumerator:Enumerator)* {
-        return buildList(head, tail, 3);
-    }
-
-// MODIFICATION: EnumerationConstant => Identifier
-Enumerator
-    = identifier:Identifier value:(_ '=' _ ConstantExpression)? {
-        return new AST.Enumerator(getLocation(), identifier, extractOptional(value, 3));
-    }
-
-
 Constant
     = FloatingConstant
     / IntegerConstant
@@ -378,6 +269,115 @@ Sign
 
 DigitSequence
     = Digit+
+
+ClassSpecifier
+    = classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier _ ih:BaseClause? _ ScopeStart _ declarations:StructDeclarationList? _ ScopeEnd {
+        return new AST.ClassSpecifier(getLocation(), classKey, identifier, declarations || [] , ih || []);
+    }
+    / classKey:ClassKeyword _ identifier:TypeDeclarationIdentifier {
+        return new AST.ClassSpecifier(getLocation(), classKey, identifier, null, []);
+    }
+
+ClassKeyword
+    = ('struct' / 'class' / 'union') !IdentifierPart {
+        return text();
+    }
+
+BaseSpecifier
+    = lb:AccessControlKey? _ className:TypeIdentifier{
+        return new AST.BaseSpecifier(getLocation(), lb || "", className);
+    }
+
+BaseClause
+    = ':' _ head:BaseSpecifier tail:(_ ',' _ BaseSpecifier)* {
+        return buildList(head, tail, 1);
+    }
+
+StructDeclarationList
+    = head:StructDeclaration tail:(_ StructDeclaration)* {
+        return buildList(head, tail, 1);
+    }
+
+AccessControlKey = 'public' / 'private' / 'protect'
+
+StructDeclaration
+    = id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
+    }
+    / id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
+    }
+    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ body:CompoundStatement{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
+    }
+    / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ ';'{
+        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
+    }
+    / label:AccessControlKey _ ':' {
+        return new AST.AccessControlLabel(getLocation(), label);
+    }
+    / decl:Declaration {
+        return decl;
+    }
+
+ConstructorInitializeList
+    = ':' _ head:ConstructorInitializeItem _ tail:(_ ',' _ ConstructorInitializeItem)* {
+         return buildList(head, tail, 3);
+    }
+
+ConstructorInitializeItem
+    = key:Identifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value, false);
+    }
+    / key:TypeIdentifier _ '(' _ value:ArgumentExpressionList _ ')' {
+        return new AST.ConstructorInitializeItem(getLocation(), key, value, true);
+    }
+
+SpecifierQualifierList
+    = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
+        return buildList(head, tail, 1);
+    }
+
+
+
+// ADDED
+// REORDER: TypeQualifier / TypeSpecifier
+SpecifierQualifier
+    = TypeQualifier
+    / TypeSpecifier
+
+StructDeclaratorList
+    = head:StructDeclarator tail:(_ ',' _ StructDeclarator)* {
+        return buildList(head, tail, 3);
+    }
+
+StructDeclarator
+    = ':' _ width:ConstantExpression {
+        return new AST.StructDeclarator(getLocation(), null, width, null);
+    }
+    / declarator:Declarator _ initDeclarators:InitDeclaratorList? width:(_ ':' _ ConstantExpression)? {
+        return new AST.StructDeclarator(getLocation(), declarator, extractOptional(width, 3), initDeclarators);
+    }
+
+EnumSpecifier
+    = 'enum' !IdentifierPart _ identifier:Identifier? _ '{' _ enumerators:EnumeratorList _ ','? _ &!'}' {
+        return new AST.EnumSpecifier(getLocation(), identifier, enumerators);
+    }
+    / 'enum' !IdentifierPart _ identifier:Identifier {
+        return new AST.EnumSpecifier(getLocation(), identifier, null);
+    }
+
+EnumeratorList
+    = head:Enumerator tail:(_ comma:','? _ enumerator:Enumerator)* {
+        return buildList(head, tail, 3);
+    }
+
+// MODIFICATION: EnumerationConstant => Identifier
+Enumerator
+    = identifier:Identifier value:(_ '=' _ ConstantExpression)? {
+        return new AST.Enumerator(getLocation(), identifier, extractOptional(value, 3));
+    }
+
 
 TranslationUnit
     = list:DeclarationList{
