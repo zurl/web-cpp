@@ -158,7 +158,6 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         ctx.fileName, functionType, false, true, accessControl);
     ctx.scopeManager.define(realName, functionEntity, node);
     ctx.enterFunction(functionEntity);
-
     // alloc parameters
 
     const returnWTypes: WType[] = [];

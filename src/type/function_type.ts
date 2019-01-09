@@ -92,6 +92,17 @@ export class FunctionType extends Type {
 
     public toString() {
         let name = this.name;
+        if (name.charAt(0) === "#") {
+            if (name.charAt(1) === "$") {
+                name = name.substring(2);
+            } else {
+                name = "operator" + name.substring(1);
+            }
+        }
+        if (name.includes("@")) {
+            const tokens = name.split("@");
+            name = tokens[0] + "<" + tokens[2] + ">";
+        }
         if (this.cppFunctionType === CppFunctionType.Constructor) {
             name = this.referenceClass!.name + "::" + this.referenceClass!.name;
         } else if (this.cppFunctionType === CppFunctionType.Destructor) {

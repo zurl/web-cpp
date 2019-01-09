@@ -223,9 +223,6 @@ of WebAssembly.
 - [ ] seperate define class function
 - [ ] operator new/ placement new
 - [ ] warning
-// todo:
-'=' default behavior
-
 
 ## Miscellaneous
 
