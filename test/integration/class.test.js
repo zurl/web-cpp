@@ -42,7 +42,7 @@ describe('class integration test', function () {
         }
         `;
         const expectOutput = `42`;
-        return await TestBase.testFullCode(testCode, expectOutput);
+        return await TestBase.testFullCode(testCode, expectOutput, {debug: true});
     });
     it('test enum',async function() {
         const testCode = `

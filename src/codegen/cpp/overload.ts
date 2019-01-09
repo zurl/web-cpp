@@ -3,6 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 21/07/2018
  */
+import {strict} from "assert";
 import {Node} from "../../common/ast";
 import {SyntaxError} from "../../common/error";
 import {FunctionEntity} from "../../common/symbol";
@@ -51,6 +52,18 @@ export function doFunctionFilter(func: FunctionEntity, argus: Type[],
     }
 }
 
+export function removeDuplicatedFunctions(funcs: FunctionEntity[]): FunctionEntity[] {
+    const s = new Set<string>();
+    const result = [] as FunctionEntity[];
+    for (const func of funcs) {
+        if (!s.has(func.fullName)) {
+            result.push(func);
+            s.add(func.fullName);
+        }
+    }
+    return result;
+}
+
 export function doFunctionOverloadResolution(ctx: CompileContext,
                                              funcs: FunctionLookUpResult,
                                              argus: Type[], node: Node): FunctionEntity {
@@ -75,11 +88,12 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
     // make template after normal
 
     const t2 = t1.concat(t0);
-    const f1 = t2.filter((func) =>
+    const f0 = t2.filter((func) =>
         (func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length + 1)
         || (!func.type.isMemberFunction() && func.type.parameterTypes.length === argus.length)
         || func.type.variableArguments,
     );
+    const f1 = removeDuplicatedFunctions(f0);
 
     // 2. strong type match
 

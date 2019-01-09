@@ -7,13 +7,13 @@ import * as Long from "long";
 import {
     AssignmentExpression,
     BinaryExpression, CallExpression,
-    CastExpression, CharacterConstant, ConditionalExpression,
+    CastExpression, CharacterConstant, ConditionalExpression, ConstructorCallExpression,
     ExpressionResult,
     FloatingConstant, Identifier,
     IntegerConstant, MemberExpression,
     Node,
     ParenthesisExpression, PostfixExpression, StringLiteral,
-    SubscriptExpression, TemplateFuncInstanceIdentifier,
+    SubscriptExpression, TemplateFuncInstanceIdentifier, TypeIdentifier,
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
@@ -73,12 +73,21 @@ AssignmentExpression.prototype.codegen = function(ctx: CompileContext): Expressi
                 [
                     this.right]).codegen(ctx);
         } else {
-            const len = leftType.length;
-            return new CallExpression(this.location, new Identifier(this.location, "::memcpy"), [
-                new UnaryExpression(this.location, "&", this.left),
-                new UnaryExpression(this.location, "&", this.right),
-                new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null),
-            ]).codegen(ctx);
+            if (rightType.equals(leftType)) {
+                const len = leftType.length;
+                return new CallExpression(this.location, new Identifier(this.location, "::memcpy"), [
+                    new UnaryExpression(this.location, "&", this.left),
+                    new UnaryExpression(this.location, "&", this.right),
+                    new IntegerConstant(this.location, 10, Long.fromInt(len), len.toString(), null),
+                ]).codegen(ctx);
+            } else {
+                const ctorName = leftType.fullName + "::#" + leftType.name;
+                const callee = new Identifier(this.location, ctorName);
+                return new CallExpression(this.location, callee, [
+                    new UnaryExpression(this.location, "&", this.left),
+                    this.right,
+                ]).codegen(ctx);
+            }
         }
     }
 
@@ -346,6 +355,14 @@ UnaryExpression.prototype.codegen = function(ctx: CompileContext): ExpressionRes
                 this.operand,
                 IntegerConstant.getOne()))
             .codegen(ctx);
+    }
+    if (this.operator === "&") {
+        if (this.operand instanceof SubscriptExpression) {
+            return new BinaryExpression(this.location, "+",
+                this.operand.array, this.operand.subscript).codegen(ctx);
+        } else if (this.operand instanceof UnaryExpression && this.operand.operator === "*") {
+            return this.operand.operand.codegen(ctx);
+        }
     }
     let expr = this.operand.codegen(ctx);
     if (this.operator === "*") {

@@ -37,6 +37,10 @@ export function codegen(root: Node, ctx: CompileContext) {
             PrimitiveTypes.void, [voidPtrT, voidPtrT, PrimitiveTypes.uint32],
             ["dst", "src", "size"], false),
             true, AccessControl.Public, root);
+        declareFunction(ctx, new FunctionType("memset",
+            PrimitiveTypes.void, [voidPtrT, PrimitiveTypes.int32, PrimitiveTypes.uint32],
+            ["dst", "ch", "size"], false),
+            true, AccessControl.Public, root);
         declareFunction(ctx, new FunctionType("malloc",
             new PointerType(PrimitiveTypes.void), [PrimitiveTypes.uint32],
             ["size"], false),

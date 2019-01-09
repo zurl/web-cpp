@@ -19,7 +19,6 @@ export class MemoryLayout {
 
     public MEMORY_$SP: number;
     public MEMORY_$BP: number;
-    public usedStackSize: number;
 
     constructor(dataSize: number) {
         this.dataPtr = 0;
@@ -33,7 +32,6 @@ export class MemoryLayout {
         this.MEMORY_$BP = 0;
         this.MEMORY_$SP = 0;
         this.localTypes = [];
-        this.usedStackSize = 0;
     }
 
     public allocData(size: number): number {
@@ -83,19 +81,10 @@ export class MemoryLayout {
         this.stackScope.push(this.stackPtr);
         this.stackPtr = 0;
         this.localPtr = 0;
-        this.stackScope = [];
         this.localTypes = [];
     }
 
     public exitFunction() {
-        this.stackPtr = this.stackScope.pop() as number;
-    }
-
-    public enterInnerScope() {
-        this.stackScope.push(this.stackPtr);
-    }
-
-    public exitInnerScope() {
         this.stackPtr = this.stackScope.pop() as number;
     }
 

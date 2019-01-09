@@ -212,9 +212,10 @@ of WebAssembly.
 - [X] virtual member function
 - [ ] cast overload， like if(object) { ... }
 - [not support by wasm] exception handling
-- [ ] function template
-- [ ] const/override/virtual member function
+- [X] function template
+- [ ] member function template in class
 - [ ] class template
+- [ ] const/override/virtual member function
 - [ ] typeinfo
 - [ ] static_cast / dynamic_cast / reinterpret_cast
 - [ ] mangled/demangled
@@ -222,6 +223,8 @@ of WebAssembly.
 - [ ] seperate define class function
 - [ ] operator new/ placement new
 - [ ] warning
+// todo:
+'=' default behavior
 
 
 ## Miscellaneous

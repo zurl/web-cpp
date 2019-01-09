@@ -2,6 +2,7 @@
 #define _STDLIB_H
 
 __libcall void *malloc(unsigned int num_bytes);
+__libcall void *memset(void * ptr, int ch, unsigned int num_bytes);
 __libcall void free(void * ptr);
 
 #endif

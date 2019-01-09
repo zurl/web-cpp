@@ -112,4 +112,61 @@ describe('big test', function () {
         const expectOutput = `9,9,`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true, linkStd: true, debug: true});
     });
+    it('test template quicksort', async function () {
+        const testCode = `
+#include<stdio.h>
+        class SealedNumber{
+            int value;
+            SealedNumber(): value(0){}
+            SealedNumber(int val): value(val){}
+            bool operator>(const SealedNumber & rhs){
+                return value > rhs.value;
+            }
+        };
+        
+        template<typename T>
+        void quicksort(T number[], int first, int last){
+           int i, j, pivot;
+           T temp;
+        
+           if(first < last){
+              pivot = first;
+              i = first;
+              j = last;
+        
+              while(i<j){
+                 while((!(number[i] > number[pivot])) && i < last)
+                    i++;
+                 while(number[j] > number[pivot])
+                    j--;
+                 if(i<j){
+                    temp=number[i];
+                    number[i]=number[j];
+                    number[j]=temp;
+                 }
+              }
+        
+              temp = number[pivot];
+              number[pivot] = number[j];
+              number[j] = temp;
+              quicksort(number, first, j-1);
+              quicksort(number, j+1, last);
+           }
+        }
+        int main(){
+            SealedNumber sealedArray[50];
+            int array[50] = {1, 9, 9, 7, 7, 9, 9, 1};
+            for(int i = 0; i < 8; i++){
+                sealedArray[i] = SealedNumber(array[i]);
+            }
+            quicksort(sealedArray, 0, 7);
+            for(int i = 0; i < 8; i++){
+                printf("%d", sealedArray[i].value);
+            }
+            return 0;
+        }
+        `;
+        const expectOutput = `11779999`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
 });

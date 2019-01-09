@@ -417,9 +417,9 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
     // compute finish
 
-    ctx.memory.usedStackSize -= stackSize;
+    ctx.memory.stackPtr -= stackSize;
     const arguExprs = [...thisPtrs, ... this.arguments.map((x) => x.codegen(ctx))];
-    ctx.memory.usedStackSize += stackSize;
+    ctx.memory.stackPtr += stackSize;
 
     if (funcType.parameterTypes.length > arguExprs.length) {
         // could be default parameters
@@ -439,7 +439,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
 
     const argus: WExpression[] = [];
-    let stackOffset = ctx.memory.usedStackSize;
+    let stackOffset = ctx.memory.stackPtr;
 
     if (funcType.variableArguments) {
         for (let i = arguExprs.length - 1; i > funcType.parameterTypes.length - 1; i--) {

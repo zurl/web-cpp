@@ -28,6 +28,14 @@ export function memcpy(this: Runtime, dst: number, src: number, size: number) {
     const subarray = this. memoryUint8Array.slice(src, src + size);
     this.memoryUint8Array.set(subarray, dst);
 }
+
+export function memset(this: Runtime, ptr: number, value: number, size: number): void {
+    const ch = value & 0xFF;
+    for (let i = 0; i < size; i++) {
+        this.memory.setUint8(ptr + i, ch);
+    }
+}
+
 export function malloc(this: Runtime, size: number): number {
     return this.heapAllocator.allocHeap(this, size);
 }
