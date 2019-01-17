@@ -51,6 +51,8 @@ export abstract class Runtime {
 
     public abstract set sp(value: number);
 
+    public abstract printStack(): void;
+
     public readMemoryString(ptr: number): string {
         return fromBytesToString(this.memory, ptr);
     }

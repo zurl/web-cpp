@@ -4,6 +4,7 @@
  *  Created at 14/07/2018
  */
 import {SourceMapConsumer} from "source-map";
+import {Scope} from "../codegen/scope";
 import {SourceLocation} from "../common/ast";
 import {EmitError} from "../common/error";
 import {SourceMap} from "../common/object";
@@ -276,6 +277,7 @@ export interface WASMJSONFunction {
     lineIdx: Set<number>;
     dataStart: number;
     bssStart: number;
+    scope: Scope | null;
 }
 
 export interface WASMJSON {

@@ -204,10 +204,6 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         }
     }
 
-    const bodyStatements: WStatement[] = [];
-    const savedStatements = ctx.getStatementContainer();
-    ctx.setStatementContainer(bodyStatements);
-
     // register sp & bp
     // TODO:: could optimize it out
     functionEntity.$sp = ctx.memory.allocLocal(WType.u32);
@@ -237,7 +233,9 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
         dtorStmts.map((item) => item.codegen(ctx));
     }
 
-    offsetNode.constant = ctx.memory.stackPtr.toString();
+    offsetNode.constant = ctx.memory.currentState.stackPtr.toString();
+
+    const bodyStatements = ctx.getStatementContainer();
 
     if (!functionEntity.type.returnType.equals(PrimitiveTypes.void)) {
         let curBlk: WStatement[] = bodyStatements;
@@ -267,14 +265,14 @@ export function defineFunction(ctx: CompileContext, functionType: FunctionType,
             new ReturnStatement(emptyLocation, IntegerConstant.getZero()).codegen(ctx);
         }
     }
+    const local = ctx.memory.currentState.localTypes;
     ctx.exitFunction();
-    ctx.setStatementContainer(savedStatements);
     ctx.submitFunction(new WFunction(
         functionEntity.fullName,
         functionType.toString(),
         returnWTypes,
         parameterWTypes,
-        ctx.memory.localTypes, // TODO:: add local
+        local, // TODO:: add local
         bodyStatements,
         node.location,
     ));
@@ -418,9 +416,9 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
     // compute finish
 
-    ctx.memory.stackPtr -= stackSize;
+    ctx.memory.currentState.stackPtr -= stackSize;
     const arguExprs = [...thisPtrs, ... this.arguments.map((x) => x.codegen(ctx))];
-    ctx.memory.stackPtr += stackSize;
+    ctx.memory.currentState.stackPtr += stackSize;
 
     if (funcType.parameterTypes.length > arguExprs.length) {
         // could be default parameters
@@ -440,7 +438,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
     }
 
     const argus: WExpression[] = [];
-    let stackOffset = ctx.memory.stackPtr;
+    let stackOffset = ctx.memory.currentState.stackPtr;
 
     if (funcType.variableArguments) {
         for (let i = arguExprs.length - 1; i > funcType.parameterTypes.length - 1; i--) {
@@ -565,7 +563,7 @@ CallExpression.prototype.codegen = function(ctx: CompileContext): ExpressionResu
 };
 
 ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
-    if (ctx.currentFunction === null) {
+    if (ctx.currentFuncContext.currentFunction === null) {
         throw new SyntaxError(`return outside function`, this);
     }
     // $sp = sp
@@ -573,10 +571,10 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
 
     ctx.submitStatement(
         new WSetGlobal(WType.u32, "$sp",
-            new WGetLocal(WType.u32, ctx.currentFunction.$sp, this.location), this.location));
+            new WGetLocal(WType.u32, ctx.currentFuncContext.currentFunction.$sp, this.location), this.location));
 
     if (this.argument !== null) {
-        const returnType = ctx.currentFunction.type.returnType;
+        const returnType = ctx.currentFuncContext.currentFunction.type.returnType;
         if (returnType.equals(PrimitiveTypes.void)) {
             throw new SyntaxError(`return type mismatch`, this);
         }
@@ -590,11 +588,11 @@ ReturnStatement.prototype.codegen = function(ctx: CompileContext) {
             }
             ctx.submitStatement(new WReturn(expr.expr.createLoadAddress(ctx), this.location));
         } else {
-            expr.expr = doConversion(ctx, ctx.currentFunction.type.returnType, expr, this);
+            expr.expr = doConversion(ctx, ctx.currentFuncContext.currentFunction.type.returnType, expr, this);
             ctx.submitStatement(new WReturn(expr.expr.fold(), this.location));
         }
     } else {
-        if (!ctx.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
+        if (!ctx.currentFuncContext.currentFunction.type.returnType.equals(PrimitiveTypes.void)) {
             throw new SyntaxError(`return type mismatch`, this);
         }
         ctx.submitStatement(new WReturn(null, this.location));

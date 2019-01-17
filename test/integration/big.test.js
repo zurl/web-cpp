@@ -114,6 +114,7 @@ describe('big test', function () {
     });
     it('test template quicksort', async function () {
         const testCode = `
+#include <syscall.h>
 #include<stdio.h>
         class SealedNumber{
             int value;
@@ -126,14 +127,12 @@ describe('big test', function () {
         
         template<typename T>
         void quicksort(T number[], int first, int last){
-           int i, j, pivot;
-           T temp;
-        
            if(first < last){
+              int i, j, pivot;
+              T temp;
               pivot = first;
               i = first;
               j = last;
-        
               while(i<j){
                  while((!(number[i] > number[pivot])) && i < last)
                     i++;
@@ -145,7 +144,6 @@ describe('big test', function () {
                     number[j]=temp;
                  }
               }
-        
               temp = number[pivot];
               number[pivot] = number[j];
               number[j] = temp;

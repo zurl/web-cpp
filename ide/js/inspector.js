@@ -1,5 +1,10 @@
 const tbody = document.getElementById("inspector-tbody");
-
+function escapeHTML( string ) {
+    var pre = document.createElement('pre');
+    var text = document.createTextNode( string );
+    pre.appendChild(text);
+    return pre.innerHTML;
+}
 export function updateInspector(runtime){
     let result = "";
     if(!runtime){
@@ -9,9 +14,9 @@ export function updateInspector(runtime){
     const stack = runtime.stack;
     for(let i = stack.length - 1; i >= 0; i--){
         const item = stack[i];
-        result += `<tr><td colspan="3">==>${item.fn.displayName} #${i}</td></tr>`;
-        for(const subitem of runtime.getScopeInfo(item.scope, item)){
-            result += `<tr><td>${subitem.name}</td><td>${subitem.type}</td><td>${subitem.value}</td></tr>`;
+        result += `<tr><td colspan="3">==>${escapeHTML(item.fn.displayName)} #${i}</td></tr>`;
+        for(const subitem of runtime.getScopeInfo(item.fn.scope, item)){
+            result += `<tr><td>${escapeHTML(subitem.name)}</td><td>${escapeHTML(subitem.type)}</td><td>${escapeHTML(subitem.value)}</td></tr>`;
         }
     }
     result += `<tr><td colspan="3">==>global</td></tr>`;

@@ -26,20 +26,16 @@ import {
     IntegerConstant,
     Node,
     ObjectInitializer,
-    ParameterList,
     Pointer,
     PointerDeclarator,
     SpecifierType,
-    SubscriptExpression, TemplateArgument,
-    TemplateClassIdentifier,
+    SubscriptExpression, TemplateArgument, TemplateClassInstanceIdentifier,
     TemplateDeclaration,
-    TemplateFuncIdentifier,
-    TemplateFuncInstanceIdentifier,
     TranslationUnit,
     TypeIdentifier,
     UnaryExpression,
 } from "../common/ast";
-import {assertType, InternalError, LanguageError, SyntaxError} from "../common/error";
+import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {AddressType, Variable} from "../common/symbol";
 import {getPrimitiveTypeFromSpecifiers, isTypeSpecifier} from "../common/utils";
 import {AccessControl, Type} from "../type";
@@ -47,6 +43,7 @@ import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
 import {FunctionType} from "../type/function_type";
 import {IntegerType, PrimitiveTypes} from "../type/primitive_type";
+import {ClassTemplate} from "../type/template_type";
 import {WConst} from "../wasm";
 import {WExpression} from "../wasm/node";
 import {KeyWords} from "./constant";
@@ -95,7 +92,7 @@ TemplateDeclaration.prototype.getTemplateNames = function(): string[] {
     if (this.decl instanceof FunctionDefinition) {
         return [getDeclaratorIdentifierName(this.decl.declarator)];
     } else {
-        return [this.decl.typeName];
+        return [this.decl.identifier.name];
     }
 };
 
@@ -117,6 +114,8 @@ export function parseTypeFromSpecifiers(ctx: CompileContext, specifiers: Specifi
         }
         const node = typeNodes[0];
         if ( node instanceof ClassSpecifier) {
+            resultType = node.codegen(ctx) as Type;
+        } else if ( node instanceof TemplateClassInstanceIdentifier) {
             resultType = node.codegen(ctx) as Type;
         } else if ( node instanceof TypeIdentifier) {
             resultType = node.codegen(ctx) as Type;
@@ -278,6 +277,8 @@ export function lookupPreviousDeclaration(ctx: CompileContext, type: Type, name:
             }
         } else if ( oldItem instanceof Type ) {
             throw new SyntaxError(`redefine of typename ${name}`, node);
+        } else if ( oldItem instanceof ClassTemplate ) {
+            throw new SyntaxError(`redefine of ClassTemplate ${name}`, node);
         } else {
             if (oldItem.isDefine() && !type.isExtern) {
                 throw new SyntaxError(`redefine of variable ${name}`, node);

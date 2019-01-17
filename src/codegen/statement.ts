@@ -67,11 +67,11 @@ GotoStatement.prototype.codegen = function(ctx: CompileContext) {
 
 SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     // Performance problem
-    const savedSwitchContext = ctx.switchContext;
+    const savedSwitchContext = ctx.currentFuncContext.switchContext;
     const savedStatementContainer = ctx.getStatementContainer();
     const mockContainer: WStatement[] = [];
     ctx.setStatementContainer(mockContainer);
-    ctx.switchContext = {cases: []};
+    ctx.currentFuncContext.switchContext = {cases: []};
     if (mockContainer.length !== 0) {
         throw new SyntaxError(`illegal content in switch out side all case`, this);
     }
@@ -80,16 +80,16 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     }
     const caseCount = this.body.body.filter((x) => x instanceof CaseStatement).length;
     let defaultBreakLevel = caseCount;
-    ctx.breakStack.push(ctx.blockLevel);
-    ctx.blockLevel += caseCount;
+    ctx.currentFuncContext.breakStack.push(ctx.currentFuncContext.blockLevel);
+    ctx.currentFuncContext.blockLevel += caseCount;
     this.body.codegen(ctx);
-    const defaultBranches = ctx.switchContext.cases.filter((x) => x.value === null);
+    const defaultBranches = ctx.currentFuncContext.switchContext.cases.filter((x) => x.value === null);
     if (defaultBranches.length > 1) {
         throw new SyntaxError(`only 1 default case is support`, this);
     }
     if (defaultBranches.length === 1) {
-        for (let i = 0; i < ctx.switchContext.cases.length; i++) {
-            if (ctx.switchContext.cases[i].value === null) {
+        for (let i = 0; i < ctx.currentFuncContext.switchContext.cases.length; i++) {
+            if (ctx.currentFuncContext.switchContext.cases[i].value === null) {
                 defaultBreakLevel = i;
                 break;
             }
@@ -105,8 +105,8 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.submitStatement(tmpVarPtr.createStore(ctx, cond.type, cond.expr, true));
     let currentBlock = new WBlock([], this.location);
     const condExpr = tmpVarPtr.createLoad(ctx, cond.type);
-    for (let i = 0; i < ctx.switchContext.cases.length; i++) {
-        const val = ctx.switchContext.cases[i].value;
+    for (let i = 0; i < ctx.currentFuncContext.switchContext.cases.length; i++) {
+        const val = ctx.currentFuncContext.switchContext.cases[i].value;
         if (val !== null) {
             currentBlock.body.push(new WBrIf(i, new WBinaryOperation(
                 I32Binary.eq,
@@ -116,20 +116,20 @@ SwitchStatement.prototype.codegen = function(ctx: CompileContext) {
         }
     }
     currentBlock.body.push(new WBr(defaultBreakLevel, this.location));
-    for (let i = 0; i < ctx.switchContext.cases.length; i++) {
+    for (let i = 0; i < ctx.currentFuncContext.switchContext.cases.length; i++) {
         currentBlock = new WBlock([currentBlock,
-            ...ctx.switchContext.cases[i].statements], this.location);
+            ...ctx.currentFuncContext.switchContext.cases[i].statements], this.location);
     }
     ctx.submitStatement(currentBlock);
-    ctx.switchContext = savedSwitchContext;
+    ctx.currentFuncContext.switchContext = savedSwitchContext;
 };
 
 CaseStatement.prototype.codegen = function(ctx: CompileContext) {
-    if (ctx.switchContext === null) {
+    if (ctx.currentFuncContext.switchContext === null) {
         throw new SyntaxError(`case out of switch`, this);
     }
     const caseCtx: CaseContext = {value: null, statements: []};
-    ctx.switchContext.cases.push(caseCtx);
+    ctx.currentFuncContext.switchContext.cases.push(caseCtx);
     if (this.test !== null) {
         const expr = this.test.codegen(ctx);
         if (expr.expr instanceof FunctionLookUpResult) {
@@ -142,7 +142,7 @@ CaseStatement.prototype.codegen = function(ctx: CompileContext) {
         caseCtx.value = expr.expr;
     }
     ctx.setStatementContainer(caseCtx.statements);
-    ctx.blockLevel--;
+    ctx.currentFuncContext.blockLevel--;
     this.body.codegen(ctx);
 };
 
@@ -159,14 +159,14 @@ IfStatement.prototype.codegen = function(ctx: CompileContext) {
 
     const savedContainer = ctx.getStatementContainer();
     ctx.setStatementContainer(thenStatements);
-    ctx.blockLevel++;
+    ctx.currentFuncContext.blockLevel++;
     this.consequent.codegen(ctx);
     if (this.alternate !== null) {
         ctx.setStatementContainer(elseStatements);
         this.alternate.codegen(ctx);
     }
     ctx.setStatementContainer(savedContainer);
-    ctx.blockLevel--;
+    ctx.currentFuncContext.blockLevel--;
     if (this.alternate !== null) {
         ctx.submitStatement(new WIfElseBlock(condition.expr.fold(), thenStatements,
             elseStatements, this.location));
@@ -200,13 +200,13 @@ WhileStatement.prototype.codegen = function(ctx: CompileContext) {
     condition.expr = doConversion(ctx, PrimitiveTypes.int32, condition, this);
     condition.type = PrimitiveTypes.int32;
     ctx.submitStatement(new WBrIf(1, condition.expr.fold(), this.location));
-    ctx.continueStack.push(ctx.blockLevel + 2);
-    ctx.breakStack.push(ctx.blockLevel + 1);
-    ctx.blockLevel += 2;
+    ctx.currentFuncContext.continueStack.push(ctx.currentFuncContext.blockLevel + 2);
+    ctx.currentFuncContext.breakStack.push(ctx.currentFuncContext.blockLevel + 1);
+    ctx.currentFuncContext.blockLevel += 2;
     this.body.codegen(ctx);
-    ctx.blockLevel -= 2;
-    ctx.breakStack.pop();
-    ctx.continueStack.pop();
+    ctx.currentFuncContext.blockLevel -= 2;
+    ctx.currentFuncContext.breakStack.pop();
+    ctx.currentFuncContext.continueStack.pop();
     ctx.submitStatement(new WBr(0, this.location));
     // <-- loop -->
 
@@ -238,13 +238,13 @@ DoWhileStatement.prototype.codegen = function(ctx: CompileContext) {
 
     // <-- block -->
     ctx.setStatementContainer(doWhileBlock);
-    ctx.continueStack.push(ctx.blockLevel + 2);
-    ctx.breakStack.push(ctx.blockLevel + 1);
-    ctx.blockLevel += 2;
+    ctx.currentFuncContext.continueStack.push(ctx.currentFuncContext.blockLevel + 2);
+    ctx.currentFuncContext.breakStack.push(ctx.currentFuncContext.blockLevel + 1);
+    ctx.currentFuncContext.blockLevel += 2;
     this.body.codegen(ctx);
-    ctx.blockLevel -= 2;
-    ctx.continueStack.pop();
-    ctx.breakStack.pop();
+    ctx.currentFuncContext.blockLevel -= 2;
+    ctx.currentFuncContext.continueStack.pop();
+    ctx.currentFuncContext.breakStack.pop();
     // <-- block -->
 
     // <-- loop -->
@@ -293,17 +293,17 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     const savedContainer = ctx.getStatementContainer();
     // <-- inner block -->
     ctx.setStatementContainer(innerBlockStatements);
-    ctx.continueStack.push(ctx.blockLevel + 3);
-    ctx.breakStack.push(ctx.blockLevel + 1);
-    ctx.blockLevel += 3;
+    ctx.currentFuncContext.continueStack.push(ctx.currentFuncContext.blockLevel + 3);
+    ctx.currentFuncContext.breakStack.push(ctx.currentFuncContext.blockLevel + 1);
+    ctx.currentFuncContext.blockLevel += 3;
     if (this.body instanceof CompoundStatement) {
         this.body.body.map((x) => x.codegen(ctx));
     } else {
         this.body.codegen(ctx);
     }
-    ctx.blockLevel += 3;
-    ctx.continueStack.pop();
-    ctx.breakStack.pop();
+    ctx.currentFuncContext.blockLevel += 3;
+    ctx.currentFuncContext.continueStack.pop();
+    ctx.currentFuncContext.breakStack.pop();
     // <-- inner block -->
 
     // <-- loop -->
@@ -327,25 +327,25 @@ ForStatement.prototype.codegen = function(ctx: CompileContext) {
     ctx.submitStatement(new WLoop(loopStatements, this.location));
     // <-- outer block -->
 
+    ctx.exitScope(this);
     ctx.setStatementContainer(savedContainer);
     ctx.submitStatement(new WBlock(outerBlockStatements, this.location));
-    ctx.exitScope(this);
 };
 
 ContinueStatement.prototype.codegen = function(ctx: CompileContext) {
-    if (ctx.continueStack.length === 0) {
+    if (ctx.currentFuncContext.continueStack.length === 0) {
         throw new SyntaxError(`continue is not in while/do-while/for`, this);
     }
-    const item = ctx.continueStack[ctx.continueStack.length - 1];
-    ctx.submitStatement(new WBr(ctx.blockLevel - item, this.location));
+    const item = ctx.currentFuncContext.continueStack[ctx.currentFuncContext.continueStack.length - 1];
+    ctx.submitStatement(new WBr(ctx.currentFuncContext.blockLevel - item, this.location));
 };
 
 BreakStatement.prototype.codegen = function(ctx: CompileContext) {
-    if (ctx.breakStack.length === 0) {
+    if (ctx.currentFuncContext.breakStack.length === 0) {
         throw new SyntaxError(`break is not in while/do-while/for`, this);
     }
-    const item = ctx.breakStack[ctx.breakStack.length - 1];
-    ctx.submitStatement(new WBr(ctx.blockLevel - item, this.location));
+    const item = ctx.currentFuncContext.breakStack[ctx.currentFuncContext.breakStack.length - 1];
+    ctx.submitStatement(new WBr(ctx.currentFuncContext.blockLevel - item, this.location));
 };
 
 UsingStatement.prototype.codegen = function(ctx: CompileContext) {

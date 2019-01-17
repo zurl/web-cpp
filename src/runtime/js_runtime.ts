@@ -31,7 +31,6 @@ type WASMNumber = number | Long;
 
 export interface StackItem {
     fn: WASMJSONFunction;
-    scope: Scope | null;
     pc: number;
     sp: number;
     locals: WASMNumber[];
@@ -49,6 +48,8 @@ export interface JSRuntimeItemInfo {
     name: string;
     type: string;
     value: string;
+    size: number;
+    location: number | null;
 }
 
 export class JSRuntime extends Runtime {
@@ -97,6 +98,10 @@ export class JSRuntime extends Runtime {
         for (const seg of this.program.data) {
             this.memoryUint8Array.set(new Uint8Array(seg.data), seg.offset);
         }
+        for (const fn of this.program.functions) {
+            fn.scope = fn.name.substring(0, 2) === "::" ?
+                this.rootScope.getScope(fn.name.split("::").slice(1)) : null;
+        }
         this.stack = [{
             fn: this.program.functions[0],
             pc: 0,
@@ -104,7 +109,6 @@ export class JSRuntime extends Runtime {
             locals: [],
             stack: [],
             controlFlow: [],
-            scope: this.rootScope,
         }];
         this.stackTop = this.stack[0];
     }
@@ -279,8 +283,6 @@ export class JSRuntime extends Runtime {
             if (funcIdx >= this.program.imports.length) {
                 // internal call
                 const fn = this.program.functions[funcIdx - this.program.imports.length];
-                const scope = fn.name.substring(0, 2) === "::" ?
-                    this.rootScope.getScope(fn.name.split("::").slice(1)) : null;
                 this.stack.push({
                     fn,
                     pc: -1,
@@ -288,7 +290,6 @@ export class JSRuntime extends Runtime {
                     stack: [],
                     controlFlow: [],
                     locals: args,
-                    scope,
                 });
                 this.stackTop = this.stack[this.stack.length - 1];
                 for (let i = 0; i < this.stackTop.fn.locals.length; i++) {
@@ -350,7 +351,6 @@ export class JSRuntime extends Runtime {
             locals: [],
             stack: [],
             controlFlow: [],
-            scope: this.rootScope,
         }];
         this.stackTop = this.stack[this.stack.length - 1];
     }
@@ -454,21 +454,88 @@ export class JSRuntime extends Runtime {
         }
     }
 
-    public getScopeInfo(scope: Scope, stack: StackItem | null): JSRuntimeItemInfo[] {
-        const result: JSRuntimeItemInfo[] = [];
-        if (!scope) { return []; }
+    public getLocationOfVariable(v: Variable, stack: StackItem | null): number | null {
+        switch (v.addressType) {
+            case AddressType.GLOBAL_SP:
+                return this.sp + (v.location as number);
+            case AddressType.STACK:
+                if (!stack) { return null; }
+                return stack.sp + (v.location as number);
+            case AddressType.MEMORY_DATA:
+                return this.stackTop.fn.dataStart + (v.location as number);
+            case AddressType.MEMORY_BSS:
+                return this.stackTop.fn.bssStart + (v.location as number);
+            default:
+                return null;
+        }
+    }
+
+    public getSubScopeInfo(result: JSRuntimeItemInfo[], scope: Scope, stack: StackItem | null) {
         for (const item of scope.map) {
             for (const subItem of item[1]) {
                 if (subItem instanceof Variable) {
                     result.push({
                         name: subItem.name,
+                        size: subItem.type.length,
                         type: subItem.type.toString(),
                         value: this.getValueOfVariable(subItem, stack),
+                        location: this.getLocationOfVariable(subItem, stack),
                     });
                 }
             }
         }
+        for (const subScope of scope.children) {
+            if (subScope.isInnerScope) {
+                this.getSubScopeInfo(result, subScope, stack);
+            }
+        }
+    }
+
+    public getScopeInfo(scope: Scope, stack: StackItem | null): JSRuntimeItemInfo[] {
+        const result: JSRuntimeItemInfo[] = [];
+        if (!scope) { return []; }
+        this.getSubScopeInfo(result, scope, stack);
         return result;
+    }
+
+    public printStack() {
+        console.log("==== WebCpp Stack Dumper ====");
+        console.log("sp=", this.stackTop.sp);
+        const intervals = [] as JSRuntimeItemInfo[];
+        for (const item of this.stack) {
+            if (item.fn.scope) {
+                const scopeInfo = this.getScopeInfo(item.fn.scope, item);
+                // console.log("==>" + item.fn.name);
+                intervals.push({
+                    location: item.sp,
+                    name: item.fn.name,
+                    type: "",
+                    value: "",
+                    size: 0,
+                });
+                for (const a of scopeInfo) {
+                    if (a.location !== null) {
+                        intervals.push(a);
+                    }
+                    // console.log(a.name, " ", a.type, " ", a.location, " ", a.value, " ", a.size);
+                }
+            }
+        }
+        const newIntervals = intervals.sort((a, b) => {
+            return a.location! - b.location!;
+        });
+        let last = -1;
+        for (const a of newIntervals) {
+            if (a.location !== last && last !== -1) {
+                console.log(`${last}-${a.location!} >>>>unknown`);
+            }
+            console.log(`${a.location}-${a.location! + a.size}`, a.name, " ", a.type, " ", a.value);
+            last = a.location! + a.size;
+        }
+        if (last !== this.memory.byteLength) {
+            console.log(`${last}-${this.memory.byteLength} >>>>unknown`);
+        }
+        return;
     }
 
 }

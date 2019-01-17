@@ -123,7 +123,7 @@ of WebAssembly.
 
 - [X] 0.4 Classic C with class support
 - [X] 0.5 With interpreter runtime
-- [ ] 0.6 With function template
+- [X] 0.6 With function template
 - [ ] 0.7 With class template
 - [ ] 0.8 With std library (some)
 
@@ -223,6 +223,15 @@ of WebAssembly.
 - [ ] seperate define class function
 - [ ] operator new/ placement new
 - [ ] warning
+- [ ] using template
+## ide
+- [ ] multi-language
+- [ ] config
+- [ ] help
+
+
+## temporary problems
+- [ ] A a[50] decons
 
 ## Miscellaneous
 

@@ -38,25 +38,32 @@ export interface DeferInstantiationTask {
     args: EvaluatedTemplateArgument[];
 }
 
+export interface FuncContext {
+    statementContainer: WStatement[];
+    blockLevel: number;
+    switchContext: SwitchContext | null;
+    breakStack: number[];
+    continueStack: number[];
+    currentFunction: FunctionEntity | null;
+}
+
 export class CompileContext {
 
+    // meta data
     public fileName: string;
     public options: CompileOptions;
+
+    // global shared
     public memory: MemoryLayout;
     public functionMap: Map<string, FunctionEntity>;
-    public currentFunction: FunctionEntity | null;
-    public statementContainer: WStatement[];
-    public blockLevel: number;
     public scopeManager: ScopeManager;
-    public switchContext: SwitchContext | null;
-    public breakStack: number[];
-    public continueStack: number[];
     public requiredWASMFuncTypes: Set<string>;
-    public deferInstantiationTasks: DeferInstantiationTask[];
-
-    // result
     public functions: WFunction[];
     public imports: ImportSymbol[];
+
+    // function internal
+    public funcContexts: FuncContext[];
+    public currentFuncContext: FuncContext;
 
     // debug
     public source?: string;
@@ -67,19 +74,21 @@ export class CompileContext {
         this.scopeManager = new ScopeManager(!!compileOptions.isCpp);
         this.functionMap = new Map<string, FunctionEntity>();
         this.memory = new MemoryLayout(1000);
-        this.currentFunction = null;
         this.options = compileOptions;
         this.fileName = fileName;
         this.sourceMap = sourceMap;
         this.source = source;
-        this.statementContainer = [];
         this.functions = [];
         this.imports = [];
-        this.switchContext = null;
-        this.breakStack = [];
-        this.continueStack = [];
-        this.blockLevel = 0;
-        this.deferInstantiationTasks = [];
+        this.currentFuncContext = {
+            statementContainer: [],
+            switchContext: null,
+            breakStack: [],
+            continueStack: [],
+            blockLevel: 0,
+            currentFunction: null,
+        };
+        this.funcContexts = [];
         this.requiredWASMFuncTypes = new Set<string>();
     }
 
@@ -91,7 +100,24 @@ export class CompileContext {
         this.functionMap.set(functionEntity.name, functionEntity);
         this.scopeManager.enterScope(functionEntity.name);
         this.memory.enterFunction();
-        this.currentFunction = functionEntity;
+        this.funcContexts.push(this.currentFuncContext);
+        this.currentFuncContext = {
+            statementContainer: [],
+            switchContext: null,
+            breakStack: [],
+            continueStack: [],
+            blockLevel: 0,
+            currentFunction: functionEntity,
+        };
+    }
+
+    public exitFunction() {
+        if (this.funcContexts.length <= 0) {
+            throw new InternalError(`this.currentFunction==null`);
+        }
+        this.memory.exitFunction();
+        this.scopeManager.exitScope();
+        this.currentFuncContext = this.funcContexts.pop()!;
     }
 
     public triggerDtors(node: Node, scope: Scope) {
@@ -112,16 +138,8 @@ export class CompileContext {
         this.triggerDtors(node, scope);
     }
 
-    public exitFunction() {
-        if (this.currentFunction == null) {
-            throw new InternalError(`this.currentFunction==null`);
-        }
-        this.memory.exitFunction();
-        this.scopeManager.exitScope();
-    }
-
     public enterScope() {
-        this.scopeManager.enterUnnamedScope();
+        this.scopeManager.enterUnnamedScope(false);
     }
 
     public exitScope(node: Node) {
@@ -130,15 +148,15 @@ export class CompileContext {
     }
 
     public setStatementContainer(constainer: WStatement[]) {
-        this.statementContainer = constainer;
+        this.currentFuncContext.statementContainer = constainer;
     }
 
     public getStatementContainer(): WStatement[] {
-        return this.statementContainer;
+        return this.currentFuncContext.statementContainer;
     }
 
     public submitStatement(statement: WStatement) {
-        this.statementContainer.push(statement);
+        this.currentFuncContext.statementContainer.push(statement);
     }
 
     public submitFunction(func: WFunction) {
@@ -157,7 +175,7 @@ export class CompileContext {
             imports: this.imports,
             exports: [], // TODO:: exports
             data: this.memory.dataBuffer,
-            globalStatements: this.statementContainer,
+            globalStatements: this.currentFuncContext.statementContainer,
             source: this.source,
             sourceMap: this.sourceMap,
             requiredWASMFuncTypes: this.requiredWASMFuncTypes,
@@ -171,9 +189,5 @@ export class CompileContext {
             AddressType.STACK, this.memory.allocStack(type.length));
         this.scopeManager.define(varName, varEntity, node);
         return [varName, varEntity];
-    }
-
-    public submitDeferInstantiationTask(task: DeferInstantiationTask) {
-        this.deferInstantiationTasks.push(task);
     }
 }

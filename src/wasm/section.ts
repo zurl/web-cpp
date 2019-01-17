@@ -101,6 +101,7 @@ export class WFunction extends WNode {
             lineIdx,
             dataStart: this.dataStart,
             bssStart: this.bssStart,
+            scope: null,
         });
     }
 

@@ -31,7 +31,7 @@ import {
     UnsignedInt64Type,
     UnsignedIntegerType,
 } from "../type/primitive_type";
-import {FunctionTemplate} from "../type/template_type";
+import {ClassTemplate, FunctionTemplate} from "../type/template_type";
 import {CompileContext} from "./context";
 import {doTypeTransfrom} from "./conversion";
 import {doFunctionOverloadResolution} from "./cpp/overload";
@@ -251,6 +251,8 @@ MemberExpression.prototype.deduceType = function(ctx: CompileContext): Type {
     if ( item !== null ) {
         if ( item instanceof Type ) {
             throw new SyntaxError(`illegal type member expression`, this);
+        } else if ( item instanceof ClassTemplate ) {
+            throw new SyntaxError(`illegal ClassTemplate member expression`, this);
         } else if (item instanceof Variable) {
             // static field
             return item.type;

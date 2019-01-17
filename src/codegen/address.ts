@@ -84,12 +84,12 @@ export class WAddressHolder extends WExpression {
                 case AddressType.CONSTANT:
                     throw new InternalError(`store a constant()`);
                 case AddressType.STACK:
-                    if (ctx.currentFunction === null) {
+                    if (ctx.currentFuncContext.currentFunction === null) {
                         throw new InternalError(`not in function`);
                     }
                     result = new WStore(
                         wtype,
-                        new WGetLocal(WType.i32, ctx.currentFunction.$sp, this.location),
+                        new WGetLocal(WType.i32, ctx.currentFuncContext.currentFunction.$sp, this.location),
                         value,
                         WMemoryLocation.RAW,
                         this.location,
@@ -189,12 +189,12 @@ export class WAddressHolder extends WExpression {
                     }
                     break;
                 case AddressType.STACK:
-                    if (ctx.currentFunction === null) {
+                    if (ctx.currentFuncContext.currentFunction === null) {
                         throw new InternalError(`not in function`);
                     }
                     result = new WLoad(
                         type.toWType(),
-                        new WGetLocal(WType.i32, ctx.currentFunction.$sp, this.location),
+                        new WGetLocal(WType.i32, ctx.currentFuncContext.currentFunction.$sp, this.location),
                         WMemoryLocation.RAW,
                         this.location,
                     );
@@ -269,18 +269,18 @@ export class WAddressHolder extends WExpression {
             case AddressType.CONSTANT:
                 throw new InternalError(`store a constant()`);
             case AddressType.STACK:
-                if ( ctx.currentFunction === null) {
+                if ( ctx.currentFuncContext.currentFunction === null) {
                     throw new InternalError(`not in function`);
                 }
                 result = new WBinaryOperation(
                     I32Binary.add,
-                    new WGetLocal(WType.i32, ctx.currentFunction.$sp, this.location),
+                    new WGetLocal(WType.i32, ctx.currentFuncContext.currentFunction.$sp, this.location),
                     new WConst(WType.i32, (this.place as number + this.offset).toString()),
                     this.location,
                 );
                 break;
             case AddressType.GLOBAL_SP:
-                if ( ctx.currentFunction === null) {
+                if ( ctx.currentFuncContext.currentFunction === null) {
                     throw new InternalError(`not in function`);
                 }
                 result = new WBinaryOperation(

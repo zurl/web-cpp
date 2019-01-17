@@ -24,6 +24,7 @@ import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../wasm/express
 import {PointerType} from "./compound_type";
 import {FunctionType} from "./function_type";
 import {PrimitiveTypes} from "./primitive_type";
+import {ClassTemplate} from "./template_type";
 
 export interface ClassField {
     name: string;
@@ -168,7 +169,7 @@ export class ClassType extends Type {
     public getMember(ctx: CompileContext, name: string): ClassField | Variable | FunctionLookUpResult | null {
         const item = ctx.scopeManager.lookupFullName(this.fullName + "::" + name);
         if (item !== null) {
-            if (item instanceof Type) {
+            if (item instanceof Type || item instanceof ClassTemplate) {
                 return null;
             } else {
                 return item;

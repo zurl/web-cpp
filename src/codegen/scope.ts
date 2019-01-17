@@ -9,7 +9,7 @@ import {InternalError, LanguageError, SyntaxError} from "../common/error";
 import {FunctionEntity, Symbol, Variable} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
-import {EvaluatedTemplateArgument} from "../type/template_type";
+import {ClassTemplate, EvaluatedTemplateArgument} from "../type/template_type";
 import {WAddressHolder} from "./address";
 
 export class Scope {
@@ -158,7 +158,7 @@ export class FunctionLookUpResult {
     }
 }
 
-type LookUpResult = Variable | Type | FunctionLookUpResult | null;
+type LookUpResult = Variable | Type | FunctionLookUpResult | ClassTemplate | null;
 
 export class ScopeManager {
 
@@ -170,6 +170,7 @@ export class ScopeManager {
     public tmpVarId: number;
     public tmpActiveScopes: Scope[];
     public savedScope: Scope[];
+    public savedActiveScopes: Array<Set<Scope>>;
 
     constructor(isCpp: boolean) {
         this.isCpp = isCpp;
@@ -180,14 +181,18 @@ export class ScopeManager {
         this.tmpVarId = 0;
         this.tmpActiveScopes = [];
         this.savedScope = [];
+        this.savedActiveScopes = [];
     }
 
-    public enterUnnamedScope() {
-        const newScope = new Scope("$" + this.scopeId++, this.currentScope, this.isCpp);
+    public enterUnnamedScope(noname: boolean) {
+        const newScope = new Scope("$" + this.scopeId++ , this.currentScope, this.isCpp);
         newScope.isInnerScope = true;
         this.currentScope.children.push(newScope);
         this.activeScopes.add(newScope);
         this.currentScope = newScope;
+        if (noname) {
+            this.currentScope.fullName = this.currentScope.parent.fullName;
+        }
     }
 
     public enterScope(shortName: string) {
@@ -195,6 +200,20 @@ export class ScopeManager {
         this.currentScope.children.push(newScope);
         this.activeScopes.add(newScope);
         this.currentScope = newScope;
+    }
+
+    public detachCurrentScope() {
+        // remove temp scope
+        const parent = this.currentScope.parent;
+        for (let i = 0; i < parent.children.length; i++) {
+            if (parent.children[i] === this.currentScope) {
+                for (let j = i; j < parent.children.length - 1; j++) {
+                    parent.children[j] = parent.children[j + 1];
+                }
+                break;
+            }
+        }
+        parent.children.pop();
     }
 
     public exitScope() {
@@ -334,9 +353,11 @@ export class ScopeManager {
         return true;
     }
 
-    public enterTempScope(scope: Scope) {
+    public enterTempScope(scope: Scope, activeScopes: Set<Scope>) {
         this.savedScope.push(this.currentScope);
+        this.savedActiveScopes.push(this.activeScopes);
         this.currentScope = scope;
+        this.activeScopes = activeScopes;
     }
 
     public exitTempScope() {
@@ -345,6 +366,11 @@ export class ScopeManager {
             throw new InternalError(`exitTempScope`);
         }
         this.currentScope = popedScope;
+        const popedScopes = this.savedActiveScopes.pop();
+        if (!popedScopes) {
+            throw new InternalError(`exitTempScope`);
+        }
+        this.activeScopes = popedScopes;
     }
 
     private innerLookUp(shortName: string): Symbol | null {

@@ -4,9 +4,7 @@
  *  Created at 08/07/2018
  */
 import BN = require("bn.js");
-import {RuntimeError} from "../common/error";
 import {Runtime} from "../runtime/runtime";
-import {VMFile} from "../runtime/vmfile";
 
 export function write(this: Runtime, fd: number, ptr: number, size: number): number {
     if (fd >= this.files.length) {
@@ -225,4 +223,8 @@ export function malloc_array(this: Runtime, element_size: number, length: number
     const ptr = this.heapAllocator.allocHeap(this, element_size * length + 4);
     this.memory.setInt32(ptr, length, true);
     return ptr + 4;
+}
+
+export function __print_stack(this: Runtime) {
+    this.printStack();
 }

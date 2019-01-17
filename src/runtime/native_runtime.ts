@@ -76,4 +76,8 @@ export class NativeRuntime extends Runtime {
         this.instance!.exports.$set_sp(value);
     }
 
+    public printStack() {
+        return;
+    }
+
 }

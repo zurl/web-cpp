@@ -9,6 +9,7 @@ export type SpecifierType =
     string
     | TypeIdentifier
     | ClassSpecifier
+    | TemplateClassInstanceIdentifier
     | EnumSpecifier;
 
 export type ExternalDeclartions

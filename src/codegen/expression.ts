@@ -13,7 +13,7 @@ import {
     IntegerConstant, MemberExpression,
     Node,
     ParenthesisExpression, PostfixExpression, StringLiteral,
-    SubscriptExpression, TemplateFuncInstanceIdentifier, TypeIdentifier,
+    SubscriptExpression, TemplateClassInstanceIdentifier, TemplateFuncInstanceIdentifier, TypeIdentifier,
     UnaryExpression,
 } from "../common/ast";
 import {InternalError, SyntaxError} from "../common/error";
@@ -32,6 +32,7 @@ import {
     UnsignedInt32Type,
     UnsignedInt64Type,
 } from "../type/primitive_type";
+import {ClassTemplate} from "../type/template_type";
 import {I32Binary, I32Unary, WType, WUnaryOperation} from "../wasm";
 import {BinaryOperator, getOpFromStr} from "../wasm/constant";
 import {WBinaryOperation, WConditionalExpression, WConst, WGetAddress, WMemoryLocation} from "../wasm/expression";
@@ -216,6 +217,9 @@ Identifier.prototype.codegen = function(ctx: CompileContext): ExpressionResult {
     }
     if (item instanceof Type) {
         throw new SyntaxError(`${this.name} expect to be variable, but it is a type :)`, this);
+    }
+    if (item instanceof ClassTemplate) {
+        throw new SyntaxError(`${this.name} expect to be variable, but it is a ClassTemplate :)`, this);
     }
     if (item instanceof FunctionLookUpResult) {
         // TODO:: overload lookupShortName

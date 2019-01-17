@@ -19,7 +19,7 @@ import {
     FunctionTemplateInstantiation,
     Node,
     ParameterDeclaration, SpecifierType,
-    TemplateArgument,
+    TemplateArgument, TemplateClassInstanceIdentifier,
     TemplateDeclaration,
     TemplateParameterType,
     TypeName,
@@ -28,9 +28,12 @@ import {
 import {InternalError, SyntaxError} from "../../common/error";
 import {AddressType, FunctionEntity, Variable} from "../../common/symbol";
 import {AccessControl, Type} from "../../type";
+import {ClassType} from "../../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType, RightReferenceType} from "../../type/compound_type";
-import {FunctionType} from "../../type/function_type";
+import {FunctionType, UnresolvedFunctionOverloadType} from "../../type/function_type";
+import {PrimitiveTypes} from "../../type/primitive_type";
 import {
+    ClassTemplate,
     EvaluatedTemplateArgument,
     FunctionTemplate,
     TemplateParameter,
@@ -92,14 +95,15 @@ TemplateDeclaration.prototype.codegen = function(ctx: CompileContext) {
         // Specialization
         if (this.decl instanceof ClassSpecifier) {
             // class template
-            throw {};
+            throw new InternalError(`ClassSpecifier LENGTH=0`);
         } else {
             createFunctionTemplateSpecialization(ctx, this.decl);
         }
         return;
     }
     const contextScope = ctx.scopeManager.currentScope;
-    ctx.scopeManager.enterUnnamedScope();
+    const contextActiveScopes = ctx.scopeManager.activeScopes;
+    ctx.scopeManager.enterUnnamedScope(true);
     for (let i = 0; i < this.args.length; i++) {
         const arg = this.args[i];
         if (arg instanceof ParameterDeclaration) {
@@ -118,7 +122,18 @@ TemplateDeclaration.prototype.codegen = function(ctx: CompileContext) {
     }
     if (this.decl instanceof ClassSpecifier) {
         // class template
-        throw {};
+        const realName = this.decl.identifier.name;
+        const fullName = ctx.scopeManager.getFullName(realName);
+        const classTemplate = new ClassTemplate(
+            realName, fullName, ctx.fileName,
+            this.args.map((x) => parseFunctionTemplateParameters(ctx, x, this)),
+            this.decl,
+            contextScope,
+            contextActiveScopes,
+        );
+        ctx.scopeManager.detachCurrentScope();
+        ctx.scopeManager.exitScope();
+        ctx.scopeManager.define(realName, classTemplate, this);
     } else {
         const resultType = parseTypeFromSpecifiers(ctx, this.decl.specifiers, this);
         if (resultType == null) {
@@ -138,7 +153,9 @@ TemplateDeclaration.prototype.codegen = function(ctx: CompileContext) {
             this.args.map((x) => parseFunctionTemplateParameters(ctx, x, this)),
             this.decl,
             contextScope,
+            contextActiveScopes,
         );
+        ctx.scopeManager.detachCurrentScope();
         ctx.scopeManager.exitScope();
         ctx.scopeManager.define(realName, functionTemplate, this);
     }
@@ -178,7 +195,7 @@ FunctionTemplateInstantiation.prototype.codegen = function(ctx: CompileContext) 
             const params = deduceFunctionTemplateParameters(item, functionType, args, false);
             if (params !== null) {
                 // match_successful point;
-                createDeferInstantiationTask(ctx, item, params);
+                instantiateFunctionTemplate(ctx, item, params);
                 return;
             }
         }
@@ -214,40 +231,22 @@ function deduceFunctionTypeOfTemplate(type: Type,
     }
 }
 
-export function createDeferInstantiationTask(ctx: CompileContext,
-                                             funcTemplate: FunctionTemplate,
-                                             params: EvaluatedTemplateArgument[]) {
-    const type = deduceFunctionTypeOfTemplate(funcTemplate.type, params) as FunctionType;
-    const signature = params.map((x) => x.toString()).join(",");
-    const instanceName = funcTemplate.name + "@" + signature + "@" + type.toMangledName();
+export function instantiateFunctionTemplate(ctx: CompileContext,
+                                            funcTemplate: FunctionTemplate,
+                                            args: EvaluatedTemplateArgument[]) {
+    const type = deduceFunctionTypeOfTemplate(funcTemplate.type, args) as FunctionType;
+    const signature = args.map((x) => x.toString()).join(",");
+    const instanceName = funcTemplate.name + "@" + signature;
+    const longInstanceName = instanceName +  "@" + type.toMangledName();
     funcTemplate.instanceMap.set(signature, new FunctionEntity(
-        instanceName,
-        funcTemplate.contextScope.getFullName(instanceName),
+        longInstanceName + "@" + type.toMangledName(),
+        funcTemplate.contextScope.getFullName(longInstanceName),
         ctx.fileName,
         type, false, true,
         AccessControl.Public,
     ));
-    ctx.submitDeferInstantiationTask({funcTemplate, type, args: params});
-}
-
-export function executeDeferFunctionTemplateInstantiation(ctx: CompileContext) {
-    ctx.deferInstantiationTasks.map((task) => {
-        instantiateFunctionTemplate(ctx, task.funcTemplate, task.type, task.args);
-    });
-    ctx.deferInstantiationTasks = [];
-}
-
-function instantiateFunctionTemplate(ctx: CompileContext,
-                                     funcTemplate: FunctionTemplate,
-                                     type: FunctionType,
-                                     args: EvaluatedTemplateArgument[]) {
-    const signature = args.map((x) => x.toString()).join(",");
-    const instanceName = funcTemplate.name + "@" + signature;
-
-    ctx.scopeManager.enterTempScope(funcTemplate.contextScope);
-    ctx.scopeManager.enterUnnamedScope();
-    // hack
-    ctx.scopeManager.currentScope.fullName = ctx.scopeManager.currentScope.parent.fullName;
+    ctx.scopeManager.enterTempScope(funcTemplate.contextScope, funcTemplate.contextActiveScopes);
+    ctx.scopeManager.enterUnnamedScope(true);
     for (let i = 0; i < args.length; i++) {
         const name = funcTemplate.templateParams[i].name;
         const arg = args[i];
@@ -268,6 +267,9 @@ function instantiateFunctionTemplate(ctx: CompileContext,
     }
     defineFunction(ctx, type, funcBody,
         AccessControl.Public, funcTemplate.functionBody);
+    ctx.scopeManager.currentScope.children.map((scope) =>
+        ctx.scopeManager.currentScope.parent.children.push(scope));
+    ctx.scopeManager.detachCurrentScope();
     ctx.scopeManager.exitScope();
     ctx.scopeManager.exitTempScope();
 }
@@ -423,6 +425,72 @@ function createFunctionTemplateSpecialization(ctx: CompileContext,
         }
     }
     throw new SyntaxError(`no matched function template`, func);
+}
+
+TemplateClassInstanceIdentifier.prototype.codegen = function(ctx: CompileContext): Type {
+    const name = this.name.name;
+    const lookupResult = ctx.scopeManager.lookupAnyName(name);
+    if (!lookupResult) {
+        throw new SyntaxError(`cannot find template ${name}`, this);
+    }
+    if (!(lookupResult instanceof ClassTemplate)) {
+        throw new SyntaxError(`${name} is not template`, this);
+    }
+    const templateArguments = this.args.map((arg) => evaluateTemplateArgument(ctx, arg, this));
+    while (templateArguments.length < lookupResult.templateParams.length) {
+        const init = lookupResult.templateParams[templateArguments.length].init;
+        if (init !== null) {
+            templateArguments.push(init);
+        } else {
+            throw new SyntaxError(`template number mismatch of template ${lookupResult.name}`, this);
+        }
+    }
+    const signature = templateArguments.map((x) => x.toString()).join(",");
+    const classType = lookupResult.instanceMap.get(signature);
+    if (classType) {
+        return classType;
+    }
+    return instantiateClassTemplate(ctx, lookupResult, templateArguments, this);
+};
+
+function instantiateClassTemplate(ctx: CompileContext,
+                                  classTemplate: ClassTemplate,
+                                  args: EvaluatedTemplateArgument[],
+                                  node: Node): ClassType {
+    const signature = args.map((x) => x.toString()).join(",");
+
+    ctx.scopeManager.enterTempScope(classTemplate.contextScope, classTemplate.contextActiveScopes);
+    ctx.scopeManager.enterUnnamedScope(true);
+    for (let i = 0; i < args.length; i++) {
+        const name = classTemplate.templateParams[i].name;
+        const arg = args[i];
+        if (arg instanceof Type) {
+            ctx.scopeManager.define(name, arg);
+        } else {
+            ctx.scopeManager.define(name, new Variable(
+                name, ctx.scopeManager.getFullName(name), ctx.fileName,
+                classTemplate.templateParams[i].type, AddressType.CONSTANT, arg,
+            ));
+        }
+    }
+    let body = classTemplate.classBody;
+    const spec = classTemplate.specializationMap.get(signature);
+    if (spec) {
+        body = spec;
+    }
+    // hack name
+    const instanceName = body.identifier.name + "<" + signature + ">";
+    const oldName = body.identifier.name;
+    body.identifier.name = instanceName;
+    const classType = body.codegen(ctx) as ClassType;
+    body.identifier.name = oldName;
+    ctx.scopeManager.currentScope.children.map((scope) =>
+        ctx.scopeManager.currentScope.parent.children.push(scope));
+    ctx.scopeManager.detachCurrentScope();
+    ctx.scopeManager.exitScope();
+    ctx.scopeManager.define(instanceName, classType, node);
+    ctx.scopeManager.exitTempScope();
+    return classType;
 }
 
 export function template() {

@@ -15,7 +15,7 @@ import {PrimitiveTypes} from "../../type/primitive_type";
 import {FunctionTemplate} from "../../type/template_type";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult} from "../scope";
-import {createDeferInstantiationTask, deduceFunctionTemplateParameters} from "./template";
+import {deduceFunctionTemplateParameters, instantiateFunctionTemplate} from "./template";
 
 export function doStrictTypeMatch(dst: Type, src: Type): boolean {
     if (dst instanceof ReferenceType) {
@@ -136,7 +136,7 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
         const params = deduceFunctionTemplateParameters(item, mockFunctionType, funcs.templateArguments, true);
         if (params !== null) {
             // apply instance creation
-            createDeferInstantiationTask(ctx, item, params);
+            instantiateFunctionTemplate(ctx, item, params);
             const signature = params.map((x) => x.toString()).join(",");
             return item.instanceMap.get(signature)!;
         }

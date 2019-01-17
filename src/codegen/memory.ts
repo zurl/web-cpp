@@ -5,33 +5,38 @@
  */
 import {WType} from "../wasm";
 
-export class MemoryLayout {
+export interface FunctionMemoryState {
+    stackPtr: number;
+    localPtr: number;
+    localTypes: WType[];
+}
 
-    public stackScope: number[];
+export class MemoryLayout {
+    public states: FunctionMemoryState[];
+    public currentState: FunctionMemoryState;
     public dataPtr: number;
     public bssPtr: number;
-    public stackPtr: number;
-    public localPtr: number;
     public data: DataView;
     public dataBuffer: ArrayBuffer;
     public stringMap: Map<string, number>;
-    public localTypes: WType[];
 
     public MEMORY_$SP: number;
     public MEMORY_$BP: number;
 
     constructor(dataSize: number) {
         this.dataPtr = 0;
-        this.stackPtr = 0;
-        this.localPtr = 0;
         this.bssPtr = 0;
-        this.stackScope = [];
         this.dataBuffer = new ArrayBuffer(dataSize);
         this.data = new DataView(this.dataBuffer);
         this.stringMap = new Map<string, number>();
         this.MEMORY_$BP = 0;
         this.MEMORY_$SP = 0;
-        this.localTypes = [];
+        this.currentState = {
+            stackPtr: 0,
+            localPtr: 0,
+            localTypes: [],
+        };
+        this.states = [];
     }
 
     public allocData(size: number): number {
@@ -48,17 +53,17 @@ export class MemoryLayout {
 
     public allocLocal(type: WType, param: boolean = false): number {
         if ( !param ) {
-            this.localTypes.push(type);
+            this.currentState.localTypes.push(type);
         }
-        return this.localPtr++;
+        return this.currentState.localPtr++;
     }
 
     public allocStack(size: number): number {
         if ( size % 4 !== 0 ) {
             size += 4 - (size % 4);     // align to 4;
         }
-        this.stackPtr -= size;
-        return this.stackPtr;
+        this.currentState.stackPtr -= size;
+        return this.currentState.stackPtr;
     }
 
     public allocString(str: string): number {
@@ -77,15 +82,19 @@ export class MemoryLayout {
         this.data.setUint8(offset + value.length, 0);
     }
 
+    // interrupt safe
     public enterFunction() {
-        this.stackScope.push(this.stackPtr);
-        this.stackPtr = 0;
-        this.localPtr = 0;
-        this.localTypes = [];
+        this.states.push(this.currentState);
+        this.currentState = {
+            stackPtr: 0,
+            localPtr: 0,
+            localTypes: [],
+        };
     }
 
+    // interrupt safe
     public exitFunction() {
-        this.stackPtr = this.stackScope.pop() as number;
+        this.currentState = this.states.pop()!;
     }
 
 }

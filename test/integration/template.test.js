@@ -69,4 +69,31 @@ int main(){
         const expectOutput = `5599.599`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
+    it('test class template', async function () {
+        const testCode = `
+#include <stdio.h>
+
+template <typename T = int, int Y = 4>
+class Foo{
+    int getSize(){
+        return sizeof(T);
+    }
+    int getY(){
+        return Y;
+    }
+};
+
+int main(){
+    Foo f1;
+    Foo<double> f2;
+    Foo<char, 12> f3;
+    printf("%d %d,", f1.getSize(), f1.getY());
+    printf("%d %d,", f2.getSize(), f2.getY());
+    printf("%d %d,", f3.getSize(), f3.getY());
+    return 0;
+}
+        `;
+        const expectOutput = `4 4,8 4,1 12,`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
 });

@@ -2,13 +2,18 @@ TemplateDeclaration
     = 'template' _ '<' _ &{
         enterScope();
         return true;
-    } param:TemplateParameterList? _ &!'>' _ decl:(FunctionDefinition/ClassSpecifier) {
+    } param:TemplateParameterList? _ &!'>' _ decl:(ClassSpecifierWithSemi/FunctionDefinition) {
         exitScope();
         const result = new AST.TemplateDeclaration(getLocation(), decl, param || []);
         const names = result.getTemplateNames();
         const typeId = (decl instanceof AST.FunctionDefinition) ? TEMPLATE_FUNC_NAME : TEMPLATE_CLASS_NAME;
         names.map(name => currScope.names.set(name, typeId));
         return result;
+    }
+
+ClassSpecifierWithSemi
+    = id:ClassSpecifier _ ';' {
+        return id;
     }
 
 TemplateParameterList
