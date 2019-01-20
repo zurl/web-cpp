@@ -4,13 +4,37 @@
  *  Created at 19/07/2018
  */
 
-import {Node, TemplateArgument} from "../common/ast";
-import {InternalError, LanguageError, SyntaxError} from "../common/error";
+import {InternalError, SyntaxError} from "../common/error";
+import {Node} from "../common/node";
 import {FunctionEntity, Symbol, Variable} from "../common/symbol";
-import {Type} from "../type";
+import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
-import {ClassTemplate, EvaluatedTemplateArgument} from "../type/template_type";
+import {ClassTemplate, FunctionTemplate} from "../type/template_type";
 import {WAddressHolder} from "./address";
+import {EvaluatedTemplateArgument} from "./template/template_argument";
+
+export class FunctionLookUpResult {
+    public instance: WAddressHolder | null;
+    public instanceType: ClassType | null;
+    public isDynamicCall: boolean;
+    public functions: Array<FunctionEntity | FunctionTemplate>;
+    public templateArguments: EvaluatedTemplateArgument[];
+
+    constructor(functions: FunctionEntity[]) {
+        this.functions = functions;
+        this.instance = null;
+        this.instanceType = null;
+        this.isDynamicCall = false;
+        this.templateArguments = [];
+    }
+}
+
+export type LookUpResult = Variable | Type | FunctionLookUpResult | ClassTemplate | null;
+
+export function getShortName(lookupName: string): string {
+    const tokens = lookupName.split("::");
+    return tokens[tokens.length - 1];
+}
 
 export class Scope {
     public shortName: string;
@@ -20,6 +44,7 @@ export class Scope {
     public map: Map<string, Symbol[]>;
     public isCpp: boolean;
     public isInnerScope: boolean;
+    public classType: ClassType | null;
 
     constructor(shortName: string, parent: Scope | null, isCpp: boolean) {
         this.shortName = shortName;
@@ -34,179 +59,322 @@ export class Scope {
         this.map = new Map<string, Symbol[]>();
         this.isCpp = isCpp;
         this.isInnerScope = false;
+        this.classType = null;
     }
 
-    public declare(shortName: string, symbol: Symbol, node?: Node) {
-        const realName = shortName.split("@")[0];
-        const item = this.map.get(realName);
-        if (!item) {
-            this.map.set(realName, [symbol]);
-        } else {
-            if (item[0] instanceof FunctionEntity) {
-                if (!(symbol instanceof FunctionEntity)) {
-                    throw new SyntaxError(`redefine of ${shortName}`, node!);
-                }
-                if (!this.isCpp) {
-                    throw new LanguageError(`function overload is support only in C++`, node!);
-                }
-                for (let i = 0; i < item.length; i++) {
-                    const x = item[i];
-                    if (x instanceof FunctionEntity) {
-                        if (x.fullName === symbol.fullName) {
-                            if (x.isDefine() && !symbol.isDefine()) {
-                                return;
-                            } else if (x.isDefine() && symbol.isDefine()) {
-                                throw new SyntaxError(`redefine of ${shortName}`, node!);
-                            } else if (!x.isDefine() && symbol.isDefine()) {
-                                item[i] = symbol;
-                                return;
-                            } else if (!x.isDefine() && !symbol.isDefine()) {
-                                return;
-                            }
-                        }
-                    } else {
-                        throw new SyntaxError(`redefine of ${shortName}`, node!);
-                    }
-                }
-                item.push(symbol);
-            } else {
-                if (item.length !== 1) {
-                    throw new SyntaxError(`redefine of ${shortName}`, node!);
-                } else {
-                    const x = item[0];
-                    if (x.isDefine() && !symbol.isDefine()) {
-                        return;
-                    } else if (x.isDefine() && symbol.isDefine()) {
-                        throw new SyntaxError(`redefine of ${shortName}`, node!);
-                    } else if (!x.isDefine() && symbol.isDefine()) {
-                        item[0] = symbol;
-                        return;
-                    } else if (!x.isDefine() && !symbol.isDefine()) {
-                        return;
-                    }
-                }
-            }
+    public getScopeFromFullName(fullName: string): Scope | null {
+        return this.getScopeOfLookupName(fullName + "::a");
+    }
+
+    public getScopeOfLookupName(lookupName: string): Scope | null {
+        if (lookupName.slice(0, 2) === "::") {
+            throw new InternalError(`getScopeOfLookupName()`);
         }
-    }
-
-    public getFullName(shortName: string) {
-        if (shortName.slice(0, 2) === "::") {
-            return shortName;
-        }
-        return this.fullName + "::" + shortName;
-    }
-
-    public getScope(tokens: string[]): Scope | null {
-        if (tokens.length === 0) {
+        const tokens = lookupName.split("::");
+        if (tokens.length === 1) {
             return this;
-        }
-        for (const scope of this.children) {
-            if (scope.shortName === tokens[0]) {
-                return scope.getScope(tokens.slice(1));
-            }
-        }
-        return null;
-    }
-
-    public lookup(name: string): LookUpResult {
-        const token = name.split("::").filter((x) => x);
-        if (token.length > 1) {
-            const realScope = this.getScope(token.slice(0, token.length - 1));
-            if (realScope === null) {
-                return null;
-            }
-            return realScope.lookup(token[token.length - 1]);
-        }
-        if (token[0].includes("@")) {
-            const array = this.map.get(token[0].split("@")[0]);
-            if (!array) {
-                return null;
-            }
-            for (const item of array) {
-                if (item instanceof FunctionEntity && item.name === token[0]) {
-                    return new FunctionLookUpResult([item]);
+        } else {
+            for (const scope of this.children) {
+                if (scope.shortName === tokens[0]) {
+                    return scope.getScopeOfLookupName(tokens.slice(1).join("::"));
                 }
             }
             return null;
-        } else {
-            const array = this.map.get(token[0]);
-            if (!array) {
-                return null;
-            }
-            if (array[0] instanceof FunctionEntity) {
-                return new FunctionLookUpResult(array as FunctionEntity[]);
-            } else {
-                return array[0] as Type | Variable;
-            }
         }
     }
-}
 
-export class FunctionLookUpResult {
-    public instance: WAddressHolder | null;
-    public instanceType: ClassType | null;
-    public isDynamicCall: boolean;
-    public functions: FunctionEntity[];
-    public templateArguments: EvaluatedTemplateArgument[];
-
-    constructor(functions: FunctionEntity[]) {
-        this.functions = functions;
-        this.instance = null;
-        this.instanceType = null;
-        this.isDynamicCall = false;
-        this.templateArguments = [];
+    public mergeSymbolInScope(shortName: string, newItem: Symbol, node: Node): void {
+        const oldItems = this.map.get(shortName);
+        if (!oldItems) {
+            this.map.set(shortName, [newItem]);
+            return;
+        }
+        const oldItem = oldItems[0];
+        if (oldItem instanceof FunctionEntity) {
+            if (!(newItem instanceof FunctionEntity)) {
+                throw new SyntaxError(`${shortName} has been declared as function`
+                    + `but a ${newItem.constructor.name} found`, node);
+            }
+            for (let i = 0; i < oldItems.length; i++) {
+                const x = oldItems[i] as FunctionEntity;
+                if (x.fullName === newItem.fullName) {
+                    // TODO:: full check compatible?
+                    if (x.isDefine() && !newItem.isDefine()) {
+                        return;
+                    } else if (x.isDefine() && newItem.isDefine()) {
+                        throw new SyntaxError(`redefine of ${shortName}`, node);
+                    } else if (!x.isDefine() && newItem.isDefine()) {
+                        // hack access control
+                        if (newItem.accessControl === AccessControl.Unknown) {
+                            newItem.accessControl = x.accessControl;
+                        }
+                        oldItems[i] = newItem;
+                        return;
+                    } else if (!x.isDefine() && !newItem.isDefine()) {
+                        return;
+                    }
+                } else {
+                    throw new SyntaxError(`redefine of ${shortName}`, node!);
+                }
+            }
+            oldItems.push(newItem);
+            return;
+        } else {
+            if (oldItem instanceof Variable) {
+                if (newItem.isDefine() && oldItem.isDefine()) {
+                    throw new SyntaxError(`redefine of ${shortName}`, node);
+                }
+                if (newItem instanceof Variable) {
+                    if (oldItem.type.equals(newItem.type)
+                        && oldItem.fullName === newItem.fullName) {
+                        if (newItem.isDefine()) {
+                            oldItems[0] = newItem;
+                        }
+                        return;
+                    } else {
+                        throw new SyntaxError(`conflict declaration of ${shortName}`, node);
+                    }
+                } else {
+                    throw new SyntaxError(`${shortName} has been declared as variable`
+                        + `but a ${newItem.constructor.name} found`, node);
+                }
+            } else if (oldItem instanceof Type) {
+                if (newItem instanceof Type) {
+                    if (oldItem.equals(newItem)) {
+                        return;
+                    } else {
+                        throw new SyntaxError(`conflict declaration of ${shortName}`, node);
+                    }
+                } else {
+                    throw new SyntaxError(`${shortName} has been declared as type`
+                        + `but a ${newItem.constructor.name} found`, node);
+                }
+            } else if (oldItem instanceof ClassTemplate) {
+                if (newItem.isDefine() && oldItem.isDefine()) {
+                    throw new SyntaxError(`redefine of ${shortName}`, node);
+                }
+                if (newItem instanceof ClassTemplate) {
+                    if (oldItem.templateParams.length !== newItem.templateParams.length) {
+                        throw new SyntaxError(`conflict declaration of ${shortName}`, node);
+                    }
+                    for (let i = 0; i < oldItem.templateParams.length; i++) {
+                        if (!oldItem.templateParams[i].type.equals(newItem.templateParams[i].type)) {
+                            throw new SyntaxError(`conflict declaration of ${shortName}`, node);
+                        }
+                    }
+                    if (newItem.isDefine()) {
+                        oldItems[0] = newItem;
+                    }
+                    return;
+                } else {
+                    throw new SyntaxError(`${shortName} has been declared as class template`
+                        + `but a ${newItem.constructor.name} found`, node);
+                }
+            }
+        }
+        throw new InternalError(`assertCompatible()`);
     }
 }
 
-type LookUpResult = Variable | Type | FunctionLookUpResult | ClassTemplate | null;
+export interface ScopeContext {
+    scope: Scope;
+    activeScopes: Set<Scope>;
+}
 
 export class ScopeManager {
 
-    public root: Scope;
-    public currentScope: Scope;
-    public activeScopes: Set<Scope>;
-    public scopeId: number;
     public isCpp: boolean;
+
+    public root: Scope;
+    public currentContext: ScopeContext;
+    public contextStack: ScopeContext[];
+
+    public scopeId: number;
     public tmpVarId: number;
-    public tmpActiveScopes: Scope[];
-    public savedScope: Scope[];
-    public savedActiveScopes: Array<Set<Scope>>;
 
     constructor(isCpp: boolean) {
         this.isCpp = isCpp;
         this.root = new Scope("", null, isCpp);
-        this.currentScope = this.root;
-        this.activeScopes = new Set<Scope>([this.root]);
         this.scopeId = 0;
         this.tmpVarId = 0;
-        this.tmpActiveScopes = [];
-        this.savedScope = [];
-        this.savedActiveScopes = [];
+        this.contextStack = [];
+        this.currentContext = {
+            scope: this.root,
+            activeScopes: new Set<Scope>(),
+        };
     }
 
-    public enterUnnamedScope(noname: boolean) {
-        const newScope = new Scope("$" + this.scopeId++ , this.currentScope, this.isCpp);
-        newScope.isInnerScope = true;
-        this.currentScope.children.push(newScope);
-        this.activeScopes.add(newScope);
-        this.currentScope = newScope;
-        if (noname) {
-            this.currentScope.fullName = this.currentScope.parent.fullName;
+    public allocTmpVarName() {
+        return "$__" + this.tmpVarId++;
+    }
+
+    public getFullName(anyName: string): string {
+        const isFullLookup = anyName.slice(0, 2) === "::";
+        if (isFullLookup) {
+            return anyName;
+        }
+        for (const scope of this.currentContext.activeScopes) {
+            const itemScope = scope.getScopeOfLookupName(anyName);
+            const shortName = getShortName(anyName);
+            if (itemScope && itemScope.map.has(shortName)) {
+                return itemScope.fullName + "::" + shortName;
+            }
+        }
+        return this.currentContext + "::" + anyName;
+    }
+
+    public lookup(anyName: string): LookUpResult {
+        const isFullLookup = anyName.slice(0, 2) === "::";
+        const isWithSignature = getShortName(anyName).includes("@");
+        if (!isFullLookup) {
+            anyName = this.getFullName(anyName);
+        }
+        const scope = this.root.getScopeOfLookupName(anyName.slice(2));
+        if (!scope) {
+            return null;
+        }
+        const pureShortName = getShortName(anyName).split("@")[0];
+        const item = scope.map.get(pureShortName);
+        if (!item) {
+            return null;
+        }
+        const item0 = item[0];
+        if (item0 instanceof FunctionEntity) {
+            if (isWithSignature) {
+                for (const fn of item) {
+                    if (fn instanceof FunctionEntity) {
+                        if (fn.fullName === anyName) {
+                            return new FunctionLookUpResult([fn]);
+                        }
+                    } else {
+                        throw new InternalError(`getSymbol()`);
+                    }
+                }
+                return new FunctionLookUpResult([]);
+            } else {
+                return new FunctionLookUpResult(item as FunctionEntity[]);
+            }
+        } else {
+            return item0 as LookUpResult;
         }
     }
 
-    public enterScope(shortName: string) {
-        const newScope = new Scope(shortName, this.currentScope, this.isCpp);
-        this.currentScope.children.push(newScope);
-        this.activeScopes.add(newScope);
-        this.currentScope = newScope;
+    public declare(lookupName: string, symbol: Symbol, node: Node) {
+        const isRestrictLookup = lookupName.includes("::");
+        const isFullLookup = lookupName.slice(0, 2) === "::";
+        if ( isFullLookup ) {
+            const restrictLookupName = lookupName.slice(2);
+            const scope = this.root.getScopeOfLookupName(restrictLookupName);
+            if (!scope) {
+                throw new SyntaxError(`unresolved name ${lookupName}`, node);
+            }
+            const itemScope = scope.getScopeOfLookupName(restrictLookupName);
+            const shortName = getShortName(restrictLookupName);
+            if (itemScope && itemScope.map.has(shortName)) {
+                scope.mergeSymbolInScope(shortName, symbol, node);
+                return;
+            }
+            throw new SyntaxError(`unresolved name ${lookupName}`, node);
+        } else if (isRestrictLookup) {
+            for (const scope of this.currentContext.activeScopes) {
+                const itemScope = scope.getScopeOfLookupName(lookupName);
+                const shortName = getShortName(lookupName);
+                if (itemScope && itemScope.map.has(shortName)) {
+                    scope.mergeSymbolInScope(shortName, symbol, node);
+                    return;
+                }
+            }
+            throw new SyntaxError(`unresolved name ${lookupName}`, node);
+        } else {
+            this.currentContext.scope.mergeSymbolInScope(lookupName, symbol, node);
+        }
+    }
+
+    public define(lookupName: string, symbol: Symbol, node: Node) {
+        const isRestrictLookup = lookupName.includes("::");
+        const isFullLookup = lookupName.slice(0, 2) === "::";
+        if ( isFullLookup ) {
+            const restrictLookupName = lookupName.slice(2);
+            const scope = this.root.getScopeOfLookupName(restrictLookupName);
+            if (!scope) {
+                throw new SyntaxError(`unresolved name ${lookupName}`, node);
+            }
+            const itemScope = scope.getScopeOfLookupName(restrictLookupName);
+            const shortName = getShortName(restrictLookupName);
+            if (itemScope && itemScope.map.has(shortName)) {
+                scope.mergeSymbolInScope(shortName, symbol, node);
+                return;
+            }
+            throw new SyntaxError(`unresolved name ${lookupName}`, node);
+        } else if (isRestrictLookup) {
+            for (const scope of this.currentContext.activeScopes) {
+                const itemScope = scope.getScopeOfLookupName(lookupName);
+                const shortName = getShortName(lookupName);
+                if (itemScope && itemScope.map.has(shortName)) {
+                    scope.mergeSymbolInScope(shortName, symbol, node);
+                    return;
+                }
+            }
+            throw new SyntaxError(`unresolved name ${lookupName}`, node);
+        } else {
+            this.currentContext.scope.mergeSymbolInScope(lookupName, symbol, node);
+        }
+    }
+
+    public enterScope(fullName: string) {
+        this.contextStack.push(this.currentContext);
+        const scope = this.root.getScopeOfLookupName(fullName);
+        if (!scope) {
+            throw new InternalError(`the scope of ${fullName} is not exist`);
+        }
+        const activeScopes = new Set<Scope>();
+        for (let item = scope; item !== this.root; item = item.parent) {
+            activeScopes.add(item);
+        }
+        activeScopes.add(this.root);
+        const newScope = new Scope(getShortName(fullName), scope, this.isCpp);
+        scope.children.push(newScope);
+        this.currentContext = {
+            scope: newScope,
+            activeScopes,
+        };
+    }
+
+    public enterSavedScope(scopeContext: ScopeContext) {
+        this.contextStack.push(this.currentContext);
+        this.currentContext = scopeContext;
+    }
+
+    public exitScope() {
+        if (this.contextStack.length === 0) {
+            throw new InternalError(`this.contextStack.length === 0`);
+        }
+        this.currentContext = this.contextStack.pop()!;
+    }
+
+    // 1. for inner scope of compound statement
+    // 2. for define scope of template
+    public enterUnnamedScope(anonymous: boolean) {
+        const newScope = new Scope("$" + this.scopeId++ , this.currentContext.scope, this.isCpp);
+        if (anonymous) {
+            newScope.fullName = this.currentContext.scope.parent.fullName;
+        }
+        newScope.isInnerScope = true;
+        this.currentContext.scope.children.push(newScope);
+        this.contextStack.push(this.currentContext);
+        const activeScopes = new Set<Scope>(this.currentContext.activeScopes);
+        activeScopes.add(newScope);
+        this.currentContext = {
+            scope: newScope,
+            activeScopes,
+        };
     }
 
     public detachCurrentScope() {
         // remove temp scope
-        const parent = this.currentScope.parent;
+        const parent = this.currentContext.scope.parent;
         for (let i = 0; i < parent.children.length; i++) {
-            if (parent.children[i] === this.currentScope) {
+            if (parent.children[i] === this.currentContext.scope) {
                 for (let j = i; j < parent.children.length - 1; j++) {
                     parent.children[j] = parent.children[j + 1];
                 }
@@ -216,178 +384,7 @@ export class ScopeManager {
         parent.children.pop();
     }
 
-    public exitScope() {
-        this.activeScopes.delete(this.currentScope);
-        this.currentScope = this.currentScope.parent;
-        this.tmpActiveScopes.map((x) => this.activeScopes.delete(x));
-        this.tmpActiveScopes = [];
-    }
-
-    public lookupAnyName(anyName: string): LookUpResult {
-        if (anyName.slice(0, 2) === "::") {
-            return this.lookupFullName(anyName);
-        } else {
-            return this.lookupShortName(anyName);
-        }
-    }
-
-    public lookupFullName(fullName: string): LookUpResult {
-        if (fullName.slice(0, 2) !== "::") {
-            return null;
-        }
-        const token = fullName.split("::");
-        const shortName = token[token.length - 1];
-        const scope = this.root.getScope(token.slice(1, token.length - 1));
-        if (scope === null) {
-            return null;
-        } else {
-            return scope.lookup(shortName);
-        }
-    }
-
-    public lookupShortName(shortName: string): LookUpResult {
-        const array = Array.from(this.activeScopes.keys()).map(
-            (x) => x.lookup(shortName))
-            .filter((x) => x !== null).reverse();
-        let result: FunctionLookUpResult | null = null;
-        const funcNameSet = new Set<string>();
-        for (const x of array) {
-            if (x instanceof FunctionLookUpResult) {
-                if (result === null) {
-                    result = new FunctionLookUpResult([...x.functions]);
-                    x.functions.map((y) => funcNameSet.add(y.fullName));
-                } else {
-                    for (const y of x.functions) {
-                        if (!funcNameSet.has(y.fullName)) {
-                            funcNameSet.add(y.fullName);
-                            result.functions.push(y);
-                        }
-                    }
-                }
-            } else {
-                if (result === null) {
-                    return x;
-                }
-            }
-        }
-        return result;
-    }
-
-    public declareInScope(shortName: string, symbol: Symbol, scope: Scope, node?: Node): string {
-        const item = this.innerLookUp(shortName);
-        if (item !== null) {
-            if (!item.getType().equals(symbol.getType())) {
-                throw new SyntaxError(`conflict declaration of ${shortName}`, node!);
-            }
-        } else {
-            scope.declare(shortName, symbol, node);
-        }
-        return scope.fullName + "::" + shortName;
-    }
-
-    public defineInScope(shortName: string, symbol: Symbol, scope: Scope, node?: Node): string {
-        const item = this.innerLookUp(shortName);
-        if (item !== null) {
-            if (item.isDefine()) {
-                throw new SyntaxError(`redefine of ${shortName}`, node!);
-            }
-            if (!item.getType().equals(symbol.getType())) {
-                throw new SyntaxError(`conflict declaration of ${shortName}`, node!);
-            }
-        }
-        scope.declare(shortName, symbol, node);
-        return scope.fullName + "::" + shortName;
-    }
-
-    public declare(shortName: string, symbol: Symbol, node?: Node): string {
-        return this.declareInScope(shortName, symbol, this.currentScope, node);
-    }
-
-    public define(shortName: string, symbol: Symbol, node?: Node): string {
-        return this.defineInScope(shortName, symbol, this.currentScope, node);
-    }
-
-    public getFullName(shortName: string) {
-        if (shortName.slice(0, 2) === "::") {
-            return shortName;
-        }
-        return this.currentScope.fullName + "::" + shortName;
-    }
-
     public isRoot() {
-        return this.currentScope === this.root;
+        return this.currentContext.scope === this.root;
     }
-
-    public allocTmpVarName() {
-        return "$__" + this.tmpVarId++;
-    }
-
-    public lookupScope(scopeName: string): Scope | null {
-        let curScope = this.root;
-        const tokens = scopeName.split("::");
-        if (scopeName.substr(0, 2) === "::") {
-            for (let i = 1; i < tokens.length; i++) {
-                const item = curScope.children.filter(((x) => x.shortName === tokens[i]));
-                if (item.length !== 1) {
-                    return null;
-                }
-                curScope = item[0];
-            }
-            return curScope;
-        } else {
-            for (const as of this.activeScopes) {
-                const item = this.lookupScope(as.fullName + "::" + scopeName);
-                if (item) {
-                    return item;
-                }
-            }
-            return null;
-        }
-    }
-
-    public activeScope(scopeName: string): boolean {
-        const scope = this.lookupScope(scopeName);
-        if ( !scope ) { return false; }
-        this.tmpActiveScopes.push(scope);
-        this.activeScopes.add(scope);
-        return true;
-    }
-
-    public enterTempScope(scope: Scope, activeScopes: Set<Scope>) {
-        this.savedScope.push(this.currentScope);
-        this.savedActiveScopes.push(this.activeScopes);
-        this.currentScope = scope;
-        this.activeScopes = activeScopes;
-    }
-
-    public exitTempScope() {
-        const popedScope = this.savedScope.pop();
-        if (!popedScope) {
-            throw new InternalError(`exitTempScope`);
-        }
-        this.currentScope = popedScope;
-        const popedScopes = this.savedActiveScopes.pop();
-        if (!popedScopes) {
-            throw new InternalError(`exitTempScope`);
-        }
-        this.activeScopes = popedScopes;
-    }
-
-    private innerLookUp(shortName: string): Symbol | null {
-        const realName = shortName.split("@")[0];
-        const result = this.lookupFullName(this.currentScope.fullName
-            + "::" + realName);
-        let item: Symbol | null = null;
-        if (result instanceof FunctionLookUpResult) {
-            const t = result.functions.filter((x) => x.fullName
-                === this.currentScope.fullName + "::" + shortName);
-            if (t.length > 0) {
-                item = t[0];
-            }
-        } else {
-            item = result;
-        }
-        return item;
-    }
-
 }

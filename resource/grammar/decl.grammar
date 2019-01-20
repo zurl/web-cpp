@@ -26,7 +26,7 @@ BlockDeclarationList
     }
 
 NamespaceDefinition
-    = 'namespace' _ name:Identifier _ '{' _ list:DeclarationList? _'}'{
+    = 'namespace' _ name:SingleIdentifier _ '{' _ list:DeclarationList? _'}'{
         currScope.names.set(name.name, TYPE_NAME);
         return new AST.NameSpaceBlock(getLocation(), name, list || []);
     }
@@ -179,7 +179,7 @@ InitializerList
 
 InitializerListItem
     = designators:(Designation _)? initializer:Initializer {
-        return new AST.InitializerListItem(getLocation(), extractOptional(designators, 0) || [], initializer);
+        return new AST.InitializerListItem(getLocation(), initializer);
     }
 
 Designation
@@ -201,8 +201,8 @@ Designator
     }
 
 FunctionDefinition
-    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ declarations:BlockDeclarationList? _ body:CompoundStatement {
-        return new AST.FunctionDefinition(getLocation(), specifiers, declarator, declarations, body);
+    = specifiers:DeclarationSpecifiers _ declarator:Declarator _ body:CompoundStatement {
+        return new AST.FunctionDefinition(getLocation(), specifiers, declarator, body);
     }
 
 NewTypeName

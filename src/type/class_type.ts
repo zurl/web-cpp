@@ -4,25 +4,20 @@
  *  Created at 05/08/2018
  */
 
-import {AccessControl, Type} from ".";
 import {WAddressHolder} from "../codegen/address";
 import {CompileContext} from "../codegen/context";
+import {ObjectInitializer} from "../codegen/declaration/object_initializer";
+import {AnonymousExpression} from "../codegen/expression/anonymous_expression";
+import {AssignmentExpression} from "../codegen/expression/assignment_expression";
+import {Expression} from "../codegen/expression/expression";
+import {ExpressionStatement} from "../codegen/statement/expression_statement";
 import {FunctionLookUpResult} from "../codegen/scope";
-import {
-    AnonymousExpression,
-    AssignmentExpression,
-    Expression,
-    ExpressionStatement,
-    Identifier,
-    IntegerConstant,
-    Node, ObjectInitializer, SubscriptExpression,
-} from "../common/ast";
-import {InternalError, SyntaxError} from "../common/error";
+import {InternalError} from "../common/error";
+import {Node} from "../common/node";
 import {AddressType, Variable} from "../common/symbol";
 import {WType} from "../wasm";
 import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../wasm/expression";
-import {PointerType} from "./compound_type";
-import {FunctionType} from "./function_type";
+import {AccessControl, Type} from "./index";
 import {PrimitiveTypes} from "./primitive_type";
 import {ClassTemplate} from "./template_type";
 
@@ -51,14 +46,22 @@ export interface VirtualTable {
 
 export class ClassType extends Type {
 
-    public isUnion: boolean;
-    public isComplete: boolean;
-    public name: string;
+    public shortName: string;
     public fullName: string;
     public fileName: string;
+
     public fields: ClassField[];
     public fieldMap: Map<string, ClassField>;
+
+    public isUnion: boolean;
+    public isComplete: boolean;
     public inheritance: Inheritance[];
+
+    // only use in build
+    public fieldOffset: number;
+    public accessControl: AccessControl;
+
+    // fill in initialize
     public selfSize: number;
     public objectSize: number;
 
@@ -68,14 +71,14 @@ export class ClassType extends Type {
     public vTable: VirtualTable;
     public vTablePtr: number;
 
-    constructor(name: string, fullName: string, fileName: string,
+    constructor(shortName: string, fullName: string, fileName: string,
                 fields: ClassField[], isUnion: boolean, inheritance: Inheritance[]) {
         super();
-        this.name = name;
+        this.shortName = shortName;
         this.fileName = fileName;
         this.fullName = fullName;
         this.fields = fields;
-        this.isComplete = true;
+        this.isComplete = false;
         this.fieldMap = new Map<string, ClassField>();
         this.isUnion = isUnion;
         this.inheritance = inheritance;
@@ -85,6 +88,8 @@ export class ClassType extends Type {
             (x) => x.classType.length).reduce((x, y) => x + y, 0);
         this.requireVPtr = false;
         this.VPtrOffset = 0;
+        this.fieldOffset = 0;
+        this.accessControl = AccessControl.Public;
         this.vTable = {
             className: fullName,
             vFunctions: [],
@@ -104,11 +109,12 @@ export class ClassType extends Type {
         }
         this.objectSize = this.selfSize + this.inheritance.map(
             (x) => x.classType.length).reduce((x, y) => x + y, 0);
+        this.isComplete = true;
     }
 
     get length(): number {
         if (!this.isComplete) {
-            throw new InternalError(`class ${this.name} is incomplete`);
+            throw new InternalError(`class ${this.shortName} is incomplete`);
         }
         return this.objectSize;
     }
@@ -118,7 +124,7 @@ export class ClassType extends Type {
     }
 
     public toString() {
-        return this.name;
+        return this.shortName;
     }
 
     public toMangledName() {
@@ -151,7 +157,7 @@ export class ClassType extends Type {
 
     public getField(name: string): ClassField | null {
         if (!this.isComplete) {
-            throw new InternalError(`class ${this.name} is incomplete`);
+            throw new InternalError(`class ${this.shortName} is incomplete`);
         }
         const item = this.fieldMap.get(name);
         if (item) {
@@ -167,7 +173,7 @@ export class ClassType extends Type {
     }
 
     public getMember(ctx: CompileContext, name: string): ClassField | Variable | FunctionLookUpResult | null {
-        const item = ctx.scopeManager.lookupFullName(this.fullName + "::" + name);
+        const item = ctx.scopeManager.lookup(this.fullName + "::" + name);
         if (item !== null) {
             if (item instanceof Type || item instanceof ClassTemplate) {
                 return null;
@@ -211,9 +217,7 @@ export class ClassType extends Type {
         }
     }
 
-    public registerVFunction(ctx: CompileContext, functionType: FunctionType) {
-        const indexName = functionType.toIndexName();
-        const fullName = ctx.scopeManager.getFullName(functionType.name + "@" + functionType.toMangledName());
+    public registerVFunction(ctx: CompileContext, indexName: string, fullName: string) {
         const oldItems = this.vTable.vFunctions.filter((x) => x.indexName === indexName);
         if ( oldItems.length === 0) {
             this.vTable.vFunctions.push({

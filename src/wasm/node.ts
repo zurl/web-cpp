@@ -3,7 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-import {SourceLocation} from "../common/ast";
+import {SourceLocation} from "../common/Node";
 import {WType} from "./constant";
 import {Emitter, JSONEmitter} from "./emitter";
 

@@ -4,7 +4,7 @@
  *  Created at 16/06/2018
  */
 
-import {Node, Position, SourceLocation} from "./ast";
+import {Node, Position, SourceLocation} from "./Node";
 
 export class FatalError extends Error {
 }
@@ -16,11 +16,9 @@ export class LinkerError extends Error {
 }
 
 export class RuntimeError extends Error {
-
 }
 
 export class EmitError extends Error {
-
 }
 
 export class CompilerError extends Error {

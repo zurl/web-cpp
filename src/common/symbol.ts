@@ -27,17 +27,17 @@ export enum AddressType {
 }
 
 export class Variable extends Symbol {
-    public name: string;
+    public shortName: string;
     public fullName: string;
     public fileName: string;
     public type: Type;
     public addressType: AddressType;
     public location: number | string;
 
-    constructor(name: string, fullName: string, fileName: string, type: Type,
+    constructor(shortName: string, fullName: string, fileName: string, type: Type,
                 storageType: AddressType, location: number | string) {
         super();
-        this.name = name;
+        this.shortName = shortName;
         this.fullName = fullName;
         this.fileName = fileName;
         this.type = type;
@@ -46,7 +46,7 @@ export class Variable extends Symbol {
     }
 
     public toString() {
-        return `${this.name}:${this.type.toString()}`;
+        return `${this.shortName}:${this.type.toString()}`;
     }
 
     public isDefine() {
@@ -59,7 +59,7 @@ export class Variable extends Symbol {
 }
 
 export class FunctionEntity extends Symbol {
-    public name: string;
+    public shortName: string;
     public fullName: string;
     public fileName: string;
     public type: FunctionType;
@@ -68,18 +68,21 @@ export class FunctionEntity extends Symbol {
     public isLibCall: boolean;
     public hasDefine: boolean;
     public parametersSize: number;
-    public $sp: number;
+    public $sp: number; // the 'local $sp' number
 
-    constructor(name: string, fullName: string, fileName: string,
-                type: FunctionType, isLibCall: boolean, isDefine: boolean,
-                accessControl: AccessControl) {
+    public parameterInits: Array<null | string>;
+
+    constructor(shortName: string, fullName: string, fileName: string,
+                type: FunctionType, parameterInits: Array<null | string>,
+                isLibCall: boolean, isDefine: boolean, accessControl: AccessControl) {
         super();
-        this.name = name;
+        this.shortName = shortName;
         this.fullName = fullName;
         this.fileName = fileName;
         this.type = type;
         this.isLibCall = isLibCall;
         this.hasDefine = isDefine;
+        this.parameterInits = parameterInits;
         this.$sp = 0;
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)

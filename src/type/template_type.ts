@@ -1,11 +1,13 @@
-import {Scope} from "../codegen/scope";
-import {ClassSpecifier, FunctionDefinition} from "../common/ast";
+import {ClassSpecifier} from "../codegen/class/class_specifier";
+import {FunctionDefinition} from "../codegen/function/function_definition";
+import {Scope, ScopeContext} from "../codegen/scope";
 import {InternalError} from "../common/error";
 import {FunctionEntity, Symbol} from "../common/symbol";
 import {WType} from "../wasm";
 import {ClassType} from "./class_type";
 import {FunctionType} from "./function_type";
 import {AccessControl, Type} from "./index";
+import {FunctionConfig} from "../codegen/function/function";
 
 export class TemplateType extends Type {
     public get length(): number {
@@ -59,53 +61,60 @@ export interface TemplateParameter {
     init: Type | string | null;
 }
 
-export type EvaluatedTemplateArgument = string | Type;
-
-export class FunctionTemplate extends FunctionEntity {
+export class FunctionTemplate extends Symbol {
+    public shortName: string;
+    public fullName: string;
+    public functionConfig: FunctionConfig;
     public templateParams: TemplateParameter[];
     public functionBody: FunctionDefinition;
     public instanceMap: Map<string, FunctionEntity>;
     public specializationMap: Map<string, FunctionDefinition>;
-    public contextScope: Scope;
-    public contextActiveScopes: Set<Scope>;
+    public scopeContext: ScopeContext;
 
-    constructor(name: string, fullName: string, fileName: string,
-                functionType: FunctionType, templateParams: TemplateParameter[],
-                functionBody: FunctionDefinition, contextScope: Scope, contextActiveScopes: Set<Scope>) {
-        super(name, fullName, fileName, functionType, false, true, AccessControl.Public);
+    constructor(shortName: string, fullName: string, functionConfig: FunctionConfig,
+                templateParams: TemplateParameter[], functionBody: FunctionDefinition,
+                scopeContext: ScopeContext) {
+        super();
+        this.shortName = shortName;
+        this.fullName = fullName;
+        this.functionConfig = functionConfig;
         this.templateParams = templateParams;
         this.functionBody = functionBody;
         this.instanceMap = new Map<string, FunctionEntity>();
         this.specializationMap = new Map<string, FunctionDefinition>();
-        this.contextScope = contextScope;
-        this.contextActiveScopes = new Set<Scope>(Array.from(contextActiveScopes));
+        this.scopeContext = scopeContext;
+    }
+
+    public getType(): Type {
+        return TemplateType.instance;
+    }
+
+    public isDefine(): boolean {
+        return true;
     }
 }
 
 export class ClassTemplate extends Symbol {
-    public name: string;
+    public shortName: string;
     public fullName: string;
     public fileName: string;
     public templateParams: TemplateParameter[];
     public classBody: ClassSpecifier;
     public instanceMap: Map<string, ClassType>;
     public specializationMap: Map<string, ClassSpecifier>;
-    public contextScope: Scope;
-    public contextActiveScopes: Set<Scope>;
-
-    constructor(name: string, fullName: string, fileName: string,
+    public scopeContext: ScopeContext;
+    constructor(shortName: string, fullName: string, fileName: string,
                 templateParams: TemplateParameter[],
-                classBody: ClassSpecifier, contextScope: Scope, contextActiveScopes: Set<Scope>) {
+                classBody: ClassSpecifier, scopeContext: ScopeContext) {
         super();
         this.templateParams = templateParams;
         this.classBody = classBody;
-        this.name = name;
+        this.shortName = name;
         this.fileName = fileName;
         this.fullName = fullName;
         this.instanceMap = new Map<string, ClassType>();
         this.specializationMap = new Map<string, ClassSpecifier>();
-        this.contextScope = contextScope;
-        this.contextActiveScopes = new Set<Scope>(Array.from(contextActiveScopes));
+        this.scopeContext = scopeContext;
     }
 
     public getType(): Type {

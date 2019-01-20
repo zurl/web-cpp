@@ -1,49 +1,10 @@
 import * as fs from "fs";
 import * as Long_ from "long";
 import * as PegJs from "pegjs";
-import * as CTree_ from "../common/ast";
-import {Declarator, IdentifierDeclarator, Node, SpecifierType} from "../common/ast";
 import {SyntaxError, TypeError} from "../common/error";
+import {Node} from "../common/node";
+import * as CTree_ from "./ast";
 import CGrammar from "./c.lang";
-
-const storageClassSpecifierStringToEnum = [
-    "typedef", "extern", "static", "_Thread_local", "auto", "register",
-];
-
-export function getStorageClassSpecifierFromSpecifiers(specifiers: SpecifierType[],
-                                                       nodeForError: Node) {
-
-    const storageClassSpecifiers = [];
-    for (const specifier of specifiers) {
-        if (typeof(specifier) === "string") {
-            if (storageClassSpecifierStringToEnum.includes(specifier)) {
-                storageClassSpecifiers.push(specifier);
-            }
-        }
-    }
-
-    // At most, one storage-class specifier may be given in the declaration specifiers in a declaration, except that
-    // _Thread_local may appear with static or extern.
-    if (!(storageClassSpecifiers.length < 2 || (storageClassSpecifiers.length === 2
-        && storageClassSpecifiers.includes("_Thread_local")
-        && (storageClassSpecifiers.includes("static")
-            || storageClassSpecifiers.includes("extern"))))) {
-        throw new TypeError("Multiple storage classes in declaration specifiers", nodeForError);
-    }
-    // _Thread_local shall not appear in the declaration specifiers of a function declaration.
-    // TODO
-
-    if (storageClassSpecifiers.includes("_Thread_local")) {
-        throw new TypeError(`Unsupported: '_Thread_local' is not supported`,
-            nodeForError);
-    }
-    if (storageClassSpecifiers.includes("register")) {
-        throw new TypeError(`Unsupported: 'register' is not supported`,
-            nodeForError);
-    }
-
-    return storageClassSpecifiers[0] || null;
-}
 
 function parseUniversalCharacter(hexSequence: string) {
     // SAFE_NUMBER: At most 0xFFFFFFFF.

@@ -232,6 +232,52 @@ of WebAssembly.
 
 ## temporary problems
 - [ ] A a[50] decons
+- [ ] template class in template class
+- [ ] template member function
+- [ ] seperate delaration
+- [ ] only declare template (template declar)
+- [ ] id could not be keyword
+
+## Naming Guidance
+
+The name in web-cpp could be classified into 3 kinds
+```c++
+namespace A{
+    namespace B{
+        class C;
+    }
+    class B::C{
+
+    };
+}
+```c++
+
+for class C
+shortName    C                                  for describe itself
+lookupName   C(无限定查找）
+             B::C/A::B::C（限定查找）
+             ::A::B::C（完全限定查找）             for lookup
+fullName     ::A::B::C                          for describe certain path of a element
+
+ScopeManager
+lookup(lookupName) => Symbol
+getFullName(lookupName) => FullName
+declare(fullName, Symbol)
+define(fullName, Symbol)
+enterSymbolScope(lookupName) / exitSymbolScope()
+enterInnerScope() / exitInnerScope();
+
+声明
+无限定查找 非同级作用域覆盖 同级作用域冲突检查
+限定查找 有同样声明跳过 其他不被允许
+
+定义
+无限定查找 非同级作用域覆盖 同级作用域声明补充 同级作用域定义不被允许
+限定查找 预先声明require 默认行为补充
+
+
+
+
 
 ## Miscellaneous
 

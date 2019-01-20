@@ -3,18 +3,11 @@ import {Symbol} from "../common/symbol";
 import {WType} from "../wasm";
 
 export abstract class Type extends Symbol {
-
-    public isExtern: boolean;
-    public isStatic: boolean;
     public isConst: boolean;
-    public isVirtual: boolean;
 
     constructor() {
         super();
-        this.isExtern = false;
-        this.isStatic = false;
         this.isConst = false;
-        this.isVirtual = false;
     }
 
     public equals(type: Type) {
@@ -46,6 +39,7 @@ export enum AccessControl {
     Public,
     Private,
     Protected,
+    Unknown,
 }
 
 export function getAccessControlFromString(str: string) {

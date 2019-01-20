@@ -1,6 +1,6 @@
 Id
     = !Keyword head:IdentifierNondigit tail:IdentifierPart* {
-        return new AST.Identifier(getLocation(), head + tail.join(''));
+        return new AST.SingleIdentifier(getLocation(), head + tail.join(''), AST.IDType.ID, []);
     }
 
 SingleIdentifier
@@ -9,11 +9,27 @@ SingleIdentifier
     } {
         return id;
     }
+    / 'operator' ope:OverloadOperator {
+        return new AST.SingleIdentifier(getLocation(), "#" + ope, AST.IDType.ID, []);
+    }
+    / '~' name:TypeIdentifier {
+        const result = name.clone();
+        result.getLastID().name = '~' + result.identifier.name;
+        result.getLastID().type = AST.IDType.TYPE;
+        return result;
+    }
+    / id:TemplateFuncInstanceIdentifier{
+        return id;
+    }
 
 SingleTypeIdentifier
     =  id:Id &{
         return getTypeOfName(id.name) === TYPE_NAME;
     } {
+        id.type = AST.IDType.TYPE;
+        return id;
+    }
+    / id:TemplateClassInstanceIdentifier{
         return id;
     }
 
@@ -21,6 +37,7 @@ SingleTemplateFuncIdentifier
     =  id:Id &{
         return getTypeOfName(id.name) === TEMPLATE_FUNC_NAME;
     } {
+        id.type = AST.IDType.T_FUNC;
         return id;
     }
 
@@ -28,60 +45,33 @@ SingleTemplateClassIdentifier
     =  id:Id &{
         return getTypeOfName(id.name) === TEMPLATE_CLASS_NAME;
     } {
+        id.type = AST.IDType.T_CLASS;
         return id;
     }
 
 Identifier
-    = 'operator' ope:OverloadOperator {
-        return new AST.Identifier(getLocation(), "#" + ope);
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
-    / isFullName:'::'? namespace:(Id '::')* name:SingleIdentifier {
-        let prefix = isFullName === "::" ? "::" : "";
-        name.name = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
-        return name;
-    }
-    / '~' name:TypeIdentifier {
-        name.identifier.name = '~' + name.identifier.name;
-        return name.identifier;
-    }
-    / id:TemplateFuncInstanceIdentifier{
-        return id;
-    }
-
 
 TypeIdentifier
-    = isFullName:'::'? namespace:(Id '::')* name:SingleTypeIdentifier {
-        const prefix = isFullName === "::" ? "::" : "";
-        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
-        return new AST.TypeIdentifier(getLocation(), id);
-    }
-    / id:TemplateClassInstanceIdentifier{
-        return id;
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTypeIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TemplateFuncIdentifier
-    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateFuncIdentifier {
-        const prefix = isFullName === "::" ? "::" : "";
-        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
-        return new AST.TemplateFuncIdentifier(getLocation(), id);
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTemplateFuncIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TemplateClassIdentifier
-    = isFullName:'::'? namespace:(Id '::')* name:SingleTemplateClassIdentifier {
-        const prefix = isFullName === "::" ? "::" : "";
-        const id = prefix + namespace.map(x=>x[0].name+"::").join("") + name.name;
-        return new AST.TemplateClassIdentifier(getLocation(), id);
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTemplateClassIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TypeDeclarationIdentifier
     = identifier:Identifier{
-        if( options.isCpp ) { currScope.names.set(identifier.name, TYPE_NAME); }
-        return identifier;
-    }
-
-TemplateDeclarationIdentifier
-    = identifier:Identifier{
-        if( options.isCpp ) { currScope.names.set(identifier.name, TEMPLATE_NAME); }
+        if( options.isCpp ) { currScope.names.set(identifier.getLastID().name, TYPE_NAME); }
         return identifier;
     }
 

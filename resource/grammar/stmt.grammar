@@ -37,7 +37,7 @@ ScopeEnd
 
 CompoundStatement
     = left:ScopeStart _ body:BlockItemList? _ right:ScopeEnd {
-        return new AST.CompoundStatement(getLocation(), left, right, body || []);
+        return new AST.CompoundStatement(getLocation(), lbody || []);
     }
 
 BlockItemList
@@ -98,7 +98,7 @@ JumpStatement
 
 
 UsingStatements
-    = 'using' _ name:Id _ '=' _ decl:TypeName _ ';'{
+    = 'using' _ name:SingleIdentifier _ '=' _ decl:TypeName _ ';'{
         currScope.names.set(name.name, TYPE_NAME);
         return new AST.UsingStatement(getLocation(), name, decl);
     }

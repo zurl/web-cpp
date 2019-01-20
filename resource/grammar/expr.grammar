@@ -137,7 +137,7 @@ PrimaryExpression
     / Constant
     / StringLiteral
     / '(' _ expression:Expression _ &!')' {
-        return new AST.ParenthesisExpression(getLocation(), expression);
+        return expression;
     }
 
 

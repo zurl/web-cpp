@@ -35,12 +35,18 @@ TypeParameter
 
 TemplateFuncInstanceIdentifier
     = id:TemplateFuncIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
-        return new AST.TemplateFuncInstanceIdentifier(getLocation(), id, opt ? (opt[3] || []) : []);
+        const result = id.clone()
+        result.getLastID().type = AST.IDType.T_FUNC_INS;
+        result.getLastID().args = opt ? (opt[3] || []) : [];
+        return result;
     }
 
 TemplateClassInstanceIdentifier
     = id:TemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
-        return new AST.TemplateClassInstanceIdentifier(getLocation(), id, opt ? (opt[3] || []) : []);
+        const result = id.clone()
+        result.getLastID().type = AST.IDType.T_CLASS_INS;
+        result.getLastID().args = opt ? (opt[3] || []) : [];
+        return result;
     }
 
 TemplateArgumentList
@@ -49,8 +55,12 @@ TemplateArgumentList
     }
 
 TemplateArgument
-    = TypeName
-    / AdditiveExpression
+    = item:TypeName {
+        return new TemplateArgument(getLocation(), item);
+    }
+    / item:AdditiveExpression {
+        return new TemplateArgument(getLocation(), item);
+    }
 
 ExplicitInstantiation
     = FunctionTemplateInstantiation

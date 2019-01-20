@@ -3,21 +3,45 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-import {ExpressionResult, Node} from "../common/ast";
 import {InternalError, SyntaxError, TypeError} from "../common/error";
+import {Node} from "../common/node";
 import {AddressType} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
 import {FunctionType} from "../type/function_type";
-import {ArithmeticType, FloatType, IntegerType, PrimitiveTypes} from "../type/primitive_type";
-import {getTypeConvertOpe, WType} from "../wasm/constant";
+import {
+    ArithmeticType,
+    FloatingType,
+    FloatType, Int64Type,
+    IntegerType,
+    PrimitiveTypes,
+    UnsignedInt64Type, UnsignedIntegerType,
+} from "../type/primitive_type";
+import {getTypeConvertOpe} from "../wasm/constant";
 import {WConst, WCovertOperation, WGetFunctionAddress} from "../wasm/expression";
 import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
-import {doFunctionOverloadResolution} from "./cpp/overload";
+import {ExpressionResult} from "./expression/expression";
+import {doFunctionOverloadResolution} from "./overload";
 import {FunctionLookUpResult} from "./scope";
+
+export function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
+    if (left instanceof FloatingType || right instanceof FloatingType) {
+        return PrimitiveTypes.double;
+    }
+    if (left instanceof UnsignedInt64Type || right instanceof UnsignedInt64Type) {
+        return PrimitiveTypes.uint64;
+    }
+    if (left instanceof Int64Type || right instanceof Int64Type) {
+        return PrimitiveTypes.int64;
+    }
+    if (left instanceof UnsignedIntegerType || right instanceof UnsignedIntegerType) {
+        return PrimitiveTypes.uint32;
+    }
+    return PrimitiveTypes.int32;
+}
 
 export function doTypeTransfrom(type: Type): Type {
     // array to pointer transform

@@ -30,16 +30,16 @@ AccessControlKey = 'public' / 'private' / 'protect'
 
 StructDeclaration
     = id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], body, false);
+        return new AST.ConstructorDeclaration(getLocation(), id, param, initList || [], body);
     }
     / id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), true, id, param, initList || [], null, false);
+        return new AST.ConstructorDeclaration(getLocation(), id, param, initList || [], nul);
     }
     / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ body:CompoundStatement{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, body, isVirtual === "virtual");
+        return new AST.DestructorDeclaration(getLocation(), id, body, isVirtual === "virtual");
     }
     / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ ';'{
-        return new AST.ConstructorOrDestructorDeclaration(getLocation(), false, id, null, null, null, isVirtual === "virtual");
+        return new AST.DestructorDeclaration(getLocation(), id, null, isVirtual === "virtual");
     }
     / label:AccessControlKey _ ':' {
         return new AST.AccessControlLabel(getLocation(), label);

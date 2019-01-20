@@ -5,7 +5,7 @@
  */
 import {SourceMapConsumer} from "source-map";
 import {Scope} from "../codegen/scope";
-import {SourceLocation} from "../common/ast";
+import {SourceLocation} from "../common/Node";
 import {EmitError} from "../common/error";
 import {SourceMap} from "../common/object";
 import {WType} from "./constant";

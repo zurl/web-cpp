@@ -100,7 +100,7 @@ export class JSRuntime extends Runtime {
         }
         for (const fn of this.program.functions) {
             fn.scope = fn.name.substring(0, 2) === "::" ?
-                this.rootScope.getScope(fn.name.split("::").slice(1)) : null;
+                this.rootScope.getScopeFromFullName(fn.name) : null;
         }
         this.stack = [{
             fn: this.program.functions[0],
@@ -475,7 +475,7 @@ export class JSRuntime extends Runtime {
             for (const subItem of item[1]) {
                 if (subItem instanceof Variable) {
                     result.push({
-                        name: subItem.name,
+                        name: subItem.shortName,
                         size: subItem.type.length,
                         type: subItem.type.toString(),
                         value: this.getValueOfVariable(subItem, stack),

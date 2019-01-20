@@ -3,8 +3,8 @@
  *  @author zcy <zurl@live.com>
  *  Created at 15/07/2018
  */
-import {SourceLocation} from "../common/ast";
 import {EmitError, InternalError} from "../common/error";
+import {SourceLocation} from "../common/node";
 import {AddressType} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";

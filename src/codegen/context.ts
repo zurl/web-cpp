@@ -4,19 +4,18 @@
  *  Created at 15/06/2018
  */
 import {SourceMapGenerator} from "source-map";
-import {Node} from "../common/ast";
 import {InternalError} from "../common/error";
+import {Node} from "../common/node";
 import {CompiledObject, ImportSymbol} from "../common/object";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
 import {Type} from "../type";
-import {ClassType} from "../type/class_type";
 import {FunctionType} from "../type/function_type";
-import {EvaluatedTemplateArgument, FunctionTemplate} from "../type/template_type";
+import {FunctionTemplate} from "../type/template_type";
 import {WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
-import {triggerDestructor} from "./cpp/lifecycle";
+import {triggerAllDestructor} from "./class/destructor";
 import {MemoryLayout} from "./memory";
-import {Scope, ScopeManager} from "./scope";
+import { ScopeManager} from "./scope";
 
 export interface CompileOptions {
     debug?: boolean;
@@ -31,13 +30,6 @@ export interface CaseContext {
 export interface SwitchContext {
     cases: CaseContext[];
 }
-
-export interface DeferInstantiationTask {
-    funcTemplate: FunctionTemplate;
-    type: FunctionType;
-    args: EvaluatedTemplateArgument[];
-}
-
 export interface FuncContext {
     statementContainer: WStatement[];
     blockLevel: number;
@@ -97,8 +89,8 @@ export class CompileContext {
     }
 
     public enterFunction(functionEntity: FunctionEntity) {
-        this.functionMap.set(functionEntity.name, functionEntity);
-        this.scopeManager.enterScope(functionEntity.name);
+        this.functionMap.set(functionEntity.shortName, functionEntity);
+        this.scopeManager.enterScope(functionEntity.shortName);
         this.memory.enterFunction();
         this.funcContexts.push(this.currentFuncContext);
         this.currentFuncContext = {
@@ -120,31 +112,12 @@ export class CompileContext {
         this.currentFuncContext = this.funcContexts.pop()!;
     }
 
-    public triggerDtors(node: Node, scope: Scope) {
-        for (const item of scope.map.values()) {
-            const x = item[0];
-            if (x instanceof Variable && x.type instanceof ClassType) {
-                triggerDestructor(this, x, node);
-            }
-        }
-    }
-
-    public triggerDtorsInner(node: Node) {
-        let scope = this.scopeManager.currentScope;
-        while (scope.isInnerScope) {
-            this.triggerDtors(node, scope);
-            scope = scope.parent;
-        }
-        this.triggerDtors(node, scope);
-    }
-
     public enterScope() {
         this.scopeManager.enterUnnamedScope(false);
     }
 
     public exitScope(node: Node) {
-        this.triggerDtors(node, this.scopeManager.currentScope);
-        this.scopeManager.exitScope();
+        triggerAllDestructor(this, node);
     }
 
     public setStatementContainer(constainer: WStatement[]) {

@@ -4,7 +4,7 @@
  *  Created at 14/07/2018
  */
 import * as Long from "long";
-import {SourceLocation} from "../common/ast";
+import {SourceLocation} from "../common/Node";
 import {EmitError} from "../common/error";
 import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "./calculator";
 import {

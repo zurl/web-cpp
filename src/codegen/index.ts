@@ -3,56 +3,37 @@
  *  @author zcy <zurl@live.com>
  *  Created at 15/06/2018
  */
-import {Node} from "../common/ast";
-import {AccessControl} from "../type";
+import {Node} from "../common/node";
+import {AccessControl, Type} from "../type";
 import {PointerType} from "../type/compound_type";
 import {FunctionType} from "../type/function_type";
 import {PrimitiveTypes} from "../type/primitive_type";
-import {classes} from "./class";
 import {CompileContext} from "./context";
-import {template} from "./cpp/template";
-import {declaration} from "./declaration";
-import {expression} from "./expression";
-import {expression_type} from "./expression_type";
-import {declareFunction, functions} from "./function";
-import {statement} from "./statement";
+import {TranslationUnit} from "./declaration/translation_unit";
+import {declareFunction} from "./function/function";
 
-function loadCodegen() {
-    declaration();
-    statement();
-    functions();
-    expression();
-    expression_type();
-    classes();
-    template();
+function declareSystemFunction(ctx: CompileContext, name: string, returnType: Type,
+                               parameterType: Type[], node: Node) {
+    declareFunction(ctx, {
+        name,
+        functionType: new FunctionType(returnType, parameterType, false),
+        parameterInits: parameterType.map((x) => null),
+        parameterNames: parameterType.map((x) => ""),
+        accessControl: AccessControl.Public,
+        isLibCall: true,
+    }, node);
 }
 
-loadCodegen();
-
-export function codegen(root: Node, ctx: CompileContext) {
+export function codegen(root: TranslationUnit, ctx: CompileContext) {
+    const voidT = PrimitiveTypes.void;
     const voidPtrT = new PointerType(PrimitiveTypes.void);
     // c++ runtime require memcpy & malloc & free & malloc_array
     if ( ctx.isCpp() ) {
-        declareFunction(ctx, new FunctionType("memcpy",
-            PrimitiveTypes.void, [voidPtrT, voidPtrT, PrimitiveTypes.uint32],
-            ["dst", "src", "size"], false),
-            true, AccessControl.Public, root);
-        declareFunction(ctx, new FunctionType("memset",
-            PrimitiveTypes.void, [voidPtrT, PrimitiveTypes.int32, PrimitiveTypes.uint32],
-            ["dst", "ch", "size"], false),
-            true, AccessControl.Public, root);
-        declareFunction(ctx, new FunctionType("malloc",
-            new PointerType(PrimitiveTypes.void), [PrimitiveTypes.uint32],
-            ["size"], false),
-            true, AccessControl.Public, root);
-        declareFunction(ctx, new FunctionType("malloc_array",
-            new PointerType(PrimitiveTypes.void), [PrimitiveTypes.uint32, PrimitiveTypes.uint32],
-            ["element_size", "length"], false),
-            true, AccessControl.Public, root);
-        declareFunction(ctx, new FunctionType("free",
-            PrimitiveTypes.void, [voidPtrT],
-            ["ptr"], false),
-            true, AccessControl.Public, root);
+        declareSystemFunction(ctx, "memcpy", voidT, [voidPtrT, voidPtrT, PrimitiveTypes.uint32], root);
+        declareSystemFunction(ctx, "memset", voidT, [voidPtrT, PrimitiveTypes.int32, PrimitiveTypes.uint32], root);
+        declareSystemFunction(ctx, "malloc", voidPtrT, [PrimitiveTypes.uint32], root);
+        declareSystemFunction(ctx, "malloc_array", voidPtrT, [PrimitiveTypes.uint32, PrimitiveTypes.uint32], root);
+        declareSystemFunction(ctx, "free", voidT, [voidPtrT], root);
     }
     root.codegen(ctx);
 }

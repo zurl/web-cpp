@@ -5,7 +5,6 @@
  */
 
 import {FunctionLookUpResult} from "../codegen/scope";
-import {ConstructorInitializeItem} from "../common/ast";
 import {InternalError} from "../common/error";
 import {isArrayEqual} from "../common/utils";
 import {getNativeType, WType} from "../wasm/constant";
@@ -49,28 +48,21 @@ export class TemplatePlaceholderType extends Type {
 }
 
 export class FunctionType extends Type {
-    public name: string;
+    // coretype
+    public isVirtual: boolean;
     public returnType: Type;
     public parameterTypes: Type[];
-    public parameterNames: string[];
-    public parameterInits: Array<null | string>;
     public variableArguments: boolean;
     public cppFunctionType: CppFunctionType;
     public referenceClass: ClassType | null;
-    public initList: ConstructorInitializeItem[];
-
-    constructor(name: string, returnType: Type, parameterTypes: Type[],
-                parameterNames: string[], variableArguments: boolean) {
+    constructor(returnType: Type, parameterTypes: Type[], variableArguments: boolean = false) {
         super();
-        this.name = name;
         this.returnType = returnType;
         this.parameterTypes = parameterTypes;
-        this.parameterNames = parameterNames;
         this.variableArguments = variableArguments;
         this.cppFunctionType = CppFunctionType.Normal;
+        this.isVirtual = false;
         this.referenceClass = null;
-        this.initList = [];
-        this.parameterInits = [];
         for (let i = 0; i < this.parameterTypes.length; i++) {
             const ty = this.parameterTypes[i];
             if (ty instanceof ArrayType) {
@@ -90,8 +82,7 @@ export class FunctionType extends Type {
             isArrayEqual(this.parameterTypes, type.parameterTypes);
     }
 
-    public toString() {
-        let name = this.name;
+    public toDisplayString(name: string) {
         if (name.charAt(0) === "#") {
             if (name.charAt(1) === "$") {
                 name = name.substring(2);
@@ -104,13 +95,18 @@ export class FunctionType extends Type {
             name = tokens[0] + "<" + tokens[2] + ">";
         }
         if (this.cppFunctionType === CppFunctionType.Constructor) {
-            name = this.referenceClass!.name + "::" + this.referenceClass!.name;
+            name = this.referenceClass!.shortName + "::" + this.referenceClass!.shortName;
         } else if (this.cppFunctionType === CppFunctionType.Destructor) {
-            name = "~" + this.referenceClass!.name + "::" + this.referenceClass!.name;
+            name = "~" + this.referenceClass!.shortName + "::" + this.referenceClass!.shortName;
         } else if (this.cppFunctionType === CppFunctionType.MemberFunction) {
-            name = this.referenceClass!.name + "::" + name;
+            name = this.referenceClass!.shortName + "::" + name;
         }
         return this.returnType.toString() + " " + name + "(" +
+            this.parameterTypes.map((x) => x.toString()).join(", ") + ")";
+    }
+
+    public toString() {
+        return this.returnType.toString() + "(" +
             this.parameterTypes.map((x) => x.toString()).join(", ") + ")";
     }
 
@@ -121,13 +117,13 @@ export class FunctionType extends Type {
     public toMangledName(): string {
         return this.parameterTypes.map((x) => x.toMangledName()).join(",");
     }
-
+/*
     public toIndexName(): string {
         if (this.cppFunctionType === CppFunctionType.Destructor) {
             return "~";
         }
-        return this.name + "@" + this.parameterTypes.slice(1).map((x) => x.toMangledName()).join(",");
-    }
+        return this.shortName + "@" + this.parameterTypes.slice(1).map((x) => x.toMangledName()).join(",");
+    }*/
 
     public compatWith(type: Type): boolean {
         return type.equals(this);
