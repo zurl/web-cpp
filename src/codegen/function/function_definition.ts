@@ -6,10 +6,10 @@ import {PointerType} from "../../type/compound_type";
 import {CppFunctionType, FunctionType} from "../../type/function_type";
 import {CompileContext} from "../context";
 import {Declarator} from "../declaration/declarator";
+import {FunctionDeclarator} from "../declaration/function_declarator";
 import {SpecifierList} from "../declaration/specifier_list";
 import {CompoundStatement} from "../statement/compound_statement";
 import {defineFunction, FunctionConfig} from "./function";
-import {FunctionDeclarator} from "../declaration/function_declarator";
 
 export class FunctionDefinition extends ClassDirective {
     public specifiers: SpecifierList;
@@ -52,6 +52,9 @@ export class FunctionDefinition extends ClassDirective {
     }
 
     public getMemberFunctionConfig(ctx: CompileContext, classType: ClassType): FunctionConfig {
+        if (this.specifiers.specifiers.includes("static")) {
+            return this.getFunctionConfig(ctx);
+        }
         const name = this.declarator.getNameRequired();
         const functionType = this.deduceType(ctx);
         const functionDeclarator = FunctionDeclarator.getFunctionDeclarator(this.declarator);
@@ -94,10 +97,10 @@ export class FunctionDefinition extends ClassDirective {
 
     public codegen(ctx: CompileContext): void {
         const name = this.declarator.getNameRequired();
-        const lookupName = name.getFullName(ctx);
-        const scope = ctx.scopeManager.root.getScopeOfLookupName(name.getLookupName(ctx));
+        const fullName = name.getFullName(ctx);
+        const scope = ctx.scopeManager.root.getScopeOfLookupName(fullName);
         if (!scope) {
-            throw new SyntaxError(`unresolvedname ${lookupName}`, this);
+            throw new SyntaxError(`unresolvedname ${fullName}`, this);
         }
         if (scope.classType === null) {
             const config = this.getFunctionConfig(ctx);

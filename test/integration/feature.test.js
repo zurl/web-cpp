@@ -10,7 +10,7 @@ describe('feature integration test', function () {
             printf("%d\\n", a);
             int q = 20;
             {
-                int q= 80;
+                int q = 80;
                 printf("%d\\n", q);
             }
             printf("%d\\n", q);

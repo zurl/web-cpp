@@ -117,7 +117,8 @@ export class InitDeclarator extends Node {
                 isLibCall: info.isLibCall,
             }, this);
         } else {
-            if (ctx.scopeManager.currentContext.scope.classType) {
+            if (ctx.scopeManager.currentContext.scope.classType
+                && !info.isStatic) {
                 // if in class, we should skip
                 return;
             }
@@ -145,7 +146,7 @@ export class InitDeclarator extends Node {
         const lookupName = name.getLookupName(ctx);
         if (info.isStatic ) {
             info.isExtern = true; // we only declare hereby
-            this.declareGlobal(ctx, info, classType.fullName + "::" + lookupName);
+            this.declareGlobal(ctx, info, lookupName);
             if (this.initializer) {
                 throw new SyntaxError(`the static field could only be initialize outside the class`, this);
             }

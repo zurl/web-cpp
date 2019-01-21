@@ -198,7 +198,7 @@ export class ScopeManager {
         this.contextStack = [];
         this.currentContext = {
             scope: this.root,
-            activeScopes: [],
+            activeScopes: [this.root],
         };
     }
 

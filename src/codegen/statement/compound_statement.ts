@@ -1,7 +1,7 @@
 import {Directive, SourceLocation} from "../../common/node";
+import {triggerAllDestructor} from "../class/destructor";
 import {CompileContext} from "../context";
 import {Statement} from "./statement";
-import {triggerAllDestructor} from "../class/destructor";
 
 export class CompoundStatement extends Statement {
     public body: Directive[];
@@ -13,6 +13,7 @@ export class CompoundStatement extends Statement {
 
     public codegen(ctx: CompileContext) {
         ctx.enterScope();
+        this.body.map((x) => x.codegen(ctx));
         triggerAllDestructor(ctx, this);
         ctx.exitScope(this);
     }

@@ -54,10 +54,10 @@ TemplateArgumentList
 
 TemplateArgument
     = item:TypeName {
-        return new TemplateArgument(getLocation(), item);
+        return new AST.TemplateArgument(getLocation(), item);
     }
     / item:AdditiveExpression {
-        return new TemplateArgument(getLocation(), item);
+        return new AST.TemplateArgument(getLocation(), item);
     }
 
 ExplicitInstantiation

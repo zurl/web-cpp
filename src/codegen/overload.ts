@@ -141,7 +141,7 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
         }
     }
 
-    throw new SyntaxError(`no matching function for ${funcs.functions[0].shortName}`, node);
+    throw new SyntaxError(`no matching function for ${funcs.functions[0].shortName.split("@")[0]}`, node);
 }
 
 export function isFunctionExists(ctx: CompileContext, name: string, argus: Type[],
