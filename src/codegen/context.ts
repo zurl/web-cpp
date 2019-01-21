@@ -90,7 +90,7 @@ export class CompileContext {
 
     public enterFunction(functionEntity: FunctionEntity) {
         this.functionMap.set(functionEntity.shortName, functionEntity);
-        this.scopeManager.enterScope(functionEntity.shortName);
+        this.scopeManager.enterScope(functionEntity.fullName);
         this.memory.enterFunction();
         this.funcContexts.push(this.currentFuncContext);
         this.currentFuncContext = {

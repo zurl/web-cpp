@@ -34,19 +34,17 @@ TypeParameter
     }
 
 TemplateFuncInstanceIdentifier
-    = id:TemplateFuncIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
-        const result = id.clone()
-        result.getLastID().type = AST.IDType.T_FUNC_INS;
-        result.getLastID().args = opt ? (opt[3] || []) : [];
-        return result;
+    = id:SingleTemplateFuncIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
+        id.type = AST.IDType.T_FUNC_INS;
+        id.args = opt ? (opt[3] || []) : [];
+        return id;
     }
 
 TemplateClassInstanceIdentifier
-    = id:TemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
-        const result = id.clone()
-        result.getLastID().type = AST.IDType.T_CLASS_INS;
-        result.getLastID().args = opt ? (opt[3] || []) : [];
-        return result;
+    = id:SingleTemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
+        id.type = AST.IDType.T_CLASS_INS;
+        id = opt ? (opt[3] || []) : [];
+        return id;
     }
 
 TemplateArgumentList

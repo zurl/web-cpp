@@ -237,7 +237,7 @@ of WebAssembly.
 - [ ] seperate delaration
 - [ ] only declare template (template declar)
 - [ ] id could not be keyword
-
+- [ ] function lookup result not elegant
 ## Naming Guidance
 
 The name in web-cpp could be classified into 3 kinds

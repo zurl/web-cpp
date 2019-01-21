@@ -1,12 +1,19 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {ClassDirective, Node, SourceLocation} from "../../common/node";
+import {AddressType} from "../../common/symbol";
 import {ClassType, Inheritance} from "../../type/class_type";
+import {PrimitiveTypes} from "../../type/primitive_type";
+import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../../wasm/expression";
+import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
 import {Declaration} from "../declaration/declaration";
-import {ParameterList} from "../declaration/parameter_list";
+import {AnonymousExpression} from "../expression/anonymous_expression";
+import {AssignmentExpression} from "../expression/assignment_expression";
 import {Identifier} from "../expression/identifier";
 import {FunctionDefinition} from "../function/function_definition";
+import {ParameterList} from "../function/parameter_list";
 import {CompoundStatement} from "../statement/compound_statement";
+import {ExpressionStatement} from "../statement/expression_statement";
 import {BaseSpecifier} from "./base_specifier";
 import {ConstructorDeclaration} from "./constructor_declaration";
 import {DestructorDeclaration} from "./destructor_declaration";
@@ -95,7 +102,7 @@ export class ClassSpecifier extends Node {
         this.declarations.map((x) => x.declare(ctx, classType));
         classType.initialize();
         if (isVirtual) {
-            classType.generateVTable(ctx, this);
+            this.generateVTable(ctx, classType);
         }
         this.declarations.map((x) => x.codegen(ctx));
         this.generateDefaultConstructor(ctx);
@@ -103,6 +110,29 @@ export class ClassSpecifier extends Node {
         ctx.scopeManager.exitScope();
 
         return classType;
+    }
+
+    public generateVTable(ctx: CompileContext, classType: ClassType) {
+        const vTablesize = 4 * classType.vTable.vFunctions.length;
+        classType.vTablePtr = ctx.memory.allocData(vTablesize);
+        for (let i = 0; i < classType.vTable.vFunctions.length; i++) {
+            const vTablePtrExpr = new WGetAddress(WMemoryLocation.DATA, this.location);
+            vTablePtrExpr.offset = classType.vTablePtr + i * 4;
+            const vTableExpr = new AnonymousExpression(this.location, {
+                type: PrimitiveTypes.int32,
+                expr: new WAddressHolder(vTablePtrExpr, AddressType.RVALUE, this.location),
+                isLeft: true,
+            });
+            const vFuncName = classType.vTable.vFunctions[i].fullName;
+            new ExpressionStatement(this.location, new AssignmentExpression(this.location,
+                "=",
+                vTableExpr,
+                new AnonymousExpression(this.location, {
+                    type: PrimitiveTypes.int32,
+                    isLeft: false,
+                    expr: new WGetFunctionAddress(vFuncName, this.location),
+                }))).codegen(ctx);
+        }
     }
 
     private generateDefaultConstructor(ctx: CompileContext) {

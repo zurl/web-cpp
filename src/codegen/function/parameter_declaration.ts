@@ -3,10 +3,10 @@ import {Node, SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {TemplateParameter} from "../../type/template_type";
 import {CompileContext} from "../context";
+import {Declarator} from "../declaration/declarator";
+import {SpecifierList} from "../declaration/specifier_list";
 import {AssignmentExpression} from "../expression/assignment_expression";
 import {TemplateParameterDeclaration} from "../template/type_parameter";
-import {Declarator} from "./declarator";
-import {SpecifierList} from "./specifier_list";
 
 export class ParameterDeclaration extends Node implements TemplateParameterDeclaration {
     public specifiers: SpecifierList;

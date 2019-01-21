@@ -10,7 +10,6 @@ import {MemberExpression} from "../class/member_expression";
 import {CompileContext} from "../context";
 import {arithmeticDeduce, doConversion, doTypeTransfrom, doValueTransform} from "../conversion";
 import {CallExpression} from "../function/call_expression";
-import {FunctionLookUpResult} from "../scope";
 import {Expression, ExpressionResult, recycleExpressionResult} from "./expression";
 import {Identifier} from "./identifier";
 
@@ -65,9 +64,6 @@ export class BinaryExpression extends Expression {
         if (dstType instanceof PointerType) {
             if (left.type instanceof IntegerType) {
                 left = doValueTransform(ctx, left, this);
-                if (left.expr instanceof FunctionLookUpResult) {
-                    throw new InternalError(`unsupport func name`);
-                }
                 left = {
                     type: dstType,
                     isLeft: false,
@@ -76,9 +72,6 @@ export class BinaryExpression extends Expression {
                 };
             } else if (right.type instanceof IntegerType) {
                 right = doValueTransform(ctx, right, this);
-                if (right.expr instanceof FunctionLookUpResult) {
-                    throw new InternalError(`unsupport func name`);
-                }
                 right = {
                     type: dstType,
                     isLeft: false,

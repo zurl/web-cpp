@@ -3,9 +3,14 @@ import {Type} from "../../type";
 import {FunctionType} from "../../type/function_type";
 import {CompileContext} from "../context";
 import {Declarator} from "./declarator";
-import {ParameterList} from "./parameter_list";
+import {ParameterList} from "../function/parameter_list";
 
 export class FunctionDeclarator extends Declarator {
+
+    public static getFunctionDeclarator(decl: Declarator): FunctionDeclarator | null {
+        return decl instanceof FunctionDeclarator ? decl :
+            (decl.declarator ? this.getFunctionDeclarator(decl.declarator) : null);
+    }
     public parameters: ParameterList;
 
     constructor(location: SourceLocation, declarator: Declarator, parameters: ParameterList) {

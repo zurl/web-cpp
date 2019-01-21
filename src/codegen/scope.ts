@@ -68,7 +68,7 @@ export class Scope {
 
     public getScopeOfLookupName(lookupName: string): Scope | null {
         if (lookupName.slice(0, 2) === "::") {
-            throw new InternalError(`getScopeOfLookupName()`);
+            lookupName = lookupName.slice(2);
         }
         const tokens = lookupName.split("::");
         if (tokens.length === 1) {
@@ -113,8 +113,6 @@ export class Scope {
                     } else if (!x.isDefine() && !newItem.isDefine()) {
                         return;
                     }
-                } else {
-                    throw new SyntaxError(`redefine of ${shortName}`, node!);
                 }
             }
             oldItems.push(newItem);
@@ -178,7 +176,7 @@ export class Scope {
 
 export interface ScopeContext {
     scope: Scope;
-    activeScopes: Set<Scope>;
+    activeScopes: Scope[];
 }
 
 export class ScopeManager {
@@ -200,7 +198,7 @@ export class ScopeManager {
         this.contextStack = [];
         this.currentContext = {
             scope: this.root,
-            activeScopes: new Set<Scope>(),
+            activeScopes: [],
         };
     }
 
@@ -213,47 +211,58 @@ export class ScopeManager {
         if (isFullLookup) {
             return anyName;
         }
-        for (const scope of this.currentContext.activeScopes) {
+        for (let i = this.currentContext.activeScopes.length - 1; i >= 0; i--){
+            const scope = this.currentContext.activeScopes[i];
             const itemScope = scope.getScopeOfLookupName(anyName);
             const shortName = getShortName(anyName);
             if (itemScope && itemScope.map.has(shortName)) {
                 return itemScope.fullName + "::" + shortName;
             }
         }
-        return this.currentContext + "::" + anyName;
+        return this.currentContext.scope.fullName + "::" + anyName;
+    }
+
+    public lookupFunction(anyName: string): LookUpResult {
+        const shortName = getShortName(anyName).split("@")[0];
+        const isWithSignature = getShortName(anyName).includes("@");
+        const nameMap = new Set<string>();
+        const result = [] as FunctionEntity[];
+        for (let i = this.currentContext.activeScopes.length - 1; i >= 0; i--){
+            const scope = this.currentContext.activeScopes[i];
+            const subScope = scope.getScopeOfLookupName(anyName);
+            if (subScope) {
+                const item = subScope.map.get(shortName);
+                if (item) {
+                    for (const subItem of item) {
+                        if (subItem instanceof FunctionEntity) {
+                            if (!nameMap.has(subItem.shortName) && !isWithSignature ||
+                                subItem.fullName === subScope.fullName + "::" +  getShortName(anyName)) {
+                                nameMap.add(subItem.shortName);
+                                result.push(subItem);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return new FunctionLookUpResult(result);
     }
 
     public lookup(anyName: string): LookUpResult {
-        const isFullLookup = anyName.slice(0, 2) === "::";
-        const isWithSignature = getShortName(anyName).includes("@");
-        if (!isFullLookup) {
-            anyName = this.getFullName(anyName);
-        }
-        const scope = this.root.getScopeOfLookupName(anyName.slice(2));
+        const fullName = this.getFullName(anyName);
+        const scope = this.root.getScopeOfLookupName(fullName.slice(2));
         if (!scope) {
             return null;
         }
-        const pureShortName = getShortName(anyName).split("@")[0];
+        const pureShortName = getShortName(fullName).split("@")[0];
         const item = scope.map.get(pureShortName);
         if (!item) {
             return null;
         }
         const item0 = item[0];
         if (item0 instanceof FunctionEntity) {
-            if (isWithSignature) {
-                for (const fn of item) {
-                    if (fn instanceof FunctionEntity) {
-                        if (fn.fullName === anyName) {
-                            return new FunctionLookUpResult([fn]);
-                        }
-                    } else {
-                        throw new InternalError(`getSymbol()`);
-                    }
-                }
-                return new FunctionLookUpResult([]);
-            } else {
-                return new FunctionLookUpResult(item as FunctionEntity[]);
-            }
+            // as for function, we need to search all entity that match
+            return this.lookupFunction(anyName);
         } else {
             return item0 as LookUpResult;
         }
@@ -321,23 +330,35 @@ export class ScopeManager {
         }
     }
 
-    public enterScope(fullName: string) {
+    public enterScope(anyName: string) {
         this.contextStack.push(this.currentContext);
+        const fullName = this.getFullName(anyName);
         const scope = this.root.getScopeOfLookupName(fullName);
         if (!scope) {
             throw new InternalError(`the scope of ${fullName} is not exist`);
         }
-        const activeScopes = new Set<Scope>();
+        let activeScopes = [] as Scope[];
         for (let item = scope; item !== this.root; item = item.parent) {
-            activeScopes.add(item);
+            activeScopes.push(item);
         }
-        activeScopes.add(this.root);
-        const newScope = new Scope(getShortName(fullName), scope, this.isCpp);
-        scope.children.push(newScope);
-        this.currentContext = {
-            scope: newScope,
-            activeScopes,
-        };
+        activeScopes.push(this.root);
+        activeScopes = activeScopes.reverse();
+        const oldScope = scope.children.filter((x) => x.fullName === fullName);
+        if (oldScope.length) {
+            activeScopes.push(oldScope[0]);
+            this.currentContext = {
+                scope: oldScope[0],
+                activeScopes,
+            };
+        } else {
+            const newScope = new Scope(getShortName(fullName), scope, this.isCpp);
+            scope.children.push(newScope);
+            activeScopes.push(newScope);
+            this.currentContext = {
+                scope: newScope,
+                activeScopes,
+            };
+        }
     }
 
     public enterSavedScope(scopeContext: ScopeContext) {
@@ -362,8 +383,8 @@ export class ScopeManager {
         newScope.isInnerScope = true;
         this.currentContext.scope.children.push(newScope);
         this.contextStack.push(this.currentContext);
-        const activeScopes = new Set<Scope>(this.currentContext.activeScopes);
-        activeScopes.add(newScope);
+        const activeScopes = this.currentContext.activeScopes.map((x) => x);
+        activeScopes.push(newScope);
         this.currentContext = {
             scope: newScope,
             activeScopes,

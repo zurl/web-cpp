@@ -9,7 +9,6 @@ import {CallExpression} from "../function/call_expression";
 import {MemberExpression} from "./member_expression";
 
 export function triggerDestructor(ctx: CompileContext, obj: Variable, node: Node) {
-    const emptyLocation = Node.getEmptyLocation();
     const classType = obj.type;
     if (!(classType instanceof ClassType)) {
         throw new InternalError(`triggerDestructor()`);
@@ -20,9 +19,9 @@ export function triggerDestructor(ctx: CompileContext, obj: Variable, node: Node
         return;
     }
     recycleExpressionResult(ctx, node,
-        new CallExpression(emptyLocation,
-            new MemberExpression(emptyLocation, Identifier.fromString(emptyLocation, obj.shortName),
-                false, Identifier.fromString(emptyLocation, "~" + classType.shortName)), [],
+        new CallExpression(node.location,
+            new MemberExpression(node.location, Identifier.fromString(node.location, obj.shortName),
+                false, Identifier.fromString(node.location, "~" + classType.shortName)), [],
         ).codegen(ctx));
 
 }

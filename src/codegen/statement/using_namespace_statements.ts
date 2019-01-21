@@ -18,7 +18,7 @@ export class UsingNamespaceStatement extends ClassDirective {
         if ( !scope) {
             throw new SyntaxError(`${this.namespace.name} is not a namespace`, this);
         }
-        ctx.scopeManager.currentContext.activeScopes.add(scope);
+        ctx.scopeManager.currentContext.activeScopes.push(scope);
     }
 
     public declare(ctx: CompileContext, classType: ClassType): void {

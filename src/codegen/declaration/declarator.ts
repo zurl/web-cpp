@@ -3,8 +3,6 @@ import {Node, SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {CompileContext} from "../context";
 import {Identifier} from "../expression/identifier";
-import {FunctionDeclarator} from "./function_declarator";
-
 export abstract class Declarator extends Node {
     public declarator: Declarator | null;
 
@@ -20,18 +18,10 @@ export abstract class Declarator extends Node {
     }
 
     public getNameRequired(): Identifier {
-        if (!this.declarator) {
-            throw new SyntaxError(`the name is missing`, this);
-        }
-        const name = this.declarator.getName();
+        const name = this.getName();
         if (!name) {
-            throw new SyntaxError(`the name is missing`, this);
+            throw new SyntaxError(`the name is missing, no name`, this);
         }
         return name;
-    }
-
-    public getFunctionDeclarator(): FunctionDeclarator | null {
-        return this instanceof FunctionDeclarator ? this :
-            (this.declarator ? this.declarator.getFunctionDeclarator() : null);
     }
 }

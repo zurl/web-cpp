@@ -10,8 +10,8 @@ import {ObjectInitializer} from "../codegen/declaration/object_initializer";
 import {AnonymousExpression} from "../codegen/expression/anonymous_expression";
 import {AssignmentExpression} from "../codegen/expression/assignment_expression";
 import {Expression} from "../codegen/expression/expression";
-import {ExpressionStatement} from "../codegen/statement/expression_statement";
 import {FunctionLookUpResult} from "../codegen/scope";
+import {ExpressionStatement} from "../codegen/statement/expression_statement";
 import {InternalError} from "../common/error";
 import {Node} from "../common/node";
 import {AddressType, Variable} from "../common/symbol";
@@ -229,28 +229,6 @@ export class ClassType extends Type {
         }
     }
 
-    public generateVTable(ctx: CompileContext, node: Node) {
-        const vTablesize = 4 * this.vTable.vFunctions.length;
-        this.vTablePtr = ctx.memory.allocData(vTablesize);
-        for (let i = 0; i < this.vTable.vFunctions.length; i++) {
-            const vTablePtrExpr = new WGetAddress(WMemoryLocation.DATA, node.location);
-            vTablePtrExpr.offset = this.vTablePtr + i * 4;
-            const vTableExpr = new AnonymousExpression(node.location, {
-                type: PrimitiveTypes.int32,
-                expr: new WAddressHolder(vTablePtrExpr, AddressType.RVALUE, node.location),
-                isLeft: true,
-            });
-            const vFuncName = this.vTable.vFunctions[i].fullName;
-            new ExpressionStatement(node.location, new AssignmentExpression(node.location,
-                "=",
-                vTableExpr,
-                new AnonymousExpression(node.location, {
-                    type: PrimitiveTypes.int32,
-                    isLeft: false,
-                    expr: new WGetFunctionAddress(vFuncName, node.location),
-                }))).codegen(ctx);
-        }
-    }
 
     public getVCallInfo(indexName: string): [number, number] | null {
         for (let i = 0; i < this.vTable.vFunctions.length; i++) {

@@ -9,7 +9,7 @@ import {AddressType} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../type/compound_type";
-import {FunctionType} from "../type/function_type";
+import {FunctionType, UnresolvedFunctionOverloadType} from "../type/function_type";
 import {
     ArithmeticType,
     FloatingType,
@@ -25,7 +25,6 @@ import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {ExpressionResult} from "./expression/expression";
 import {doFunctionOverloadResolution} from "./overload";
-import {FunctionLookUpResult} from "./scope";
 
 export function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
     if (left instanceof FloatingType || right instanceof FloatingType) {
@@ -62,9 +61,7 @@ export function doReferenceTransform(ctx: CompileContext, left: ExpressionResult
                                      node: Node) {
 
     if ( left.type instanceof LeftReferenceType ) {
-        if (left.expr instanceof FunctionLookUpResult) {
-            throw new SyntaxError(`unsupport functionlookup result`, node);
-        } else if ( !left.isLeft || !(left.expr instanceof WAddressHolder)) {
+        if ( !left.isLeft || !(left.expr instanceof WAddressHolder)) {
             left.type = left.type.elementType;
             left.expr = new WAddressHolder(left.expr, AddressType.RVALUE, node.location);
         } else {
@@ -86,9 +83,6 @@ export function doValueTransform(ctx: CompileContext, expr: ExpressionResult,
     // left value transform
     if (expr.isLeft) {
         expr.isLeft = false;
-        if ( expr.expr instanceof FunctionLookUpResult) {
-            throw new SyntaxError(`unsupport function name`, node);
-        }
 
         if ( expr.type instanceof LeftReferenceType && !(expr.expr instanceof WAddressHolder) ) {
             expr.type = expr.type.elementType;
@@ -144,9 +138,11 @@ export function doConversion(ctx: CompileContext, dstType: Type, src: Expression
     const shouldToReference = toReference && (dstType instanceof LeftReferenceType);
     src = doValueTransform(ctx, src, node, shouldToReference);
 
-    if ( src.expr instanceof FunctionLookUpResult) {
+    // to remove??
+    if ( src.type instanceof UnresolvedFunctionOverloadType) {
         if ( dstType instanceof PointerType && dstType.elementType instanceof FunctionType) {
-            const item = doFunctionOverloadResolution(ctx, src.expr, dstType.elementType.parameterTypes, node);
+            const item = doFunctionOverloadResolution(ctx, src.type.functionLookupResult,
+                dstType.elementType.parameterTypes, node);
             return new WGetFunctionAddress(item.fullName, node.location);
         }
         throw new SyntaxError(`unsupport function name`, node);

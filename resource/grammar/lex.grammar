@@ -18,9 +18,6 @@ SingleIdentifier
         result.getLastID().type = AST.IDType.TYPE;
         return result;
     }
-    / id:TemplateFuncInstanceIdentifier{
-        return id;
-    }
 
 SingleTypeIdentifier
     =  id:Id &{
@@ -50,12 +47,12 @@ SingleTemplateClassIdentifier
     }
 
 Identifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleIdentifier {
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:(SingleIdentifier/TemplateFuncInstanceIdentifier) {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TypeIdentifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTypeIdentifier {
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:(SingleTypeIdentifier/TemplateClassInstanceIdentifier) {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 

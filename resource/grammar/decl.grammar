@@ -40,7 +40,7 @@ SimpleDeclaration
 
 DeclarationSpecifiers
     = head:DeclarationSpecifier tail:(_ DeclarationSpecifier)* {
-        return buildList(head, tail, 1);
+        return new AST.SpecifierList(getLocation(), buildList(head, tail, 1));
     }
 
 DeclarationSpecifier

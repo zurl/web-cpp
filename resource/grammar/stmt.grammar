@@ -37,7 +37,7 @@ ScopeEnd
 
 CompoundStatement
     = left:ScopeStart _ body:BlockItemList? _ right:ScopeEnd {
-        return new AST.CompoundStatement(getLocation(), lbody || []);
+        return new AST.CompoundStatement(getLocation(), body || []);
     }
 
 BlockItemList

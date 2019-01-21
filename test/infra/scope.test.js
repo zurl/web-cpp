@@ -17,7 +17,7 @@ function arrayEqual(x, y){
 
 describe('c++ scope test', function () {
     it('should works', function () {
-        const func = new FunctionEntity('', 'foo@i', '', new FunctionType('', '', []));
+        const func = new FunctionEntity('foo@i', 'foo@i', '', new FunctionType('', []), []);
         const var_type = PrimitiveTypes.int32;
         const var_decl = new Variable('', '', '', var_type, AddressType.MEMORY_EXTERN, '');
         const var_def = new Variable('', '', '', var_type, AddressType.MEMORY_DATA, '');
@@ -26,63 +26,60 @@ describe('c++ scope test', function () {
         const m = new ScopeManager(true);
 
         // foo(i)
-        m.declare("foo@i", func);
-        m.define("foo@i", func);
+        m.declare("foo", func);
+        m.define("foo", func);
         m.enterScope("foo@i");
         m.declare("a", var_decl);
-        assert.equal(m.lookupShortName("a"), var_decl);
-        assert.equal(m.lookupShortName("::a"), var_decl);
-        assert.equal(m.lookupShortName("foo@i::a"), var_decl);
-        assert.equal(m.lookupShortName("::foo@i::a"), var_decl);
-        assert.equal(m.lookupFullName("::foo@i::a"), var_decl);
+        assert.equal(m.lookup("a"), var_decl);
+        assert.equal(m.lookup("::a"), null);
+        assert.equal(m.lookup("foo@i::a"), var_decl);
+        assert.equal(m.lookup("::foo@i::a"), var_decl);
+        assert.equal(m.lookup("::foo@i::a"), var_decl);
         m.define("a", var_def);
         m.declare("a", var_decl);
-        assert.equal(m.lookupShortName("a"), var_def);
-        assert.equal(m.lookupShortName("::a"), var_def);
-        assert.equal(m.lookupShortName("foo@i::a"), var_def);
-        assert.equal(m.lookupShortName("::foo@i::a"), var_def);
-        assert.equal(m.lookupFullName("a"), null);
-        assert.equal(m.lookupFullName("::a"), null);
-        assert.equal(m.lookupFullName("::foo@i::a"), var_def);
+        assert.equal(m.lookup("a"), var_def);
+        assert.equal(m.lookup("::a"), null);
+        assert.equal(m.lookup("foo@i::a"), var_def);
+        assert.equal(m.lookup("::foo@i::a"), var_def);
+        assert.equal(m.lookup("a"), var_def);
+        assert.equal(m.lookup("::a"), null);
+        assert.equal(m.lookup("::foo@i::a"), var_def);
         m.exitScope();
-        m.declare("foo@i", func);
+        m.declare("foo", func);
 
         // class a
         m.enterScope("ns");
         m.enterScope("A");
-        m.define("foo@i,i", func);
-        assert.equal(m.lookupShortName("foo").functions[0], func);
-        assert.equal(m.lookupShortName("A::foo").functions[0], func);
-        assert.equal(m.lookupShortName("ns::A::foo").functions[0], func);
-        assert.equal(m.lookupFullName("foo"), null);
-        assert.equal(m.lookupFullName("::A::foo"), null);
-        assert.equal(m.lookupFullName("::ns::A::foo").functions[0], func);
+        m.define("foo", func);
+        assert.equal(m.lookup("foo").functions[0], func);
+        assert.equal(m.lookup("A::foo").functions[0], func);
+        assert.equal(m.lookup("ns::A::foo").functions[0], func);
         m.exitScope();
         m.exitScope();
 
         // overload
-        const f1 = new FunctionEntity('', 'foo@i', '', new FunctionType('', '', []));
-        const f2 = new FunctionEntity('', 'foo@j', '', new FunctionType('', '', []));
-        const f3 = new FunctionEntity('', 'foo@k', '', new FunctionType('', '', []));
-        const f4 = new FunctionEntity('', 'foo@l', '', new FunctionType('', '', []));
-        const f5 = new FunctionEntity('', 'foo@i', '', new FunctionType('', '', []));
+        const f1 = new FunctionEntity('foo@i', 'foo@i', '', new FunctionType('', []));
+        const f2 = new FunctionEntity('foo@j', 'foo@j', '', new FunctionType('', []));
+        const f3 = new FunctionEntity('foo@k', 'foo@k', '', new FunctionType('', []));
+        const f4 = new FunctionEntity('foo@l', 'foo@l', '', new FunctionType('', []));
+        const f5 = new FunctionEntity('foo@i', 'foo@i', '', new FunctionType('', []));
         m.enterScope("us");
-        m.declare("foo@i", f1);
+        m.declare("foo", f1);
         m.enterScope("A");
-        m.declare("foo@j", f2);
-        m.declare("foo@k", f3);
+        m.declare("foo", f2);
+        m.declare("foo", f3);
         m.enterScope("subA");
-        m.declare("foo@l", f4);
-        m.declare("foo@i", f5);
-        arrayEqual(m.lookupShortName("foo").functions.map(x=>x.fullName),
+        m.declare("foo", f4);
+        m.declare("foo", f5);
+        arrayEqual(m.lookup("foo").functions.map(x=>x.fullName),
                     [f2,f3,f4,f5].map(x=>x.fullName));
-        arrayEqual(m.lookupShortName("subA::foo").functions.map(x=>x.fullName),
+        arrayEqual(m.lookup("subA::foo").functions.map(x=>x.fullName),
             [f4,f5].map(x=>x.fullName));
-        arrayEqual(m.lookupShortName("A::subA::foo").functions.map(x=>x.fullName),
+        arrayEqual(m.lookup("A::subA::foo").functions.map(x=>x.fullName),
             [f4,f5].map(x=>x.fullName));
-        arrayEqual(m.lookupShortName("A::foo").functions.map(x=>x.fullName),
+        arrayEqual(m.lookup("A::foo").functions.map(x=>x.fullName),
             [f2,f3].map(x=>x.fullName));
-        arrayEqual(m.lookupFullName("::us::A::subA::foo").functions.map(x=>x.fullName),
+        arrayEqual(m.lookup("::us::A::subA::foo").functions.map(x=>x.fullName),
             [f4, f5].map(x=>x.fullName));
         m.exitScope();
         m.exitScope();

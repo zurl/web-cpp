@@ -127,7 +127,7 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
     }
 
     // register sp & bp
-    // TODO:: could optimize it out
+    // TODO:: could optimize it out, if offset = 0
     functionEntity.$sp = ctx.memory.allocLocal(WType.u32);
 
     // bp = $sp

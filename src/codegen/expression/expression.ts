@@ -18,7 +18,7 @@ import {FunctionLookUpResult} from "../scope";
 
 export interface ExpressionResult {
     type: Type;
-    expr: WExpression | FunctionLookUpResult;
+    expr: WExpression;
     isLeft: boolean;
 }
 
@@ -34,9 +34,6 @@ export abstract class Expression extends Node {
 
     public evaluate(ctx: CompileContext): string {
         const expr = this.codegen(ctx);
-        if (expr.expr instanceof FunctionLookUpResult) {
-            throw new SyntaxError(`illegal template parameter`, this);
-        }
         if (!(expr.type instanceof ArithmeticType)) {
             throw new SyntaxError(`illegal template parameter`, this);
         }
@@ -49,9 +46,6 @@ export abstract class Expression extends Node {
 }
 
 export function recycleExpressionResult(ctx: CompileContext, node: Node, expr: ExpressionResult) {
-    if (expr.expr instanceof FunctionLookUpResult) {
-        throw new SyntaxError(`illegal function name`, node);
-    }
     if (expr.isLeft && expr.expr.isPure()) {
         return;
     }

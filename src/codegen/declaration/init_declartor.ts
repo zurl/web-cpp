@@ -13,6 +13,7 @@ import {UnaryExpression} from "../expression/unary_expression";
 import {CallExpression} from "../function/call_expression";
 import {declareFunction} from "../function/function";
 import {Declarator} from "./declarator";
+import {FunctionDeclarator} from "./function_declarator";
 import {InitializerList} from "./initializer_list";
 import {ObjectInitializer} from "./object_initializer";
 
@@ -103,7 +104,7 @@ export class InitDeclarator extends Node {
         }
 
         if (type instanceof FunctionType) {
-            const functionDeclarator = this.declarator.getFunctionDeclarator();
+            const functionDeclarator = FunctionDeclarator.getFunctionDeclarator(this.declarator);
             if (!functionDeclarator) {
                 throw new InternalError(`function is not a functionDeclarator`);
             }
@@ -116,6 +117,10 @@ export class InitDeclarator extends Node {
                 isLibCall: info.isLibCall,
             }, this);
         } else {
+            if (ctx.scopeManager.currentContext.scope.classType) {
+                // if in class, we should skip
+                return;
+            }
             const newItem = this.createVariable(ctx, info);
             if (info.isExtern) {
                 ctx.scopeManager.declare(lookupName, newItem, this);

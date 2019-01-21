@@ -5,7 +5,7 @@ import {UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {ClassTemplate, FunctionTemplate, TemplateParameterPlaceHolderType} from "../../type/template_type";
 import {ClassSpecifier} from "../class/class_specifier";
 import {CompileContext} from "../context";
-import {ParameterDeclaration} from "../declaration/parameter_declaration";
+import {ParameterDeclaration} from "../function/parameter_declaration";
 import {FunctionDefinition} from "../function/function_definition";
 import {getShortName} from "../scope";
 import {deduceFunctionTemplateParameters} from "./template_deduce";

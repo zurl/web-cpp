@@ -14,6 +14,7 @@ import {Expression, ExpressionResult} from "../expression/expression";
 import {Identifier} from "../expression/identifier";
 import {UnaryExpression} from "../expression/unary_expression";
 import {FunctionLookUpResult} from "../scope";
+import {WConst, WType} from "../../wasm";
 
 export class MemberExpression extends Expression {
     public object: Expression;
@@ -71,8 +72,8 @@ export class MemberExpression extends Expression {
                 }
             }
             return {
-                type: PrimitiveTypes.void,
-                expr: item,
+                type: new UnresolvedFunctionOverloadType(item),
+                expr: new WConst(WType.any, "0"),
                 isLeft: false,
             };
         } else {
@@ -91,6 +92,7 @@ export class MemberExpression extends Expression {
         const left = this.pointed ?
             new UnaryExpression(this.location, "*", this.object).deduceType(ctx)
             : this.object.deduceType(ctx);
+
         let rawType = left;
         if ( rawType instanceof LeftReferenceType) {
             rawType = rawType.elementType;
@@ -98,7 +100,7 @@ export class MemberExpression extends Expression {
         if ( !(rawType instanceof ClassType)) {
             throw new SyntaxError(`only struct/class could be get member`, this);
         }
-        const item = ctx.scopeManager.lookup(rawType.fullName + "::" + this.member.name);
+        const item = ctx.scopeManager.lookup(rawType.fullName + "::" + memberName);
 
         if ( item !== null ) {
             if ( item instanceof Type ) {

@@ -6,11 +6,10 @@ import {ArrayType, LeftReferenceType, PointerType, ReferenceType} from "../../ty
 import {PrimitiveTypes} from "../../type/primitive_type";
 import {I32Unary, WConst, WType, WUnaryOperation} from "../../wasm";
 import {WAddressHolder} from "../address";
+import {MemberExpression} from "../class/member_expression";
 import {CompileContext} from "../context";
 import {doConversion, doReferenceTransform, doTypeTransfrom, doValueTransform} from "../conversion";
-import {MemberExpression} from "../class/member_expression";
 import {CallExpression} from "../function/call_expression";
-import {FunctionLookUpResult} from "../scope";
 import {AssignmentExpression} from "./assignment_expression";
 import {BinaryExpression} from "./binary_expression";
 import {Expression, ExpressionResult} from "./expression";
@@ -78,9 +77,6 @@ export class UnaryExpression extends Expression {
                 expr = doReferenceTransform(ctx, expr, this);
             }
             if (expr.type instanceof PointerType) {
-                if (expr.expr instanceof FunctionLookUpResult) {
-                    throw new SyntaxError(`unsupport function name`, this);
-                }
                 return {
                     isLeft: true,
                     type: new LeftReferenceType(expr.type.elementType),

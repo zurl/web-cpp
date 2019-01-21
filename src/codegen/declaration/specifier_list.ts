@@ -2,9 +2,9 @@ import {InternalError, SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
 import {getPrimitiveTypeFromSpecifiers, isTypeSpecifier} from "../../common/utils";
 import {Type} from "../../type";
-import {CompileContext} from "../context";
 import {ClassSpecifier} from "../class/class_specifier";
 import {EnumSpecifier} from "../class/enum_specifier";
+import {CompileContext} from "../context";
 import {Identifier} from "../expression/identifier";
 
 export type SpecifierType =

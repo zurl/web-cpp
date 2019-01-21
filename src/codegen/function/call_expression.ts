@@ -35,20 +35,17 @@ export class CallExpression extends Expression {
     public codegen(ctx: CompileContext): ExpressionResult {
         const callee = this.callee.codegen(ctx);
 
-        if (callee.type instanceof PointerType) {
+        if (callee.type instanceof PointerType) { // function pointer
             callee.type = callee.type.elementType;
         }
 
         let funcType: FunctionType;
         let funcEntity: FunctionEntity | null = null;
-
-        const lookUpResult = callee.expr;
         const thisPtrs: ExpressionResult[] = [];
-
         let isVCall = false, VCallExpr: WExpression | null = null;
 
-        if (lookUpResult instanceof FunctionLookUpResult) {
-
+        if (callee.type instanceof UnresolvedFunctionOverloadType) {
+            const lookUpResult = callee.type.functionLookupResult;
             const funcs = lookUpResult.functions.filter((x) => x instanceof FunctionEntity) as FunctionEntity[];
             let entity: FunctionEntity | null = funcs.length === 0 ? null : funcs[0]!;
 
@@ -97,8 +94,9 @@ export class CallExpression extends Expression {
         } else if (callee.type instanceof FunctionType) {
             funcType = callee.type;
         } else {
-            throw new SyntaxError(`you can just call a function, not a ${callee.type.toString()}`, this);
+            throw new SyntaxError(`you can just call a function, not a ${callee.toString()}`, this);
         }
+
         // lookup end
 
         // Compute stack offset in advance

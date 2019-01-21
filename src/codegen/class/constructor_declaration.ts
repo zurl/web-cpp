@@ -8,7 +8,7 @@ import {PrimitiveTypes} from "../../type/primitive_type";
 import {WGetAddress, WMemoryLocation} from "../../wasm/expression";
 import {CompileContext} from "../context";
 import {ObjectInitializer} from "../declaration/object_initializer";
-import {ParameterList} from "../declaration/parameter_list";
+import {ParameterList} from "../function/parameter_list";
 import {AnonymousExpression} from "../expression/anonymous_expression";
 import {AssignmentExpression} from "../expression/assignment_expression";
 import {BinaryExpression} from "../expression/binary_expression";

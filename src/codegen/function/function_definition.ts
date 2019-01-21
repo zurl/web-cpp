@@ -9,6 +9,7 @@ import {Declarator} from "../declaration/declarator";
 import {SpecifierList} from "../declaration/specifier_list";
 import {CompoundStatement} from "../statement/compound_statement";
 import {defineFunction, FunctionConfig} from "./function";
+import {FunctionDeclarator} from "../declaration/function_declarator";
 
 export class FunctionDefinition extends ClassDirective {
     public specifiers: SpecifierList;
@@ -35,7 +36,7 @@ export class FunctionDefinition extends ClassDirective {
 
     public getFunctionConfig(ctx: CompileContext): FunctionConfig {
         const name = this.declarator.getNameRequired();
-        const functionDeclarator = this.declarator.getFunctionDeclarator();
+        const functionDeclarator = FunctionDeclarator.getFunctionDeclarator(this.declarator);
         const functionType = this.deduceType(ctx);
         if (!functionDeclarator) {
             throw new InternalError(`function is not a functionDeclarator`);
@@ -53,7 +54,7 @@ export class FunctionDefinition extends ClassDirective {
     public getMemberFunctionConfig(ctx: CompileContext, classType: ClassType): FunctionConfig {
         const name = this.declarator.getNameRequired();
         const functionType = this.deduceType(ctx);
-        const functionDeclarator = this.declarator.getFunctionDeclarator();
+        const functionDeclarator = FunctionDeclarator.getFunctionDeclarator(this.declarator);
         if (!functionDeclarator) {
             throw new InternalError(`function is not a functionDeclarator`);
         }
@@ -93,10 +94,10 @@ export class FunctionDefinition extends ClassDirective {
 
     public codegen(ctx: CompileContext): void {
         const name = this.declarator.getNameRequired();
-        const fullName = name.getFullName(ctx);
-        const scope = ctx.scopeManager.root.getScopeOfLookupName(fullName);
+        const lookupName = name.getFullName(ctx);
+        const scope = ctx.scopeManager.root.getScopeOfLookupName(name.getLookupName(ctx));
         if (!scope) {
-            throw new SyntaxError(`unresolvedname ${fullName}`, this);
+            throw new SyntaxError(`unresolvedname ${lookupName}`, this);
         }
         if (scope.classType === null) {
             const config = this.getFunctionConfig(ctx);

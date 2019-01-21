@@ -4,12 +4,14 @@ import {Variable} from "../../common/symbol";
 import {Type} from "../../type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {ClassTemplate} from "../../type/template_type";
+import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult, LookUpResult} from "../scope";
+import {instantiateClassTemplate} from "../template/class_template_instantiation";
 import {TemplateArgument} from "../template/template_argument";
 import {Expression, ExpressionResult} from "./expression";
-import {instantiateClassTemplate} from "../template/class_template_instantiation";
+
 export enum IDType {
     ID,
     TYPE,
@@ -74,7 +76,7 @@ export class Identifier extends Expression {
     }
 
     public getPlainName(ctx: CompileContext): string {
-        if (!(this.name.length === 1 && this.name[0].type === IDType.TYPE)) {
+        if (!(this.name.length === 1 && (this.name[0].type === IDType.ID || this.name[0].type === IDType.TYPE))) {
             throw new SyntaxError(`${this.getLookupName(ctx)} is not a valid identifier`, this);
         }
         return this.getShortName(ctx);
@@ -121,12 +123,23 @@ export class Identifier extends Expression {
         const lookupName = this.getLookupName(ctx);
         assertIDType(IDType.ID, this.getType(), this.getLastID().name, this);
         const rawItem = ctx.scopeManager.lookup(lookupName);
-        const item = assertLookUpResult<Variable>(Variable.name, rawItem, lookupName, this);
-        return {
-            type: item.type,
-            expr: new WAddressHolder(item.location, item.addressType, this.location),
-            isLeft: true,
-        };
+        if (!rawItem) {
+            throw new SyntaxError(`unknown name ${lookupName}`, this);
+        } else if (rawItem instanceof Variable) {
+            return {
+                type: rawItem.type,
+                expr: new WAddressHolder(rawItem.location, rawItem.addressType, this.location),
+                isLeft: true,
+            };
+        } else if (rawItem instanceof FunctionLookUpResult) {
+            return {
+                type: new UnresolvedFunctionOverloadType(rawItem),
+                expr: new WConst(WType.any, "0"),
+                isLeft: false,
+            };
+        } else {
+            throw new SyntaxError(`name ${lookupName} is a ${rawItem.constructor.name}`, this);
+        }
     }
 
     public deduceType(ctx: CompileContext): Type {
@@ -208,15 +221,4 @@ function assertIDType<T extends LookUpResult>(shouldBe: IDType, fact: IDType,
             + `but it is a ${getTextFromIDType(fact)}`, node);
 
     }
-}
-
-function assertLookUpResult<T extends LookUpResult>(shouldBe: string, fact: LookUpResult,
-                                                    name: string, node: Node): T {
-    if (!fact) {
-        throw new SyntaxError(`unresolved name ${name}`, node);
-    }
-    if (fact.constructor.name !== shouldBe) {
-        throw new SyntaxError(`name ${name} should be ${shouldBe} but it is a ${fact.constructor.name}`, node);
-    }
-    return fact as T;
 }
