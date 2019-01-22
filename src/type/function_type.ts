@@ -90,9 +90,11 @@ export class FunctionType extends Type {
                 name = "operator" + name.substring(1);
             }
         }
-        if (name.includes("@")) {
-            const tokens = name.split("@");
+        const tokens = name.split("@");
+        if (tokens.length > 2) {
             name = tokens[0] + "<" + tokens[2] + ">";
+        } else {
+            name = tokens[0];
         }
         if (this.cppFunctionType === CppFunctionType.Constructor) {
             name = this.referenceClass!.shortName + "::" + this.referenceClass!.shortName;

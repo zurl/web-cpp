@@ -6,6 +6,7 @@ import {UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {ClassTemplate} from "../../type/template_type";
 import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
+import {MemberExpression} from "../class/member_expression";
 import {CompileContext} from "../context";
 import {FunctionLookUpResult, LookUpResult} from "../scope";
 import {instantiateClassTemplate} from "../template/class_template_instantiation";
@@ -119,12 +120,26 @@ export class Identifier extends Expression {
         return fullName;
     }
 
+    public tryLookupImplicitThis(ctx: CompileContext): MemberExpression {
+        const thisPtr = ctx.scopeManager.lookup("this");
+        if (thisPtr !== null) {
+            try {
+                return new MemberExpression(this.location, Identifier.fromString(this.location, "this"),
+                    true, this);
+            } catch (e) {
+                throw new SyntaxError(`Unresolve Name ${this.getLookupName(ctx)}`, this);
+            }
+        } else {
+            throw new SyntaxError(`Unresolve Name ${this.getLookupName(ctx)}`, this);
+        }
+    }
+
     public codegen(ctx: CompileContext): ExpressionResult {
         const lookupName = this.getLookupName(ctx);
         assertIDType(IDType.ID, this.getType(), this.getLastID().name, this);
         const rawItem = ctx.scopeManager.lookup(lookupName);
         if (!rawItem) {
-            throw new SyntaxError(`unknown name ${lookupName}`, this);
+            return this.tryLookupImplicitThis(ctx).codegen(ctx);
         } else if (rawItem instanceof Variable) {
             return {
                 type: rawItem.type,
@@ -146,7 +161,7 @@ export class Identifier extends Expression {
         const lookupName = this.getLookupName(ctx);
         const rawItem = ctx.scopeManager.lookup(lookupName);
         if (!rawItem) {
-            throw new SyntaxError(`unresolved name ${lookupName}`, this);
+            return this.tryLookupImplicitThis(ctx).deduceType(ctx);
         }
         if (this.getLastID().type === IDType.ID) {
             if (rawItem instanceof Variable) {

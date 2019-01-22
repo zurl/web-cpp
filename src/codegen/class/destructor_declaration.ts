@@ -83,7 +83,6 @@ export class DestructorDeclaration extends ClassDirective {
     }
 
     private generateStatements(ctx: CompileContext, functionConfig: FunctionConfig): Statement[] {
-        const emptyLocation = Node.getEmptyLocation();
 
         if (functionConfig.functionType.cppFunctionType !== CppFunctionType.Destructor
             || functionConfig.functionType.referenceClass === null) {
@@ -95,15 +94,15 @@ export class DestructorDeclaration extends ClassDirective {
         const classType = functionConfig.functionType.referenceClass!;
 
         for (const field of classType.fields) {
-            const left = new MemberExpression(emptyLocation, Identifier.fromString(emptyLocation, "this"),
-                true, Identifier.fromString(emptyLocation, field.name));
+            const left = new MemberExpression(this.location, Identifier.fromString(this.location, "this"),
+                true, Identifier.fromString(this.location, field.name));
             if (field.type instanceof ClassType) {
                 const name = classType.fullName + "~" + classType.shortName;
                 if (isFunctionExists(ctx, name, [], classType)) {
-                    dtorStmts.push(new ExpressionStatement(emptyLocation,
-                        new CallExpression(emptyLocation,
-                            Identifier.fromString(emptyLocation, name),
-                            [new UnaryExpression(emptyLocation, "&", left)],
+                    dtorStmts.push(new ExpressionStatement(this.location,
+                        new CallExpression(this.location,
+                            Identifier.fromString(this.location, name),
+                            [new UnaryExpression(this.location, "&", left)],
                         )));
                 }
             }
@@ -113,11 +112,11 @@ export class DestructorDeclaration extends ClassDirective {
             const fullName = item.classType.fullName + "::~" + item.classType.shortName;
             const nret = ctx.scopeManager.lookup(fullName);
             if (nret !== null) {
-                dtorStmts.push(new ExpressionStatement(emptyLocation,
-                    new CallExpression(emptyLocation,
-                        new MemberExpression(emptyLocation,
-                            Identifier.fromString(emptyLocation, "this"),
-                            true, Identifier.fromString(emptyLocation, "~" + item.classType.shortName)),
+                dtorStmts.push(new ExpressionStatement(this.location,
+                    new CallExpression(this.location,
+                        new MemberExpression(this.location,
+                            Identifier.fromString(this.location, "this"),
+                            true, Identifier.fromString(this.location, "~" + item.classType.shortName)),
                         [])));
             }
         }

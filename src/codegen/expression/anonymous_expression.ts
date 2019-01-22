@@ -19,3 +19,25 @@ export class AnonymousExpression extends Expression {
         return this.expr.type;
     }
 }
+
+export class AnonymousCastExpression extends Expression {
+    public expr: Expression;
+    public type: Type;
+
+    constructor(location: SourceLocation, expr: Expression, type: Type) {
+        super(location);
+        this.expr = expr;
+        this.type = type;
+    }
+
+    public codegen(ctx: CompileContext): ExpressionResult {
+        const result = this.expr.codegen(ctx);
+        result.type = this.type;
+        return result;
+    }
+
+    public deduceType(ctx: CompileContext): Type {
+        return this.type;
+    }
+
+}

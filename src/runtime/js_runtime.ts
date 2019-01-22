@@ -509,7 +509,7 @@ export class JSRuntime extends Runtime {
                 intervals.push({
                     location: item.sp,
                     name: item.fn.name,
-                    type: "",
+                    type: item.locals.map((x) => x.toString()).join(","),
                     value: "",
                     size: 0,
                 });

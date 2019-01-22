@@ -1,6 +1,7 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {ClassDirective, Node, SourceLocation} from "../../common/node";
 import {AddressType} from "../../common/symbol";
+import {getAccessControlFromString} from "../../type";
 import {ClassType, Inheritance} from "../../type/class_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
 import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../../wasm/expression";
@@ -90,11 +91,12 @@ export class ClassSpecifier extends Node {
             return classType;
         }
 
-        // find virtual
         const isVirtual = this.isVirtual(inheritance);
         if (isVirtual) {
             classType.setUpVPtr();
         }
+
+        // find virtual
 
         ctx.scopeManager.define(lookupName, classType, this);
         ctx.scopeManager.enterScope(fullName);
@@ -157,11 +159,20 @@ export class ClassSpecifier extends Node {
     }
 }
 
-export class AccessControlLabel extends Node {
+export class AccessControlLabel extends ClassDirective {
     public label: string;
 
     constructor(location: SourceLocation, label: string) {
         super(location);
         this.label = label;
     }
+
+    public codegen(ctx: CompileContext): void {
+        return;
+    }
+
+    public declare(ctx: CompileContext, classType: ClassType): void {
+        classType.accessControl = getAccessControlFromString(this.label);
+    }
+
 }

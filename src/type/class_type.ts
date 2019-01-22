@@ -58,7 +58,6 @@ export class ClassType extends Type {
     public inheritance: Inheritance[];
 
     // only use in build
-    public fieldOffset: number;
     public accessControl: AccessControl;
 
     // fill in initialize
@@ -88,7 +87,6 @@ export class ClassType extends Type {
             (x) => x.classType.length).reduce((x, y) => x + y, 0);
         this.requireVPtr = false;
         this.VPtrOffset = 0;
-        this.fieldOffset = 0;
         this.accessControl = AccessControl.Public;
         this.vTable = {
             className: fullName,
@@ -100,12 +98,15 @@ export class ClassType extends Type {
         this.fieldMap = new Map<string, ClassField>(
             this.fields.map((x) => [x.name, x] as [string, ClassField]));
         if (this.isUnion) {
-            this.selfSize += Math.max(...this.fields
+            this.selfSize = Math.max(...this.fields
                 .map((field) => field.type.length));
         } else {
-            this.selfSize += this.fields
+            this.selfSize = this.fields
                 .map((field) => field.type.length)
                 .reduce((x, y) => x + y, 0);
+        }
+        if (this.requireVPtr) {
+            this.selfSize += 4;
         }
         this.objectSize = this.selfSize + this.inheritance.map(
             (x) => x.classType.length).reduce((x, y) => x + y, 0);
@@ -228,7 +229,6 @@ export class ClassType extends Type {
             oldItems[0].fullName = fullName;
         }
     }
-
 
     public getVCallInfo(indexName: string): [number, number] | null {
         for (let i = 0; i < this.vTable.vFunctions.length; i++) {

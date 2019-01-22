@@ -181,9 +181,10 @@ dtor`;
     it('test inheritance',async function() {
         const testCode = `
 #include "stdio.h"
+#include "syscall.h"
         class A{
             int a;
-            A(int a): a(a){
+            A(int k): a(k){
             }
             virtual void foo(){
                 printf("base\\n");

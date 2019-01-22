@@ -135,7 +135,7 @@ export class InitDeclarator extends Node {
         const name = this.declarator.getNameRequired();
         const lookupName = name.getLookupName(ctx);
         this.declareGlobal(ctx, info, lookupName);
-        if (this.initializer) {
+        if (!ctx.scopeManager.currentContext.scope.classType) {
             this.initialize(ctx, info);
         }
     }
@@ -163,12 +163,13 @@ export class InitDeclarator extends Node {
             classType.fields.push({
                 name: plainName,
                 type,
-                startOffset: classType.fieldOffset,
+                startOffset: classType.objectSize,
                 initializer: this.initializer,
                 accessControl: classType.accessControl,
             });
             if (!classType.isUnion) {
-                classType.fieldOffset += type.length;
+                classType.objectSize += type.length;
+                classType.selfSize += type.length;
             }
         }
     }

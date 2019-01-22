@@ -40,7 +40,7 @@ export class DeleteExpression extends Expression {
         }
         return {
             type: PrimitiveTypes.void,
-            isLeft: false,
+            isLeft: true,
             expr: new WConst(WType.none, "1", this.location),
         };
     }

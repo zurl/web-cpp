@@ -30,10 +30,10 @@ AccessControlKey = 'public' / 'private' / 'protect'
 
 StructDeclaration
     = id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ body:CompoundStatement{
-        return new AST.ConstructorDeclaration(getLocation(), id, param, initList || [], body);
+        return new AST.ConstructorDeclaration(getLocation(), id, param || new AST.ParameterList(getLocation()), initList || [], body);
     }
     / id:TypeIdentifier _ '(' _ param:ParameterList? _ ')' _ initList:ConstructorInitializeList? _ ';'{
-        return new AST.ConstructorDeclaration(getLocation(), id, param, initList || [], nul);
+        return new AST.ConstructorDeclaration(getLocation(), id, param || new AST.ParameterList(getLocation()), initList || [], nul);
     }
     / isVirtual:'virtual'? _ '~' id:TypeIdentifier _ '(' _ ')' _ body:CompoundStatement{
         return new AST.DestructorDeclaration(getLocation(), id, body, isVirtual === "virtual");
@@ -61,18 +61,6 @@ ConstructorInitializeItem
         return new AST.ConstructorInitializeItem(getLocation(), key, value, true);
     }
 
-SpecifierQualifierList
-    = head:SpecifierQualifier tail:(_ SpecifierQualifier)* {
-        return buildList(head, tail, 1);
-    }
-
-
-
-// ADDED
-// REORDER: TypeQualifier / TypeSpecifier
-SpecifierQualifier
-    = TypeQualifier
-    / TypeSpecifier
 
 StructDeclaratorList
     = head:StructDeclarator tail:(_ ',' _ StructDeclarator)* {

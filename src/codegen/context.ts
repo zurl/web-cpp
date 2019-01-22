@@ -9,9 +9,7 @@ import {Node} from "../common/node";
 import {CompiledObject, ImportSymbol} from "../common/object";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
 import {Type} from "../type";
-import {FunctionType} from "../type/function_type";
-import {FunctionTemplate} from "../type/template_type";
-import {WFunction} from "../wasm";
+import {WConst, WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
 import {triggerAllDestructor} from "./class/destructor";
 import {MemoryLayout} from "./memory";
@@ -118,6 +116,7 @@ export class CompileContext {
 
     public exitScope(node: Node) {
         triggerAllDestructor(this, node);
+        this.scopeManager.exitScope();
     }
 
     public setStatementContainer(constainer: WStatement[]) {

@@ -5,8 +5,8 @@ import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {LeftReferenceType, ReferenceType} from "../../type/compound_type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
-import {PrimitiveTypes} from "../../type/primitive_type";
 import {ClassTemplate} from "../../type/template_type";
+import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
 import {doReferenceTransform} from "../conversion";
@@ -14,7 +14,6 @@ import {Expression, ExpressionResult} from "../expression/expression";
 import {Identifier} from "../expression/identifier";
 import {UnaryExpression} from "../expression/unary_expression";
 import {FunctionLookUpResult} from "../scope";
-import {WConst, WType} from "../../wasm";
 
 export class MemberExpression extends Expression {
     public object: Expression;
@@ -93,6 +92,7 @@ export class MemberExpression extends Expression {
             new UnaryExpression(this.location, "*", this.object).deduceType(ctx)
             : this.object.deduceType(ctx);
 
+        const isRef = left instanceof ReferenceType;
         let rawType = left;
         if ( rawType instanceof LeftReferenceType) {
             rawType = rawType.elementType;
@@ -100,29 +100,25 @@ export class MemberExpression extends Expression {
         if ( !(rawType instanceof ClassType)) {
             throw new SyntaxError(`only struct/class could be get member`, this);
         }
-        const item = ctx.scopeManager.lookup(rawType.fullName + "::" + memberName);
+        const item = rawType.getMember(ctx, memberName);
 
-        if ( item !== null ) {
-            if ( item instanceof Type ) {
-                throw new SyntaxError(`illegal type member expression`, this);
-            } else if ( item instanceof ClassTemplate ) {
-                throw new SyntaxError(`illegal ClassTemplate member expression`, this);
-            } else if (item instanceof Variable) {
-                // static field
-                return item.type;
-            } else {
-                item.instanceType = rawType;
-                return new UnresolvedFunctionOverloadType(item);
+        if ( item === null ) {
+            throw new SyntaxError(`name ${this.member.getLookupName(ctx)} is not on class ${rawType.shortName}`, this);
+        } else if (item instanceof Variable) {
+            // static field
+            return item.type;
+        } else if (item instanceof FunctionLookUpResult) {
+            item.instanceType = rawType;
+            if (this.pointed || isRef) {
+                if ( memberName.includes("~") ) {
+                    item.isDynamicCall = this.forceDynamic;
+                } else {
+                    item.isDynamicCall = true;
+                }
             }
-        }
-        const field = rawType.getField(memberName);
-        if ( !field ) {
-            throw new SyntaxError(`property ${memberName} does not appear on ${rawType.shortName}`, this);
-        }
-        if ( left instanceof LeftReferenceType) {
-            return new LeftReferenceType(field.type);
+            return new UnresolvedFunctionOverloadType(item);
         } else {
-            return field.type;
+            return item.type;
         }
     }
 }

@@ -15,7 +15,6 @@ import {IntegerConstant} from "../expression/integer_constant";
 import {UnaryExpression} from "../expression/unary_expression";
 import {CompoundStatement} from "./compound_statement";
 import {Statement} from "./statement";
-import {triggerAllDestructor} from "../class/destructor";
 
 export class ForStatement extends Statement {
     public init: Expression | Declaration | null;

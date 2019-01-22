@@ -206,12 +206,12 @@ FunctionDefinition
     }
 
 NewTypeName
-    =  specifierQualifiers:SpecifierQualifierList _ declarator:NewDeclarator? {
+    =  specifierQualifiers:DeclarationSpecifiers _ declarator:NewDeclarator? {
         return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
     }
 
 TypeName
-    = specifierQualifiers:SpecifierQualifierList _ declarator:AbstractDeclarator? {
+    = specifierQualifiers:DeclarationSpecifiers _ declarator:AbstractDeclarator? {
         return new AST.TypeName(getLocation(), specifierQualifiers, declarator)
     }
 

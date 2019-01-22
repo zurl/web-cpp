@@ -61,6 +61,7 @@ export class AssignmentExpression extends Expression {
                     [
                         this.right]).codegen(ctx);
             } else {
+                // totally wrong fuck itself
                 if (rightType.equals(leftType)) {
                     const len = leftType.length;
                     return new CallExpression(this.location, Identifier.fromString(this.location, "::memcpy"), [

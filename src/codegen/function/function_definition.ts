@@ -83,13 +83,14 @@ export class FunctionDefinition extends ClassDirective {
         const isVirtual = this.specifiers.specifiers.includes("virtual");
         const vcallSigature = name.getShortName(ctx) + "@" + config.functionType.parameterTypes
             .slice(1).map((x) => x.toString()).join(",");
+        const fullName = name.getFullName(ctx) + "@" + config.functionType.toMangledName()
         if (isVirtual) {
             config.functionType.isVirtual = true;
-            classType.registerVFunction(ctx, vcallSigature, name.getFullName(ctx));
+            classType.registerVFunction(ctx, vcallSigature, fullName);
         } else {
             if (classType.getVCallInfo(vcallSigature) !== null) {
                 config.functionType.isVirtual = true;
-                classType.registerVFunction(ctx, vcallSigature, name.getFullName(ctx));
+                classType.registerVFunction(ctx, vcallSigature, fullName);
             }
         }
 
