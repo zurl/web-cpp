@@ -4,6 +4,7 @@
  *  Created at 05/08/2018
  */
 
+import {Scope} from "../codegen/scope";
 import {AccessControl, Type} from "../type";
 import {FunctionType} from "../type/function_type";
 
@@ -81,10 +82,12 @@ export class FunctionEntity extends OverloadSymbol {
     public $sp: number; // the 'local $sp' number
 
     public parameterInits: Array<null | string>;
+    public declareActiveScopes: Scope[];
 
     constructor(shortName: string, fullName: string, fileName: string,
                 type: FunctionType, parameterInits: Array<null | string>,
-                isLibCall: boolean, isDefine: boolean, accessControl: AccessControl) {
+                isLibCall: boolean, isDefine: boolean, accessControl: AccessControl,
+                declareActiveScopes: Scope[]) {
         super(accessControl);
         this.shortName = shortName;
         this.fullName = fullName;
@@ -97,6 +100,7 @@ export class FunctionEntity extends OverloadSymbol {
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
             .reduce((x, y) => x + y, 0);
+        this.declareActiveScopes = declareActiveScopes;
     }
 
     public isDefine(): boolean {

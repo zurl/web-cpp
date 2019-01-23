@@ -26,9 +26,6 @@ SingleTypeIdentifier
         id.type = AST.IDType.TYPE;
         return id;
     }
-    / id:TemplateClassInstanceIdentifier{
-        return id;
-    }
 
 SingleTemplateFuncIdentifier
     =  id:Id &{
@@ -46,18 +43,21 @@ SingleTemplateClassIdentifier
         return id;
     }
 
+UnifiedIdentifier
+    = SingleTypeIdentifier/ TemplateClassInstanceIdentifier
+
 Identifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:(SingleIdentifier/TemplateFuncInstanceIdentifier) {
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:(SingleIdentifier/TemplateFuncInstanceIdentifier) {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TypeIdentifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:(SingleTypeIdentifier/TemplateClassInstanceIdentifier) {
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:UnifiedIdentifier {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TemplateFuncIdentifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTemplateFuncIdentifier {
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:SingleTemplateFuncIdentifier {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
@@ -68,7 +68,10 @@ TemplateClassIdentifier
 
 TypeDeclarationIdentifier
     = identifier:Identifier{
-        if( options.isCpp ) { currScope.names.set(identifier.getLastID().name, TYPE_NAME); }
+        if( options.isCpp ) {
+            globalMap.set(identifier.getLastID().name, TYPE_NAME);
+            currScope.names.set(identifier.getLastID().name, TYPE_NAME);
+        }
         return identifier;
     }
 

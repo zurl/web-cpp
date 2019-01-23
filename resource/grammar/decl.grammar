@@ -26,8 +26,8 @@ BlockDeclarationList
     }
 
 NamespaceDefinition
-    = 'namespace' _ name:SingleIdentifier _ '{' _ list:DeclarationList? _'}'{
-        currScope.names.set(name.name, TYPE_NAME);
+    = 'namespace' _ name:Identifier _ '{' _ list:DeclarationList? _'}'{
+        currScope.names.set(name.getLastID().name, TYPE_NAME);
         return new AST.NameSpaceBlock(getLocation(), name, list || []);
     }
 

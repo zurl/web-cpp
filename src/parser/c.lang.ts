@@ -45,6 +45,7 @@ export default `{
 
     let scopeRoot = { parent: null, names: new Map() };
     let currScope = scopeRoot;
+    let globalMap = new Map();
 
     function enterScope() {
         currScope = { parent: currScope, names: new Map() };
@@ -66,6 +67,9 @@ export default `{
                 return c.names.get(name);
             }
             c = c.parent;
+        }
+        if(globalMap.has(name)){
+            return globalMap.get(name);
         }
         return ID_NAME;
     }
@@ -395,8 +399,8 @@ BlockDeclarationList
     }
 
 NamespaceDefinition
-    = 'namespace' _ name:SingleIdentifier _ '{' _ list:DeclarationList? _'}'{
-        currScope.names.set(name.name, TYPE_NAME);
+    = 'namespace' _ name:Identifier _ '{' _ list:DeclarationList? _'}'{
+        currScope.names.set(name.getLastID().name, TYPE_NAME);
         return new AST.NameSpaceBlock(getLocation(), name, list || []);
     }
 
@@ -862,9 +866,6 @@ SingleTypeIdentifier
         id.type = AST.IDType.TYPE;
         return id;
     }
-    / id:TemplateClassInstanceIdentifier{
-        return id;
-    }
 
 SingleTemplateFuncIdentifier
     =  id:Id &{
@@ -882,18 +883,21 @@ SingleTemplateClassIdentifier
         return id;
     }
 
+UnifiedIdentifier
+    = SingleTypeIdentifier/ TemplateClassInstanceIdentifier
+
 Identifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:(SingleIdentifier/TemplateFuncInstanceIdentifier) {
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:(SingleIdentifier/TemplateFuncInstanceIdentifier) {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TypeIdentifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:(SingleTypeIdentifier/TemplateClassInstanceIdentifier) {
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:UnifiedIdentifier {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
 TemplateFuncIdentifier
-    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTemplateFuncIdentifier {
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:SingleTemplateFuncIdentifier {
         return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
     }
 
@@ -904,7 +908,10 @@ TemplateClassIdentifier
 
 TypeDeclarationIdentifier
     = identifier:Identifier{
-        if( options.isCpp ) { currScope.names.set(identifier.getLastID().name, TYPE_NAME); }
+        if( options.isCpp ) {
+            globalMap.set(identifier.getLastID().name, TYPE_NAME);
+            currScope.names.set(identifier.getLastID().name, TYPE_NAME);
+        }
         return identifier;
     }
 
@@ -1150,7 +1157,7 @@ JumpStatement
 
 UsingStatements
     = 'using' _ name:Identifier _ '=' _ decl:TypeName _ ';'{
-        currScope.names.set(name.name, TYPE_NAME);
+        currScope.names.set(name.getLastID().name, TYPE_NAME);
         return new AST.UsingStatement(getLocation(), name, decl);
     }
     / 'using' _ name:(Identifier/TypeIdentifier/TemplateClassIdentifier/TemplateFuncIdentifier) _ ';'{
@@ -1168,7 +1175,8 @@ TemplateDeclaration
         const result = new AST.TemplateDeclaration(getLocation(), decl, param || []);
         const names = result.getTemplateNames();
         const typeId = (decl instanceof AST.FunctionDefinition) ? TEMPLATE_FUNC_NAME : TEMPLATE_CLASS_NAME;
-        names.map(name => currScope.names.set(name, typeId));
+        names.map(name => {currScope.names.set(name, typeId);
+        if(typeId === TEMPLATE_CLASS_NAME) globalMap.set(name, typeId);});
         return result;
     }
 
@@ -1204,7 +1212,7 @@ TemplateFuncInstanceIdentifier
 TemplateClassInstanceIdentifier
     = id:SingleTemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
         id.type = AST.IDType.T_CLASS_INS;
-        id = opt ? (opt[3] || []) : [];
+        id.args = opt ? (opt[3] || []) : [];
         return id;
     }
 

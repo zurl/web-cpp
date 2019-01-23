@@ -3,8 +3,8 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-import {SourceLocation} from "../common/Node";
 import {EmitError} from "../common/error";
+import {SourceLocation} from "../common/Node";
 import {Control, F32, F64, getNativeType, I32, I32Binary, I64, OpCodes, WType, WTypeMap} from "./constant";
 import {Emitter, JSONEmitter} from "./emitter";
 import {getAlign, WBinaryOperation, WCall, WConst, WMemoryLocation} from "./expression";

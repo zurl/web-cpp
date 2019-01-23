@@ -1,5 +1,5 @@
-import {Node, SourceLocation} from "../../common/node";
 import {LanguageError, SyntaxError} from "../../common/error";
+import {Node, SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {LeftReferenceType, PointerType, ReferenceType} from "../../type/compound_type";
 import {CompileContext} from "../context";
@@ -35,7 +35,6 @@ export class PointerDeclarator extends Declarator {
         return this.declarator ? this.declarator.getType(ctx, result) : result;
     }
 }
-
 
 export class Pointer extends Node {
     public qualifiers: string[];

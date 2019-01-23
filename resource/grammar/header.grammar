@@ -43,6 +43,7 @@
 
     let scopeRoot = { parent: null, names: new Map() };
     let currScope = scopeRoot;
+    let globalMap = new Map();
 
     function enterScope() {
         currScope = { parent: currScope, names: new Map() };
@@ -64,6 +65,9 @@
                 return c.names.get(name);
             }
             c = c.parent;
+        }
+        if(globalMap.has(name)){
+            return globalMap.get(name);
         }
         return ID_NAME;
     }

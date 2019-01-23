@@ -1,6 +1,6 @@
 import {SyntaxError} from "../../common/error";
 import {Directive, Node} from "../../common/node";
-import {AddressType, FunctionEntity, Variable} from "../../common/symbol";
+import {AddressType, FunctionEntity, OverloadSymbol, Variable} from "../../common/symbol";
 import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {ArrayType} from "../../type/compound_type";
@@ -15,7 +15,7 @@ import {WSetGlobal, WSetLocal} from "../../wasm/statement";
 import {CompileContext} from "../context";
 import {getInStackSize} from "../conversion";
 import {IntegerConstant} from "../expression/integer_constant";
-import {getShortName, Scope} from "../scope";
+import {FunctionLookUpResult, getShortName, Scope} from "../scope";
 import {ReturnStatement} from "./return_statement";
 
 export interface FunctionConfig {
@@ -25,7 +25,6 @@ export interface FunctionConfig {
     parameterInits: Array<string | null>;
     accessControl: AccessControl;
     isLibCall: boolean;
-    activeScopes: Scope[];
 }
 
 export function createFunctionEntity(ctx: CompileContext, config: FunctionConfig, isDefine: boolean): FunctionEntity {
@@ -33,7 +32,8 @@ export function createFunctionEntity(ctx: CompileContext, config: FunctionConfig
     const shortName = baseName + "@" + config.functionType.toMangledName();
     const fullName = ctx.scopeManager.getFullName(config.name) + "@" + config.functionType.toMangledName();
     return new FunctionEntity(shortName, fullName, ctx.fileName,
-        config.functionType, config.parameterInits, config.isLibCall, isDefine, config.accessControl);
+        config.functionType, config.parameterInits, config.isLibCall, isDefine, config.accessControl,
+        ctx.scopeManager.currentContext.activeScopes);
 }
 
 export function declareFunction(ctx: CompileContext, config: FunctionConfig, node: Node) {
@@ -70,7 +70,7 @@ export function declareFunction(ctx: CompileContext, config: FunctionConfig, nod
 }
 
 export function defineFunction(ctx: CompileContext, config: FunctionConfig,
-                               body: Directive[], node: Node) {
+                               body: Directive[], activeScopes: Scope[], node: Node) {
 
     if (config.parameterInits.length !== config.parameterNames.length
         || config.parameterNames.length !== config.functionType.parameterTypes.length) {
@@ -79,10 +79,12 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
     const emptyLocation = Node.getEmptyLocation();
 
     const functionEntity = createFunctionEntity(ctx, config, true);
+
+    // find out the active scopes when declare
+
     ctx.scopeManager.define(config.name, functionEntity, node);
     ctx.enterFunction(functionEntity);
-    config.activeScopes.map((x) => ctx.scopeManager.currentContext.activeScopes
-        .push(x));
+    ctx.scopeManager.activeScopes(activeScopes);
 
     // alloc parameters
 

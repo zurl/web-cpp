@@ -1,17 +1,17 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {ClassDirective, SourceLocation} from "../../common/node";
+import {ClassTemplate, FunctionTemplate} from "../../common/template";
+import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {TemplateParameterPlaceHolderType} from "../../type/template_type";
 import {ClassSpecifier} from "../class/class_specifier";
 import {CompileContext} from "../context";
-import {ParameterDeclaration} from "../function/parameter_declaration";
 import {FunctionDefinition} from "../function/function_definition";
+import {ParameterDeclaration} from "../function/parameter_declaration";
 import {getShortName} from "../scope";
 import {deduceFunctionTemplateParameters} from "./template_deduce";
 import {TemplateParameterDeclaration, TypeParameter} from "./type_parameter";
-import {ClassTemplate, FunctionTemplate} from "../../common/template";
-import {AccessControl} from "../../type";
 
 export class TemplateDeclaration extends ClassDirective {
     public decl: ClassSpecifier | FunctionDefinition;

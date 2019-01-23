@@ -1,5 +1,6 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {ClassDirective, SourceLocation} from "../../common/node";
+import {FunctionEntity, OverloadSymbol} from "../../common/symbol";
 import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
@@ -8,6 +9,7 @@ import {CompileContext} from "../context";
 import {Declarator} from "../declaration/declarator";
 import {FunctionDeclarator} from "../declaration/function_declarator";
 import {SpecifierList} from "../declaration/specifier_list";
+import {FunctionLookUpResult, Scope} from "../scope";
 import {CompoundStatement} from "../statement/compound_statement";
 import {declareFunction, defineFunction, FunctionConfig} from "./function";
 
@@ -48,7 +50,6 @@ export class FunctionDefinition extends ClassDirective {
             parameterInits: functionDeclarator.parameters.getInitList(ctx),
             accessControl: AccessControl.Public,
             isLibCall: this.specifiers.specifiers.includes("__libcall"),
-            activeScopes: [],
         };
     }
 
@@ -87,7 +88,6 @@ export class FunctionDefinition extends ClassDirective {
             parameterInits,
             accessControl: classType.accessControl,
             isLibCall: this.specifiers.specifiers.includes("__libcall"),
-            activeScopes: [],
         };
     }
 
@@ -105,12 +105,20 @@ export class FunctionDefinition extends ClassDirective {
         }
         if (scope.classType === null) {
             const config = this.getFunctionConfig(ctx);
-            defineFunction(ctx, config, this.body.body, this);
+            const oldItem = ctx.scopeManager.getOldOverloadSymbol(
+                fullName + "@" + config.functionType.toMangledName());
+            const activeScopes = (oldItem && oldItem instanceof FunctionEntity)
+                ? oldItem.declareActiveScopes : [];
+            defineFunction(ctx, config, this.body.body, activeScopes, this);
         } else {
             const classType = scope.classType;
             const config = this.getMemberFunctionConfig(ctx, classType);
+            const oldItem = ctx.scopeManager.getOldOverloadSymbol(
+                fullName + "@" + config.functionType.toMangledName());
+            const activeScopes = (oldItem && oldItem instanceof FunctionEntity)
+                ? oldItem.declareActiveScopes : [];
             config.accessControl = AccessControl.Unknown;
-            defineFunction(ctx, config, this.body.body, this);
+            defineFunction(ctx, config, this.body.body, activeScopes, this);
         }
     }
 }

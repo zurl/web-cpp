@@ -69,7 +69,7 @@ export class ClassTemplate extends Symbol {
         super(accessControl);
         this.templateParams = templateParams;
         this.classBody = classBody;
-        this.shortName = name;
+        this.shortName = shortName;
         this.fileName = fileName;
         this.fullName = fullName;
         this.instanceMap = new Map<string, ClassType>();

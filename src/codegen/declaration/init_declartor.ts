@@ -116,7 +116,6 @@ export class InitDeclarator extends Node {
                 parameterInits: functionDeclarator.parameters.getInitList(ctx),
                 accessControl: info.accessControl,
                 isLibCall: info.isLibCall,
-                activeScopes: [],
             }, this);
         } else {
             if (ctx.scopeManager.currentContext.scope.classType

@@ -1,12 +1,12 @@
 import {SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
 import {AddressType, Variable} from "../../common/symbol";
+import {AccessControl} from "../../type";
 import {IntegerType, PrimitiveTypes} from "../../type/primitive_type";
 import {WConst} from "../../wasm";
 import {CompileContext} from "../context";
 import {Expression} from "../expression/expression";
 import {Identifier} from "../expression/identifier";
-import {AccessControl} from "../../type";
 
 export class EnumSpecifier extends Node {
     public identifier: Identifier;

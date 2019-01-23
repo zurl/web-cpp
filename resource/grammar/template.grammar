@@ -7,7 +7,8 @@ TemplateDeclaration
         const result = new AST.TemplateDeclaration(getLocation(), decl, param || []);
         const names = result.getTemplateNames();
         const typeId = (decl instanceof AST.FunctionDefinition) ? TEMPLATE_FUNC_NAME : TEMPLATE_CLASS_NAME;
-        names.map(name => currScope.names.set(name, typeId));
+        names.map(name => {currScope.names.set(name, typeId);
+        if(typeId === TEMPLATE_CLASS_NAME) globalMap.set(name, typeId);});
         return result;
     }
 
@@ -43,7 +44,7 @@ TemplateFuncInstanceIdentifier
 TemplateClassInstanceIdentifier
     = id:SingleTemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
         id.type = AST.IDType.T_CLASS_INS;
-        id = opt ? (opt[3] || []) : [];
+        id.args = opt ? (opt[3] || []) : [];
         return id;
     }
 

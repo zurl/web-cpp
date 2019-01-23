@@ -14,9 +14,10 @@ export class UsingNamespaceStatement extends ClassDirective {
     }
 
     public codegen(ctx: CompileContext): void {
-        const scope = ctx.scopeManager.root.getScopeFromFullName(this.namespace.getFullName(ctx));
+        const scope =
+            ctx.scopeManager.root.getScopeOfLookupName(this.namespace.getLookupName(ctx) + "::a");
         if ( !scope) {
-            throw new SyntaxError(`${this.namespace.name} is not a namespace`, this);
+            throw new SyntaxError(`${this.namespace.getFullName(ctx)} is not a namespace`, this);
         }
         ctx.scopeManager.currentContext.activeScopes.push(scope);
     }

@@ -26,7 +26,7 @@ export class UsingStatement extends ClassDirective {
                 throw new SyntaxError(`undefine symbol ${this.name.name}`, this);
             }
             if ( item instanceof FunctionLookUpResult ) {
-                item.functions.map((func) => ctx.scopeManager.define(func.shortName, func, this));
+                item.functions.map((func) => ctx.scopeManager.define(func.shortName.split("@")[0], func, this));
             } else {
                 ctx.scopeManager.define(this.name.getPlainName(ctx), item, this);
             }

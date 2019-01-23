@@ -100,7 +100,7 @@ export class JSRuntime extends Runtime {
         }
         for (const fn of this.program.functions) {
             fn.scope = fn.name.substring(0, 2) === "::" ?
-                this.rootScope.getScopeFromFullName(fn.name) : null;
+                this.rootScope.getScopeOfLookupName(fn.name + "::a") : null;
         }
         this.stack = [{
             fn: this.program.functions[0],

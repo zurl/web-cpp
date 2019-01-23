@@ -62,10 +62,6 @@ export class Scope {
         this.classType = null;
     }
 
-    public getScopeFromFullName(fullName: string): Scope | null {
-        return this.getScopeOfLookupName(fullName + "::a");
-    }
-
     public getScopeOfLookupName(lookupName: string): Scope | null {
         if (lookupName.slice(0, 2) === "::") {
             lookupName = lookupName.slice(2);
@@ -421,5 +417,24 @@ export class ScopeManager {
 
     public isRoot() {
         return this.currentContext.scope === this.root;
+    }
+
+    public activeScopes(scopes: Scope[]) {
+        const nameSet = new Set<string>(this.currentContext.activeScopes.map((x) => x.fullName));
+        const newScopes = scopes.filter((x) => x.isInnerScope || !nameSet.has(x.fullName));
+        const oldScopes = this.currentContext.activeScopes
+            .filter((x) => x.fullName !== this.currentContext.scope.fullName);
+        this.currentContext.activeScopes = [
+            ...oldScopes, ...newScopes, this.currentContext.scope,
+        ];
+    }
+
+    public getOldOverloadSymbol(fullName: string): OverloadSymbol | null {
+        const oldItem = this.lookup(fullName.split("@")[0]);
+        if (oldItem && oldItem instanceof FunctionLookUpResult) {
+            const items = oldItem.functions.filter((x) => x.fullName === fullName);
+            if (items.length) { return items[0]; }
+        }
+        return null;
     }
 }

@@ -84,13 +84,7 @@ export class Identifier extends Expression {
     }
 
     public getShortName(ctx: CompileContext): string {
-        if (this.getLastID().type === IDType.T_CLASS || this.getLastID().type === IDType.T_FUNC) {
-            return this.getLastID().name +  "<" + this.getLastID().args
-                .map((x) => x.evaluate(ctx))
-                .join(",") + ">";
-        } else {
-            return this.getLastID().name;
-        }
+        return this.getLastID().name;
     }
 
     public getFullName(ctx: CompileContext): string {
@@ -111,7 +105,8 @@ export class Identifier extends Expression {
                 fullName += "::";
             }
             fullName += this.name[i].name;
-            if (this.name[i].type === IDType.T_CLASS || this.name[i].type === IDType.T_FUNC) {
+            if (i !== this.name.length - 1 &&
+                (this.name[i].type === IDType.T_FUNC_INS || this.name[i].type === IDType.T_CLASS_INS)) {
                 fullName += "<" + this.name[i].args
                     .map((x) => x.evaluate(ctx))
                     .join(",") + ">";
@@ -156,7 +151,30 @@ export class Identifier extends Expression {
         }
     }
 
+    public instantiateIfNotExist(ctx: CompileContext) {
+        for (let i = 0; i < this.name.length; i++) {
+            if (this.name[i].type === IDType.T_CLASS_INS) {
+                const templateName = new Identifier(this.location, this.name.slice(0, i + 1), this.isFullName)
+                    .getLookupName(ctx);
+                const realName = templateName + "<" + this.name[i].args
+                    .map((x) => x.evaluate(ctx))
+                    .join(",") + ">";
+                const item = ctx.scopeManager.lookup(realName);
+                if (!item) {
+                    const templateItem = ctx.scopeManager.lookup(templateName);
+                    if (!templateItem || !(templateItem instanceof ClassTemplate)) {
+                        throw new SyntaxError(`${templateName} is not a class template`, this);
+                    }
+                    instantiateClassTemplate(ctx, templateItem,
+                        this.name[i].args.map((x) => x.evaluate(ctx)), this);
+                }
+            }
+        }
+    }
+
     public deduceType(ctx: CompileContext): Type {
+        // TODO::
+        // this.instantiateIfNotExist(ctx);
         const lookupName = this.getLookupName(ctx);
         const rawItem = ctx.scopeManager.lookup(lookupName);
         if (!rawItem) {

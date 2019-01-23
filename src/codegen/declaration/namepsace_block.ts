@@ -1,6 +1,7 @@
 import {Directive, SourceLocation} from "../../common/node";
 import {CompileContext} from "../context";
 import {Identifier} from "../expression/identifier";
+import {Scope} from "../scope";
 
 export class NameSpaceBlock extends Directive {
     public namespace: Identifier;
@@ -13,7 +14,15 @@ export class NameSpaceBlock extends Directive {
     }
 
     public codegen(ctx: CompileContext): void {
-        ctx.scopeManager.enterScope(this.namespace.getFullName(ctx));
+        // TODO::
+        const newScope = new Scope(this.namespace.getPlainName(ctx),
+            ctx.scopeManager.currentContext.scope, ctx.isCpp());
+        ctx.scopeManager.currentContext.scope.children.push(newScope);
+        ctx.scopeManager.contextStack.push(ctx.scopeManager.currentContext);
+        ctx.scopeManager.currentContext = {
+            scope: newScope,
+            activeScopes: [...ctx.scopeManager.currentContext.activeScopes, newScope],
+        };
         this.statements.map((x) => x.codegen(ctx));
         ctx.exitScope(this);
     }

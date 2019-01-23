@@ -10,9 +10,9 @@ import {Expression} from "../codegen/expression/expression";
 import {FunctionLookUpResult} from "../codegen/scope";
 import {InternalError} from "../common/error";
 import {Variable} from "../common/symbol";
+import {ClassTemplate} from "../common/template";
 import {WType} from "../wasm";
 import {AccessControl, Type} from "./index";
-import {ClassTemplate} from "../common/template";
 
 export interface ClassField {
     name: string;

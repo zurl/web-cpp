@@ -64,7 +64,7 @@ export function instantiateFunctionTemplate(ctx: CompileContext,
         ctx.scopeManager.getFullName(longInstanceName),
         ctx.fileName, type,
         funcTemplate.functionConfig.parameterInits, false, true,
-        AccessControl.Public,
+        AccessControl.Public, [],
     ));
     ctx.scopeManager.enterUnnamedScope(true);
     for (let i = 0; i < args.length; i++) {
@@ -92,9 +92,11 @@ export function instantiateFunctionTemplate(ctx: CompileContext,
         parameterInits: funcTemplate.functionConfig.parameterInits,
         isLibCall: funcTemplate.functionConfig.isLibCall,
         accessControl: funcTemplate.functionConfig.accessControl,
-        activeScopes: [ctx.scopeManager.currentContext.scope],
     };
-    defineFunction(ctx, functionConfig, funcBody, node);
+    defineFunction(ctx, functionConfig, funcBody,
+        [...funcTemplate.scopeContext.activeScopes,
+            ctx.scopeManager.currentContext.scope],
+        node);
     ctx.scopeManager.currentContext.scope.children.map((scope) =>
         ctx.scopeManager.currentContext.scope.parent.children.push(scope));
     ctx.scopeManager.detachCurrentScope();

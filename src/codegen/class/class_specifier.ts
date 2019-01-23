@@ -99,7 +99,10 @@ export class ClassSpecifier extends Node {
         // find virtual
 
         ctx.scopeManager.define(lookupName, classType, this);
+        const activeScopes = ctx.scopeManager.currentContext.activeScopes;
         ctx.scopeManager.enterScope(fullName);
+        ctx.scopeManager.activeScopes(activeScopes);
+
         ctx.scopeManager.currentContext.scope.classType = classType;
         this.declarations.map((x) => x.declare(ctx, classType));
         classType.initialize();

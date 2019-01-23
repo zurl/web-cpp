@@ -1,5 +1,6 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {ClassDirective, Directive, Node, SourceLocation} from "../../common/node";
+import {FunctionEntity} from "../../common/symbol";
 import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
@@ -57,7 +58,6 @@ export class DestructorDeclaration extends ClassDirective {
             parameterInits,
             accessControl,
             isLibCall: false,
-            activeScopes: [],
         };
     }
 
@@ -77,7 +77,11 @@ export class DestructorDeclaration extends ClassDirective {
         const functionConfig = this.getFunctionConfig(ctx, classType, AccessControl.Unknown);
         if (this.body) {
             const body: Directive[] = [...this.body.body, ...this.generateStatements(ctx, functionConfig)];
-            defineFunction(ctx, functionConfig, body, this);
+            const oldItem = ctx.scopeManager.getOldOverloadSymbol(functionConfig.name
+                + "@" + functionConfig.functionType.toMangledName());
+            const activeScopes = (oldItem && oldItem instanceof FunctionEntity)
+                ? oldItem.declareActiveScopes : [];
+            defineFunction(ctx, functionConfig, body, activeScopes, this);
         } else {
             declareFunction(ctx, functionConfig, this);
         }

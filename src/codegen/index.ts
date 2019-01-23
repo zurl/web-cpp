@@ -21,7 +21,6 @@ function declareSystemFunction(ctx: CompileContext, name: string, returnType: Ty
         parameterNames: parameterType.map((x) => ""),
         accessControl: AccessControl.Public,
         isLibCall: true,
-        activeScopes: [],
     }, node);
 }
 

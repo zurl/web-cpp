@@ -6,9 +6,9 @@
 
 import {InternalError} from "../common/error";
 import {WType} from "../wasm";
+import {ClassType} from "./class_type";
 import {Type} from "./index";
 import {PrimitiveTypes} from "./primitive_type";
-import {ClassType} from "./class_type";
 
 const MACHINE_POINTER_LENGTH = 4;
 
@@ -95,7 +95,6 @@ export class RightReferenceType extends ReferenceType {
         return this.elementType.toMangledName() + "&&";
     }
 }
-
 
 export class ArrayType extends Type {
 

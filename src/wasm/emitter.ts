@@ -5,8 +5,8 @@
  */
 import {SourceMapConsumer} from "source-map";
 import {Scope} from "../codegen/scope";
-import {SourceLocation} from "../common/Node";
 import {EmitError} from "../common/error";
+import {SourceLocation} from "../common/Node";
 import {SourceMap} from "../common/object";
 import {WType} from "./constant";
 import {writeLeb128Int, writeLeb128Uint} from "./leb128";
