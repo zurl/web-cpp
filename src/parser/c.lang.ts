@@ -1056,6 +1056,76 @@ Nondigit
 Digit
     = [0-9]
 
+TemplateDeclaration
+    = 'template' _ '<' _ &{
+        enterScope();
+        return true;
+    } param:TemplateParameterList? _ &!'>' _ decl:(ClassSpecifierWithSemi/FunctionDefinition) {
+        exitScope();
+        const result = new AST.TemplateDeclaration(getLocation(), decl, param || []);
+        const names = result.getTemplateNames();
+        const typeId = (decl instanceof AST.FunctionDefinition) ? TEMPLATE_FUNC_NAME : TEMPLATE_CLASS_NAME;
+        names.map(name => {currScope.names.set(name, typeId);
+        if(typeId === TEMPLATE_CLASS_NAME) globalMap.set(name, typeId);});
+        return result;
+    }
+
+ClassSpecifierWithSemi
+    = id:ClassSpecifier _ ';' {
+        return id;
+    }
+
+TemplateParameterList
+    = head:TemplateParameter tail:(_ ',' _ TemplateParameter)* {
+        return buildList(head, tail, 3);
+    }
+
+TemplateParameter
+    = TypeParameter
+    / ParameterDeclaration;
+
+TypeNameKeyword = 'class' / 'typename'
+
+// TODO:: identifier is optional?
+TypeParameter
+    = TypeNameKeyword _ id:TypeDeclarationIdentifier init:( _ '=' _ TypeName)? {
+        return new AST.TypeParameter(getLocation(), id, init ? init[3] : null);
+    }
+
+TemplateFuncInstanceIdentifier
+    = id:SingleTemplateFuncIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
+        id.type = AST.IDType.T_FUNC_INS;
+        id.args = opt ? (opt[3] || []) : [];
+        return id;
+    }
+
+TemplateClassInstanceIdentifier
+    = id:SingleTemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
+        id.type = AST.IDType.T_CLASS_INS;
+        id.args = opt ? (opt[3] || []) : [];
+        return id;
+    }
+
+TemplateArgumentList
+    = head:TemplateArgument tail:(_ ',' _ TemplateArgument)* {
+        return buildList(head, tail, 3);
+    }
+
+TemplateArgument
+    = item:TypeName {
+        return new AST.TemplateArgument(getLocation(), item);
+    }
+    / item:AdditiveExpression {
+        return new AST.TemplateArgument(getLocation(), item);
+    }
+
+ExplicitInstantiation
+    = FunctionTemplateInstantiation
+
+FunctionTemplateInstantiation
+    = 'template' _ specifiers:DeclarationSpecifiers _ declarator:Declarator _ ';'{
+        return new AST.FunctionTemplateInstantiation(getLocation(), specifiers, declarator);
+    }
 Statement
     = CaseStatement
     / SelectionStatement
@@ -1165,74 +1235,4 @@ UsingStatements
     }
     / 'using' _ 'namespace' _ name:TypeIdentifier _ ';'{
         return new AST.UsingNamespaceStatement(getLocation(), name);
-    }
-TemplateDeclaration
-    = 'template' _ '<' _ &{
-        enterScope();
-        return true;
-    } param:TemplateParameterList? _ &!'>' _ decl:(ClassSpecifierWithSemi/FunctionDefinition) {
-        exitScope();
-        const result = new AST.TemplateDeclaration(getLocation(), decl, param || []);
-        const names = result.getTemplateNames();
-        const typeId = (decl instanceof AST.FunctionDefinition) ? TEMPLATE_FUNC_NAME : TEMPLATE_CLASS_NAME;
-        names.map(name => {currScope.names.set(name, typeId);
-        if(typeId === TEMPLATE_CLASS_NAME) globalMap.set(name, typeId);});
-        return result;
-    }
-
-ClassSpecifierWithSemi
-    = id:ClassSpecifier _ ';' {
-        return id;
-    }
-
-TemplateParameterList
-    = head:TemplateParameter tail:(_ ',' _ TemplateParameter)* {
-        return buildList(head, tail, 3);
-    }
-
-TemplateParameter
-    = TypeParameter
-    / ParameterDeclaration;
-
-TypeNameKeyword = 'class' / 'typename'
-
-// TODO:: identifier is optional?
-TypeParameter
-    = TypeNameKeyword _ id:TypeDeclarationIdentifier init:( _ '=' _ TypeName)? {
-        return new AST.TypeParameter(getLocation(), id, init ? init[3] : null);
-    }
-
-TemplateFuncInstanceIdentifier
-    = id:SingleTemplateFuncIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
-        id.type = AST.IDType.T_FUNC_INS;
-        id.args = opt ? (opt[3] || []) : [];
-        return id;
-    }
-
-TemplateClassInstanceIdentifier
-    = id:SingleTemplateClassIdentifier opt:(_ '<' _ TemplateArgumentList? _ &!'>' _ )? {
-        id.type = AST.IDType.T_CLASS_INS;
-        id.args = opt ? (opt[3] || []) : [];
-        return id;
-    }
-
-TemplateArgumentList
-    = head:TemplateArgument tail:(_ ',' _ TemplateArgument)* {
-        return buildList(head, tail, 3);
-    }
-
-TemplateArgument
-    = item:TypeName {
-        return new AST.TemplateArgument(getLocation(), item);
-    }
-    / item:AdditiveExpression {
-        return new AST.TemplateArgument(getLocation(), item);
-    }
-
-ExplicitInstantiation
-    = FunctionTemplateInstantiation
-
-FunctionTemplateInstantiation
-    = 'template' _ specifiers:DeclarationSpecifiers _ declarator:Declarator _ ';'{
-        return new AST.FunctionTemplateInstantiation(getLocation(), specifiers, declarator);
     }`        
