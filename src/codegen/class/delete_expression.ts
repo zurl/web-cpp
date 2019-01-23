@@ -1,7 +1,7 @@
 import {LanguageError, SyntaxError} from "../../common/error";
 import {SourceLocation} from "../../common/node";
 import {AddressType, Variable} from "../../common/symbol";
-import {Type} from "../../type";
+import {AccessControl, Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
@@ -57,7 +57,7 @@ export class DeleteExpression extends Expression {
         if (rightType.elementType instanceof ClassType) {
             const tmpVarName = ctx.scopeManager.allocTmpVarName();
             const tmpVar = new Variable(tmpVarName, tmpVarName, this.location.fileName, rightType,
-                AddressType.STACK, ctx.memory.allocStack(rightType.length));
+                AddressType.STACK, ctx.memory.allocStack(rightType.length), AccessControl.Public);
             ctx.scopeManager.define(tmpVarName, tmpVar, this);
 
             new AssignmentExpression(this.location, "=",

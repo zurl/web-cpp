@@ -221,7 +221,7 @@ export class CallExpression extends Expression {
             if (targetFunction.type.isVirtual && lookUpResult.isDynamicCall) {
                 const vcallSigature =
                     targetFunction.type.cppFunctionType === CppFunctionType.Destructor ? "~" :
-                        targetFunction.shortName + "@" + targetFunction.type.parameterTypes
+                        targetFunction.shortName.split("@")[0] + "@" + targetFunction.type.parameterTypes
                             .slice(1).map((x) => x.toString()).join(",");
 
                 const ret = lookUpResult.instanceType.getVCallInfo(vcallSigature);

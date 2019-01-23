@@ -6,10 +6,10 @@
 
 import {InternalError, SyntaxError} from "../common/error";
 import {Node} from "../common/node";
-import {FunctionEntity, Symbol, Variable} from "../common/symbol";
+import {FunctionEntity, OverloadSymbol, Symbol, Variable} from "../common/symbol";
+import {ClassTemplate, FunctionTemplate} from "../common/template";
 import {AccessControl, Type} from "../type";
 import {ClassType} from "../type/class_type";
-import {ClassTemplate, FunctionTemplate} from "../type/template_type";
 import {WAddressHolder} from "./address";
 import {EvaluatedTemplateArgument} from "./template/template_argument";
 
@@ -20,7 +20,7 @@ export class FunctionLookUpResult {
     public functions: Array<FunctionEntity | FunctionTemplate>;
     public templateArguments: EvaluatedTemplateArgument[];
 
-    constructor(functions: FunctionEntity[]) {
+    constructor(functions: Array<FunctionEntity | FunctionTemplate>) {
         this.functions = functions;
         this.instance = null;
         this.instanceType = null;
@@ -90,14 +90,14 @@ export class Scope {
             return;
         }
         const oldItem = oldItems[0];
-        if (oldItem instanceof FunctionEntity) {
-            if (!(newItem instanceof FunctionEntity)) {
+        if (oldItem instanceof OverloadSymbol) {
+            if (!(newItem instanceof OverloadSymbol)) {
                 throw new SyntaxError(`${shortName} has been declared as function`
                     + `but a ${newItem.constructor.name} found`, node);
             }
             for (let i = 0; i < oldItems.length; i++) {
-                const x = oldItems[i] as FunctionEntity;
-                if (x.fullName === newItem.fullName) {
+                const x = oldItems[i] as OverloadSymbol;
+                if (x.getFullName() === newItem.getFullName()) {
                     // TODO:: full check compatible?
                     if (x.isDefine() && !newItem.isDefine()) {
                         return;
@@ -126,6 +126,9 @@ export class Scope {
                     if (oldItem.type.equals(newItem.type)
                         && oldItem.fullName === newItem.fullName) {
                         if (newItem.isDefine()) {
+                            if (newItem.accessControl === AccessControl.Unknown) {
+                                newItem.accessControl = oldItem.accessControl;
+                            }
                             oldItems[0] = newItem;
                         }
                         return;
@@ -172,6 +175,18 @@ export class Scope {
         }
         throw new InternalError(`assertCompatible()`);
     }
+
+    public lookupInScope(anyName: string): Symbol[] | null {
+        if (anyName.slice(0, 2) === "::") {
+            throw new InternalError(`public lookupInScope(anyName: string){`);
+        }
+        const itemScope = this.getScopeOfLookupName(anyName);
+        const shortName = getShortName(anyName);
+        if (itemScope) {
+            return itemScope.map.get(shortName) || null;
+        }
+        return null;
+    }
 }
 
 export interface ScopeContext {
@@ -211,7 +226,7 @@ export class ScopeManager {
         if (isFullLookup) {
             return anyName;
         }
-        for (let i = this.currentContext.activeScopes.length - 1; i >= 0; i--){
+        for (let i = this.currentContext.activeScopes.length - 1; i >= 0; i--) {
             const scope = this.currentContext.activeScopes[i];
             const itemScope = scope.getScopeOfLookupName(anyName);
             const shortName = getShortName(anyName);
@@ -223,20 +238,22 @@ export class ScopeManager {
     }
 
     public lookupFunction(anyName: string): LookUpResult {
-        const shortName = getShortName(anyName).split("@")[0];
-        const isWithSignature = getShortName(anyName).includes("@");
+        const scopes = anyName.slice(0, 2) === "::" ? [this.root] : this.currentContext.activeScopes;
+        const realName = anyName.slice(0, 2) === "::" ? anyName.slice(2) : anyName;
+        const shortName = getShortName(realName).split("@")[0];
+        const isWithSignature = getShortName(realName).includes("@");
         const nameMap = new Set<string>();
-        const result = [] as FunctionEntity[];
-        for (let i = this.currentContext.activeScopes.length - 1; i >= 0; i--){
-            const scope = this.currentContext.activeScopes[i];
-            const subScope = scope.getScopeOfLookupName(anyName);
+        const result = [] as Array<FunctionTemplate | FunctionEntity>;
+        for (let i = scopes.length - 1; i >= 0; i--) {
+            const scope = scopes[i];
+            const subScope = scope.getScopeOfLookupName(realName);
             if (subScope) {
                 const item = subScope.map.get(shortName);
                 if (item) {
                     for (const subItem of item) {
-                        if (subItem instanceof FunctionEntity) {
+                        if (subItem instanceof FunctionTemplate || subItem instanceof FunctionEntity) {
                             if (!nameMap.has(subItem.shortName) && !isWithSignature ||
-                                subItem.fullName === subScope.fullName + "::" +  getShortName(anyName)) {
+                                subItem.getFullName() === subScope.fullName + "::" + getShortName(realName)) {
                                 nameMap.add(subItem.shortName);
                                 result.push(subItem);
                             }
@@ -249,23 +266,20 @@ export class ScopeManager {
     }
 
     public lookup(anyName: string): LookUpResult {
-        const fullName = this.getFullName(anyName);
-        const scope = this.root.getScopeOfLookupName(fullName.slice(2));
-        if (!scope) {
-            return null;
+        const scopes = anyName.slice(0, 2) === "::" ? [this.root] : this.currentContext.activeScopes;
+        const realName = anyName.slice(0, 2) === "::" ? anyName.slice(2) : anyName;
+        for (let i = scopes.length - 1; i >= 0; i--) {
+            const item = this.currentContext.activeScopes[i].lookupInScope(realName);
+            if (item) {
+                const item0 = item[0];
+                if (item0 instanceof OverloadSymbol) {
+                    return this.lookupFunction(anyName);
+                } else {
+                    return item0 as LookUpResult;
+                }
+            }
         }
-        const pureShortName = getShortName(fullName).split("@")[0];
-        const item = scope.map.get(pureShortName);
-        if (!item) {
-            return null;
-        }
-        const item0 = item[0];
-        if (item0 instanceof FunctionEntity) {
-            // as for function, we need to search all entity that match
-            return this.lookupFunction(anyName);
-        } else {
-            return item0 as LookUpResult;
-        }
+        return null;
     }
 
     public declare(lookupName: string, symbol: Symbol, node: Node) {

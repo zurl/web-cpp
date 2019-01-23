@@ -1,5 +1,6 @@
 import {Node, SourceLocation} from "../../common/node";
-import {TemplateParameter, TemplateType} from "../../type/template_type";
+import {TemplateParameter} from "../../common/template";
+import {TemplateType} from "../../type/template_type";
 import {TypeName} from "../class/type_name";
 import {CompileContext} from "../context";
 import {Identifier} from "../expression/identifier";
@@ -8,7 +9,7 @@ export interface TemplateParameterDeclaration {
     getTemplateParameter(ctx: CompileContext): TemplateParameter;
 }
 
-export class TypeParameter extends Node implements TemplateParameterDeclaration{
+export class TypeParameter extends Node implements TemplateParameterDeclaration {
     public name: Identifier;
     public init: TypeName | null;
 

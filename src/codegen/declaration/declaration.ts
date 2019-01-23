@@ -1,4 +1,5 @@
 import {Directive, SourceLocation} from "../../common/node";
+import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {TypeName} from "../class/type_name";
 import {CompileContext} from "../context";
@@ -30,7 +31,9 @@ export class Declaration extends Directive {
                     type,
                     isLibCall: this.specifiers.specifiers.includes("__libcall"),
                     isExtern: this.specifiers.specifiers.includes("extern"),
-                    isStatic: this.specifiers.specifiers.includes("static")}, classType);
+                    isStatic: this.specifiers.specifiers.includes("static"),
+                    accessControl: classType.accessControl,
+                }, classType);
             }
         }
     }
@@ -44,11 +47,14 @@ export class Declaration extends Directive {
                 new UsingStatement(this.location, Identifier.fromString(this.location, name),
                     new TypeName(this.location, this.specifiers, declarator.declarator)).codegen(ctx);
             } else {
+                const isInClass = ctx.scopeManager.currentContext.scope.classType !== null;
                 declarator.declare(ctx, {
                     type,
                     isLibCall: this.specifiers.specifiers.includes("__libcall"),
                     isExtern: this.specifiers.specifiers.includes("extern"),
-                    isStatic: this.specifiers.specifiers.includes("static")});
+                    isStatic: this.specifiers.specifiers.includes("static"),
+                    accessControl: isInClass ? AccessControl.Unknown : AccessControl.Public,
+                });
             }
         }
     }

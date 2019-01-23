@@ -3,10 +3,10 @@ import {Node, SourceLocation} from "../../common/node";
 import {AddressType, Variable} from "../../common/symbol";
 import {IntegerType, PrimitiveTypes} from "../../type/primitive_type";
 import {WConst} from "../../wasm";
-import {WExpression} from "../../wasm/node";
 import {CompileContext} from "../context";
 import {Expression} from "../expression/expression";
 import {Identifier} from "../expression/identifier";
+import {AccessControl} from "../../type";
 
 export class EnumSpecifier extends Node {
     public identifier: Identifier;
@@ -27,9 +27,6 @@ export class EnumSpecifier extends Node {
                     val = now;
                 } else {
                     const expr = enumerator.value.codegen(ctx);
-                    if (!(expr.expr instanceof WExpression)) {
-                        throw new SyntaxError("illegal enumrator type", this);
-                    }
                     expr.expr = expr.expr.fold();
                     if (!(expr.expr instanceof WConst) ||
                         !(expr.type instanceof IntegerType)) {
@@ -42,7 +39,7 @@ export class EnumSpecifier extends Node {
                 ctx.scopeManager.declare(shortName, new Variable(
                     shortName, fullName,
                     ctx.fileName, PrimitiveTypes.int32,
-                    AddressType.CONSTANT, val,
+                    AddressType.CONSTANT, val, AccessControl.Public,
                 ), this);
             }
         }

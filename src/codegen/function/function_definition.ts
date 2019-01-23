@@ -9,7 +9,7 @@ import {Declarator} from "../declaration/declarator";
 import {FunctionDeclarator} from "../declaration/function_declarator";
 import {SpecifierList} from "../declaration/specifier_list";
 import {CompoundStatement} from "../statement/compound_statement";
-import {defineFunction, FunctionConfig} from "./function";
+import {declareFunction, defineFunction, FunctionConfig} from "./function";
 
 export class FunctionDefinition extends ClassDirective {
     public specifiers: SpecifierList;
@@ -48,6 +48,7 @@ export class FunctionDefinition extends ClassDirective {
             parameterInits: functionDeclarator.parameters.getInitList(ctx),
             accessControl: AccessControl.Public,
             isLibCall: this.specifiers.specifiers.includes("__libcall"),
+            activeScopes: [],
         };
     }
 
@@ -66,7 +67,19 @@ export class FunctionDefinition extends ClassDirective {
         functionType.referenceClass = classType;
         const parameterNames = ["this", ...functionDeclarator.parameters.getNameList(ctx)];
         const parameterInits = [null, ...functionDeclarator.parameters.getInitList(ctx)];
-
+        const isVirtual = this.specifiers.specifiers.includes("virtual");
+        const fullName = name.getFullName(ctx) + "@" + functionType.toMangledName();
+        const vcallSigature = name.getShortName(ctx) + "@" + functionType.parameterTypes
+            .slice(1).map((x) => x.toString()).join(",");
+        if (isVirtual) {
+            functionType.isVirtual = true;
+            classType.registerVFunction(ctx, vcallSigature, fullName);
+        } else {
+            if (classType.getVCallInfo(vcallSigature) !== null) {
+                functionType.isVirtual = true;
+                classType.registerVFunction(ctx, vcallSigature, fullName);
+            }
+        }
         return {
             name: name.getLookupName(ctx),
             functionType,
@@ -74,26 +87,13 @@ export class FunctionDefinition extends ClassDirective {
             parameterInits,
             accessControl: classType.accessControl,
             isLibCall: this.specifiers.specifiers.includes("__libcall"),
+            activeScopes: [],
         };
     }
 
     public declare(ctx: CompileContext, classType: ClassType) {
-        const name = this.declarator.getNameRequired();
         const config = this.getMemberFunctionConfig(ctx, classType);
-        const isVirtual = this.specifiers.specifiers.includes("virtual");
-        const vcallSigature = name.getShortName(ctx) + "@" + config.functionType.parameterTypes
-            .slice(1).map((x) => x.toString()).join(",");
-        const fullName = name.getFullName(ctx) + "@" + config.functionType.toMangledName()
-        if (isVirtual) {
-            config.functionType.isVirtual = true;
-            classType.registerVFunction(ctx, vcallSigature, fullName);
-        } else {
-            if (classType.getVCallInfo(vcallSigature) !== null) {
-                config.functionType.isVirtual = true;
-                classType.registerVFunction(ctx, vcallSigature, fullName);
-            }
-        }
-
+        declareFunction(ctx, config, this);
     }
 
     public codegen(ctx: CompileContext): void {

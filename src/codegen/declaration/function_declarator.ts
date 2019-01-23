@@ -2,8 +2,8 @@ import {SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {FunctionType} from "../../type/function_type";
 import {CompileContext} from "../context";
-import {Declarator} from "./declarator";
 import {ParameterList} from "../function/parameter_list";
+import {Declarator} from "./declarator";
 
 export class FunctionDeclarator extends Declarator {
 

@@ -57,6 +57,7 @@ export class DestructorDeclaration extends ClassDirective {
             parameterInits,
             accessControl,
             isLibCall: false,
+            activeScopes: [],
         };
     }
 

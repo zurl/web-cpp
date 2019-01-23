@@ -1,4 +1,3 @@
-import {InternalError} from "../common/error";
 import {Symbol} from "../common/symbol";
 import {WType} from "../wasm";
 
@@ -6,7 +5,7 @@ export abstract class Type extends Symbol {
     public isConst: boolean;
 
     constructor() {
-        super();
+        super(AccessControl.Public);
         this.isConst = false;
     }
 

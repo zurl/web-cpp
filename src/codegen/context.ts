@@ -8,12 +8,12 @@ import {InternalError} from "../common/error";
 import {Node} from "../common/node";
 import {CompiledObject, ImportSymbol} from "../common/object";
 import {AddressType, FunctionEntity, Variable} from "../common/symbol";
-import {Type} from "../type";
-import {WConst, WFunction} from "../wasm";
+import {AccessControl, Type} from "../type";
+import {WFunction} from "../wasm";
 import {WExpression, WStatement} from "../wasm/node";
 import {triggerAllDestructor} from "./class/destructor";
 import {MemoryLayout} from "./memory";
-import { ScopeManager} from "./scope";
+import {ScopeManager} from "./scope";
 
 export interface CompileOptions {
     debug?: boolean;
@@ -158,7 +158,7 @@ export class CompileContext {
     public allocTmpVar(type: Type, node: Node): [string, Variable] {
         const varName = this.scopeManager.allocTmpVarName();
         const varEntity = new Variable(varName, varName, node.location.fileName, type,
-            AddressType.STACK, this.memory.allocStack(type.length));
+            AddressType.STACK, this.memory.allocStack(type.length), AccessControl.Public);
         this.scopeManager.define(varName, varEntity, node);
         return [varName, varEntity];
     }

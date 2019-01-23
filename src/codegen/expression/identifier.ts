@@ -1,9 +1,9 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
 import {Variable} from "../../common/symbol";
+import {ClassTemplate} from "../../common/template";
 import {Type} from "../../type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
-import {ClassTemplate} from "../../type/template_type";
 import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {MemberExpression} from "../class/member_expression";
@@ -136,7 +136,6 @@ export class Identifier extends Expression {
 
     public codegen(ctx: CompileContext): ExpressionResult {
         const lookupName = this.getLookupName(ctx);
-        assertIDType(IDType.ID, this.getType(), this.getLastID().name, this);
         const rawItem = ctx.scopeManager.lookup(lookupName);
         if (!rawItem) {
             return this.tryLookupImplicitThis(ctx).codegen(ctx);
@@ -227,13 +226,4 @@ function getTextFromIDType(idtype: IDType): string {
         case IDType.T_CLASS_INS: return "class instance";
     }
     return "";
-}
-
-function assertIDType<T extends LookUpResult>(shouldBe: IDType, fact: IDType,
-                                              name: string, node: Node) {
-    if (shouldBe !== fact) {
-        throw new SyntaxError(`${name} expect to be a ${getTextFromIDType(shouldBe)},`
-            + `but it is a ${getTextFromIDType(fact)}`, node);
-
-    }
 }

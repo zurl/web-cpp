@@ -8,9 +8,20 @@ import {AccessControl, Type} from "../type";
 import {FunctionType} from "../type/function_type";
 
 export abstract class Symbol {
+    public accessControl: AccessControl;
+
+    constructor(accessControl: AccessControl) {
+        this.accessControl = accessControl;
+    }
+
     public abstract isDefine(): boolean;
 
     public abstract getType(): Type;
+}
+
+export abstract class OverloadSymbol extends Symbol {
+    public abstract getIndexName(): string;
+    public abstract getFullName(): string;
 }
 
 export enum AddressType {
@@ -35,8 +46,8 @@ export class Variable extends Symbol {
     public location: number | string;
 
     constructor(shortName: string, fullName: string, fileName: string, type: Type,
-                storageType: AddressType, location: number | string) {
-        super();
+                storageType: AddressType, location: number | string, accessControl: AccessControl) {
+        super(accessControl);
         this.shortName = shortName;
         this.fullName = fullName;
         this.fileName = fileName;
@@ -58,12 +69,11 @@ export class Variable extends Symbol {
     }
 }
 
-export class FunctionEntity extends Symbol {
+export class FunctionEntity extends OverloadSymbol {
     public shortName: string;
     public fullName: string;
     public fileName: string;
     public type: FunctionType;
-    public accessControl: AccessControl;
 
     public isLibCall: boolean;
     public hasDefine: boolean;
@@ -75,7 +85,7 @@ export class FunctionEntity extends Symbol {
     constructor(shortName: string, fullName: string, fileName: string,
                 type: FunctionType, parameterInits: Array<null | string>,
                 isLibCall: boolean, isDefine: boolean, accessControl: AccessControl) {
-        super();
+        super(accessControl);
         this.shortName = shortName;
         this.fullName = fullName;
         this.fileName = fileName;
@@ -87,7 +97,6 @@ export class FunctionEntity extends Symbol {
         this.parametersSize = type.parameterTypes
             .map((x) => x.length)
             .reduce((x, y) => x + y, 0);
-        this.accessControl = accessControl;
     }
 
     public isDefine(): boolean {
@@ -96,5 +105,13 @@ export class FunctionEntity extends Symbol {
 
     public getType() {
         return this.type;
+    }
+
+    public getIndexName(): string {
+        return this.shortName.split("@")[0];
+    }
+
+    public getFullName(): string {
+        return this.fullName;
     }
 }

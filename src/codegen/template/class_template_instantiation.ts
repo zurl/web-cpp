@@ -1,8 +1,8 @@
 import {Node} from "../../common/node";
 import {AddressType, Variable} from "../../common/symbol";
-import {Type} from "../../type";
+import {ClassTemplate} from "../../common/template";
+import {AccessControl, Type} from "../../type";
 import {ClassType} from "../../type/class_type";
-import {ClassTemplate} from "../../type/template_type";
 import {CompileContext} from "../context";
 import {EvaluatedTemplateArgument} from "./template_argument";
 
@@ -23,6 +23,7 @@ export function instantiateClassTemplate(ctx: CompileContext,
             ctx.scopeManager.define(name, new Variable(
                 name, ctx.scopeManager.getFullName(name), ctx.fileName,
                 classTemplate.templateParams[i].type, AddressType.CONSTANT, arg,
+                AccessControl.Public,
             ), node);
         }
     }

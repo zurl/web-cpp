@@ -22,6 +22,7 @@ export interface SpecifierInfo {
     isLibCall: boolean;
     isExtern: boolean;
     isStatic: boolean;
+    accessControl: AccessControl;
 }
 
 export class InitDeclarator extends Node {
@@ -93,7 +94,7 @@ export class InitDeclarator extends Node {
         }
         return new Variable(
             shortName, fullName, ctx.fileName,
-            type, storageType, location);
+            type, storageType, location, info.accessControl);
     }
 
     public declareGlobal(ctx: CompileContext, info: SpecifierInfo, lookupName: string) {
@@ -113,8 +114,9 @@ export class InitDeclarator extends Node {
                 functionType: type,
                 parameterNames: functionDeclarator.parameters.getNameList(ctx),
                 parameterInits: functionDeclarator.parameters.getInitList(ctx),
-                accessControl: AccessControl.Public,
+                accessControl: info.accessControl,
                 isLibCall: info.isLibCall,
+                activeScopes: [],
             }, this);
         } else {
             if (ctx.scopeManager.currentContext.scope.classType

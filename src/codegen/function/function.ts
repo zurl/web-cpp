@@ -1,5 +1,5 @@
 import {SyntaxError} from "../../common/error";
-import {Directive, Node, SourceLocation} from "../../common/node";
+import {Directive, Node} from "../../common/node";
 import {AddressType, FunctionEntity, Variable} from "../../common/symbol";
 import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
@@ -15,7 +15,7 @@ import {WSetGlobal, WSetLocal} from "../../wasm/statement";
 import {CompileContext} from "../context";
 import {getInStackSize} from "../conversion";
 import {IntegerConstant} from "../expression/integer_constant";
-import {getShortName} from "../scope";
+import {getShortName, Scope} from "../scope";
 import {ReturnStatement} from "./return_statement";
 
 export interface FunctionConfig {
@@ -25,6 +25,7 @@ export interface FunctionConfig {
     parameterInits: Array<string | null>;
     accessControl: AccessControl;
     isLibCall: boolean;
+    activeScopes: Scope[];
 }
 
 export function createFunctionEntity(ctx: CompileContext, config: FunctionConfig, isDefine: boolean): FunctionEntity {
@@ -80,6 +81,8 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
     const functionEntity = createFunctionEntity(ctx, config, true);
     ctx.scopeManager.define(config.name, functionEntity, node);
     ctx.enterFunction(functionEntity);
+    config.activeScopes.map((x) => ctx.scopeManager.currentContext.activeScopes
+        .push(x));
 
     // alloc parameters
 
@@ -96,7 +99,7 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
         if (type instanceof ClassType || (functionEntity.type.variableArguments)) {
             ctx.scopeManager.define(paramName, new Variable(
                 paramName, ctx.scopeManager.getFullName(paramName), ctx.fileName,
-                type, AddressType.STACK, stackParameterNow,
+                type, AddressType.STACK, stackParameterNow, config.accessControl,
             ), node);
             stackParameterNow += getInStackSize(type.length);
         }
@@ -112,6 +115,7 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
             ctx.scopeManager.define(paramName, new Variable(
                 paramName, ctx.scopeManager.getFullName(paramName), ctx.fileName,
                 type, AddressType.LOCAL, ctx.memory.allocLocal(type.toWType(), true),
+                AccessControl.Public,
             ), node);
         }
     }

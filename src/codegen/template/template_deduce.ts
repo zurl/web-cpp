@@ -1,9 +1,10 @@
-import {InternalError, SyntaxError} from "../../common/error";
+import {InternalError} from "../../common/error";
 import {Type} from "../../type";
 import {ArrayType, LeftReferenceType, PointerType, ReferenceType, RightReferenceType} from "../../type/compound_type";
 import {FunctionType} from "../../type/function_type";
-import {FunctionTemplate, TemplateParameterPlaceHolderType} from "../../type/template_type";
+import {TemplateParameterPlaceHolderType} from "../../type/template_type";
 import {EvaluatedTemplateArgument} from "./template_argument";
+import {FunctionTemplate} from "../../common/template";
 
 export function deduceFunctionTypeOfTemplate(type: Type,
                                              params: EvaluatedTemplateArgument[]): Type {

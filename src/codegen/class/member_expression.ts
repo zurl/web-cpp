@@ -5,7 +5,6 @@ import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {LeftReferenceType, ReferenceType} from "../../type/compound_type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
-import {ClassTemplate} from "../../type/template_type";
 import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";

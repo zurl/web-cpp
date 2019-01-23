@@ -1,7 +1,7 @@
 import {SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
+import {TemplateParameter} from "../../common/template";
 import {Type} from "../../type";
-import {TemplateParameter} from "../../type/template_type";
 import {CompileContext} from "../context";
 import {Declarator} from "../declaration/declarator";
 import {SpecifierList} from "../declaration/specifier_list";

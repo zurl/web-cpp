@@ -2,7 +2,7 @@ import {InternalError, SyntaxError} from "../../common/error";
 import {ClassDirective, SourceLocation} from "../../common/node";
 import {ClassType} from "../../type/class_type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
-import {ClassTemplate, FunctionTemplate, TemplateParameterPlaceHolderType} from "../../type/template_type";
+import {TemplateParameterPlaceHolderType} from "../../type/template_type";
 import {ClassSpecifier} from "../class/class_specifier";
 import {CompileContext} from "../context";
 import {ParameterDeclaration} from "../function/parameter_declaration";
@@ -10,6 +10,8 @@ import {FunctionDefinition} from "../function/function_definition";
 import {getShortName} from "../scope";
 import {deduceFunctionTemplateParameters} from "./template_deduce";
 import {TemplateParameterDeclaration, TypeParameter} from "./type_parameter";
+import {ClassTemplate, FunctionTemplate} from "../../common/template";
+import {AccessControl} from "../../type";
 
 export class TemplateDeclaration extends ClassDirective {
     public decl: ClassSpecifier | FunctionDefinition;
@@ -64,6 +66,7 @@ export class TemplateDeclaration extends ClassDirective {
             throw new InternalError(`public declareFunctionTemplate(ctx: CompileContext): void {`);
         }
         const savedContext = ctx.scopeManager.currentContext;
+        const classType = savedContext.scope.classType;
         ctx.scopeManager.enterUnnamedScope(true);
         this.loadTemplateParameters(ctx);
         const config = this.decl.getFunctionConfig(ctx);
@@ -74,11 +77,11 @@ export class TemplateDeclaration extends ClassDirective {
             this.args.map((x) => x.getTemplateParameter(ctx)),
             this.decl,
             savedContext,
+            classType ? classType.accessControl : AccessControl.Public,
         );
         ctx.scopeManager.detachCurrentScope();
         ctx.scopeManager.exitScope();
-        ctx.scopeManager.define(realName, functionTemplate, this);
-        ctx.scopeManager.exitScope();
+        ctx.scopeManager.define(functionTemplate.getIndexName(), functionTemplate, this);
     }
 
     public declareClassTemplateSpecialization(ctx: CompileContext): void {
@@ -90,9 +93,10 @@ export class TemplateDeclaration extends ClassDirective {
         if (!(this.decl instanceof ClassSpecifier)) {
             throw new InternalError(` public declareClassTemplate(ctx: CompileContext): void `);
         }
+        const savedContext = ctx.scopeManager.currentContext;
+        const classType = savedContext.scope.classType;
         ctx.scopeManager.enterUnnamedScope(true);
         this.loadTemplateParameters(ctx);
-        const savedContext = ctx.scopeManager.currentContext;
         const realName = this.decl.identifier.getShortName(ctx);
         const fullName = this.decl.identifier.getFullName(ctx);
         const classTemplate = new ClassTemplate(
@@ -100,11 +104,11 @@ export class TemplateDeclaration extends ClassDirective {
             this.args.map((x) => x.getTemplateParameter(ctx)),
             this.decl,
             savedContext,
+            classType ? classType.accessControl : AccessControl.Public,
         );
         ctx.scopeManager.detachCurrentScope();
         ctx.scopeManager.exitScope();
         ctx.scopeManager.define(realName, classTemplate, this);
-        ctx.scopeManager.exitScope();
     }
 
     public codegen(ctx: CompileContext): void {

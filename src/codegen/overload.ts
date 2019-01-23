@@ -6,12 +6,12 @@
 import {SyntaxError} from "../common/error";
 import {Node} from "../common/node";
 import {FunctionEntity} from "../common/symbol";
+import {FunctionTemplate} from "../common/template";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {PointerType, ReferenceType} from "../type/compound_type";
 import {FunctionType} from "../type/function_type";
 import {PrimitiveTypes} from "../type/primitive_type";
-import {FunctionTemplate} from "../type/template_type";
 import {CompileContext} from "./context";
 import {FunctionLookUpResult} from "./scope";
 import {instantiateFunctionTemplate} from "./template/function_template_instantiation";

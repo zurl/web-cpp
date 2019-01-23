@@ -586,7 +586,7 @@ TypeName
 
 NewDeclarator
     = pointer:Pointer declarator:(_ DirectNewDeclarator)? {
-        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
+        return new AST.PointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
     }
     / declarator:DirectNewDeclarator {
         return declarator;
@@ -594,7 +594,7 @@ NewDeclarator
 
 AbstractDeclarator
     = pointer:Pointer declarator:(_ DirectAbstractDeclarator)? {
-        return new AST.AbstractPointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
+        return new AST.PointerDeclarator(getLocation(), null, pointer, extractOptional(declarator, 1));
     }
     / declarator:DirectAbstractDeclarator {
         return declarator;
@@ -624,7 +624,7 @@ DirectNewDeclaratorElement
     = '[' _ length:AssignmentExpression? _ &!']' {
         return {
             location: getLocation(),
-            type: AST.AbstractArrayDeclarator,
+            type: AST.ArrayDeclarator,
             arguments: [false, [], length, false]
         };
     }
@@ -633,7 +633,7 @@ DirectAbstractDeclaratorElement
     = '(' _ parameters:ParameterList? _ ')' {
         return {
             location: getLocation(),
-            type: AST.AbstractFunctionDeclarator,
+            type: AST.FunctionDeclarator,
             arguments: [parameters || new AST.ParameterList(getLocation())]
         }
     }

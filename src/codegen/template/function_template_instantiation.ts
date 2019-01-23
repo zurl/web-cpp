@@ -1,17 +1,17 @@
 import {InternalError, SyntaxError} from "../../common/error";
-import {ClassDirective, SourceLocation} from "../../common/node";
-import {Node} from "../../common/node";
+import {ClassDirective, Node, SourceLocation} from "../../common/node";
 import {AddressType, FunctionEntity, Variable} from "../../common/symbol";
+import {FunctionTemplate} from "../../common/template";
 import {AccessControl, Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {FunctionType, UnresolvedFunctionOverloadType} from "../../type/function_type";
-import {FunctionTemplate} from "../../type/template_type";
 import {CompileContext} from "../context";
 import {Declarator} from "../declaration/declarator";
 import {SpecifierList} from "../declaration/specifier_list";
-import {defineFunction} from "../function/function";
+import {defineFunction, FunctionConfig} from "../function/function";
 import {EvaluatedTemplateArgument} from "./template_argument";
 import {deduceFunctionTemplateParameters, deduceFunctionTypeOfTemplate} from "./template_deduce";
+
 export class FunctionTemplateInstantiation extends ClassDirective {
     public specifiers: SpecifierList;
     public declarator: Declarator;
@@ -76,16 +76,25 @@ export function instantiateFunctionTemplate(ctx: CompileContext,
             ctx.scopeManager.define(name, new Variable(
                 name, ctx.scopeManager.getFullName(name), ctx.fileName,
                 funcTemplate.templateParams[i].type, AddressType.CONSTANT, arg,
+                AccessControl.Public,
             ), node);
         }
     }
-    funcTemplate.functionConfig.name = instanceName;
     let funcBody = funcTemplate.functionBody.body.body;
     const spec = funcTemplate.specializationMap.get(signature);
     if (spec) {
         funcBody = spec.body.body;
     }
-    defineFunction(ctx, funcTemplate.functionConfig, funcBody, node);
+    const functionConfig: FunctionConfig = {
+        name: instanceName,
+        functionType: type,
+        parameterNames: funcTemplate.functionConfig.parameterNames,
+        parameterInits: funcTemplate.functionConfig.parameterInits,
+        isLibCall: funcTemplate.functionConfig.isLibCall,
+        accessControl: funcTemplate.functionConfig.accessControl,
+        activeScopes: [ctx.scopeManager.currentContext.scope],
+    };
+    defineFunction(ctx, functionConfig, funcBody, node);
     ctx.scopeManager.currentContext.scope.children.map((scope) =>
         ctx.scopeManager.currentContext.scope.parent.children.push(scope));
     ctx.scopeManager.detachCurrentScope();

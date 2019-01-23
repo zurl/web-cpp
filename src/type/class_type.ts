@@ -4,22 +4,15 @@
  *  Created at 05/08/2018
  */
 
-import {WAddressHolder} from "../codegen/address";
 import {CompileContext} from "../codegen/context";
 import {ObjectInitializer} from "../codegen/declaration/object_initializer";
-import {AnonymousExpression} from "../codegen/expression/anonymous_expression";
-import {AssignmentExpression} from "../codegen/expression/assignment_expression";
 import {Expression} from "../codegen/expression/expression";
 import {FunctionLookUpResult} from "../codegen/scope";
-import {ExpressionStatement} from "../codegen/statement/expression_statement";
 import {InternalError} from "../common/error";
-import {Node} from "../common/node";
-import {AddressType, Variable} from "../common/symbol";
+import {Variable} from "../common/symbol";
 import {WType} from "../wasm";
-import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../wasm/expression";
 import {AccessControl, Type} from "./index";
-import {PrimitiveTypes} from "./primitive_type";
-import {ClassTemplate} from "./template_type";
+import {ClassTemplate} from "../common/template";
 
 export interface ClassField {
     name: string;

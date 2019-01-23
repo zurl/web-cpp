@@ -59,6 +59,7 @@ export class ConstructorDeclaration extends ClassDirective {
             parameterInits,
             accessControl,
             isLibCall: false,
+            activeScopes: [],
         };
     }
 
