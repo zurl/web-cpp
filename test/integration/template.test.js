@@ -108,19 +108,20 @@ class Foo{
         int getSize(){
             return sizeof(T) + sizeof(U);
         }
+        
+        int getY(){
+            return Y;
+        }
     };
     
     int getSize(){
         return sizeof(T);
     }
-    int getY(){
-        return Y;
-    }
 };
 
 int main(){
     Foo<double>::Goo<int> f1;
-    Foo<double>::Goo<int> f2;
+    Foo<double, 8>::Goo<int> f2;
     Foo<char, 12>::Goo<int> f3;
     printf("%d %d,", f1.getSize(), f1.getY());
     printf("%d %d,", f2.getSize(), f2.getY());
@@ -128,7 +129,7 @@ int main(){
     return 0;
 }
         `;
-        const expectOutput = `4 4,8 4,1 12,`;
-        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+        const expectOutput = `12 4,12 8,5 12,`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true, debug: true});
     });
 });

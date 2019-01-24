@@ -388,7 +388,7 @@ export class ScopeManager {
     public enterUnnamedScope(anonymous: boolean) {
         const newScope = new Scope("$" + this.scopeId++ , this.currentContext.scope, this.isCpp);
         if (anonymous) {
-            newScope.fullName = this.currentContext.scope.parent.fullName;
+            newScope.fullName = this.currentContext.scope.fullName;
         }
         newScope.isInnerScope = true;
         this.currentContext.scope.children.push(newScope);

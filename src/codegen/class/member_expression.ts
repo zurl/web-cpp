@@ -51,7 +51,8 @@ export class MemberExpression extends Expression {
         const item = left.type.getMember(ctx, memberName);
 
         if ( item === null ) {
-            throw new SyntaxError(`name ${this.member.name} is not on class ${left.type.shortName}`, this);
+            throw new SyntaxError(`name ${this.member.getLookupName(ctx)} is not on class `
+                + `${left.type.shortName}`, this);
         } else if (item instanceof Variable) {
             // static field
             return {

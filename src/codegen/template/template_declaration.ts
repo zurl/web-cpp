@@ -112,6 +112,9 @@ export class TemplateDeclaration extends ClassDirective {
     }
 
     public codegen(ctx: CompileContext): void {
+        if (ctx.scopeManager.currentContext.scope.classType) {
+            return; // skip in class
+        }
         if (this.args.length === 0) {
             if (this.decl instanceof ClassSpecifier) {
                 this.declareClassTemplateSpecialization(ctx);
@@ -143,8 +146,20 @@ export class TemplateDeclaration extends ClassDirective {
     }
 
     public declare(ctx: CompileContext, classType: ClassType): void {
-        // TODO::
-        throw new InternalError(`todo`);
+        if (this.args.length === 0) {
+            if (this.decl instanceof ClassSpecifier) {
+                this.declareClassTemplateSpecialization(ctx);
+            } else {
+                throw new InternalError(`todo`);
+            }
+            return;
+        } else {
+            if (this.decl instanceof ClassSpecifier) {
+                this.declareClassTemplate(ctx);
+            } else {
+                throw new InternalError(`todo`);
+            }
+        }
     }
 
 }

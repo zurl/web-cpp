@@ -30,7 +30,7 @@ export interface FunctionConfig {
 export function createFunctionEntity(ctx: CompileContext, config: FunctionConfig, isDefine: boolean): FunctionEntity {
     const baseName = getShortName(config.name);
     const shortName = baseName + "@" + config.functionType.toMangledName();
-    const fullName = ctx.scopeManager.getFullName(config.name) + "@" + config.functionType.toMangledName();
+    const fullName = ctx.scopeManager.currentContext.scope.fullName + "::" + shortName;
     return new FunctionEntity(shortName, fullName, ctx.fileName,
         config.functionType, config.parameterInits, config.isLibCall, isDefine, config.accessControl,
         ctx.scopeManager.currentContext.activeScopes);

@@ -1,8 +1,9 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
 import {Variable} from "../../common/symbol";
-import {ClassTemplate} from "../../common/template";
+import {ClassTemplate, FunctionTemplate} from "../../common/template";
 import {Type} from "../../type";
+import {ClassType} from "../../type/class_type";
 import {UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
@@ -95,6 +96,20 @@ export class Identifier extends Expression {
         }
     }
 
+    public fillInBlank(ctx: CompileContext, args: TemplateArgument[],
+                       template: FunctionTemplate | ClassTemplate) {
+        const templateArguments = args.map((x) => x.evaluate(ctx));
+        while (templateArguments.length < template.templateParams.length) {
+            const init = template.templateParams[templateArguments.length].init;
+            if (init !== null) {
+                templateArguments.push(init);
+            } else {
+                throw new SyntaxError(`template number mismatch of template ${template.shortName}`, this);
+            }
+        }
+        return templateArguments;
+    }
+
     public getLookupName(ctx: CompileContext): string {
         let fullName = "";
         if (this.isFullName) {
@@ -107,9 +122,26 @@ export class Identifier extends Expression {
             fullName += this.name[i].name;
             if (i !== this.name.length - 1 &&
                 (this.name[i].type === IDType.T_FUNC_INS || this.name[i].type === IDType.T_CLASS_INS)) {
-                fullName += "<" + this.name[i].args
-                    .map((x) => x.evaluate(ctx))
-                    .join(",") + ">";
+                const templateName = new Identifier(this.location, this.name.slice(0, i + 1), this.isFullName)
+                    .getLookupName(ctx);
+                const templateItem = ctx.scopeManager.lookup(templateName);
+                if (!templateItem) {
+                    throw new SyntaxError(`undefined template name ${fullName}`, this);
+                }
+                if (this.name[i].type === IDType.T_FUNC_INS) {
+                    throw new SyntaxError(`illegal function template name ${fullName}`, this);
+                } else {
+                    if (!(templateItem instanceof ClassTemplate)) {
+                        throw new SyntaxError(`${fullName} is not class template name`, this);
+                    }
+                    const templateArguments = this.fillInBlank(ctx, this.name[i].args, templateItem);
+                    const realName = templateName + "<" + templateArguments.join(",") + ">";
+                    const item = ctx.scopeManager.lookup(realName);
+                    if (!item) {
+                        instantiateClassTemplate(ctx, templateItem, templateArguments, this);
+                    }
+                    fullName = realName;
+                }
             }
         }
         return fullName;
@@ -151,30 +183,7 @@ export class Identifier extends Expression {
         }
     }
 
-    public instantiateIfNotExist(ctx: CompileContext) {
-        for (let i = 0; i < this.name.length; i++) {
-            if (this.name[i].type === IDType.T_CLASS_INS) {
-                const templateName = new Identifier(this.location, this.name.slice(0, i + 1), this.isFullName)
-                    .getLookupName(ctx);
-                const realName = templateName + "<" + this.name[i].args
-                    .map((x) => x.evaluate(ctx))
-                    .join(",") + ">";
-                const item = ctx.scopeManager.lookup(realName);
-                if (!item) {
-                    const templateItem = ctx.scopeManager.lookup(templateName);
-                    if (!templateItem || !(templateItem instanceof ClassTemplate)) {
-                        throw new SyntaxError(`${templateName} is not a class template`, this);
-                    }
-                    instantiateClassTemplate(ctx, templateItem,
-                        this.name[i].args.map((x) => x.evaluate(ctx)), this);
-                }
-            }
-        }
-    }
-
     public deduceType(ctx: CompileContext): Type {
-        // TODO::
-        // this.instantiateIfNotExist(ctx);
         const lookupName = this.getLookupName(ctx);
         const rawItem = ctx.scopeManager.lookup(lookupName);
         if (!rawItem) {
@@ -210,21 +219,17 @@ export class Identifier extends Expression {
             throw new SyntaxError(`name ${lookupName} is a class template`, this);
         } else if (this.getLastID().type === IDType.T_CLASS_INS) {
             if (rawItem instanceof ClassTemplate) {
-                const templateArguments = this.getLastID().args.map((x) => x.evaluate(ctx));
-                while (templateArguments.length < rawItem.templateParams.length) {
-                    const init = rawItem.templateParams[templateArguments.length].init;
-                    if (init !== null) {
-                        templateArguments.push(init);
-                    } else {
-                        throw new SyntaxError(`template number mismatch of template ${rawItem.shortName}`, this);
-                    }
+                const templateArguments = this.fillInBlank(ctx, this.getLastID().args, rawItem);
+                const realName = lookupName + "<" + templateArguments.join(",") + ">";
+                const item = ctx.scopeManager.lookup(realName);
+                if (!item) {
+                    return instantiateClassTemplate(ctx, rawItem, templateArguments, this);
                 }
-                const signature = templateArguments.map((x) => x.toString()).join(",");
-                const classType = rawItem.instanceMap.get(signature);
-                if (classType) {
-                    return classType;
+                if (!(item instanceof ClassType)) {
+                    throw new SyntaxError(`name ${lookupName} should be class template`
+                        + ` but it is a ${rawItem.constructor.name}`, this);
                 }
-                return instantiateClassTemplate(ctx, rawItem, templateArguments, this);
+                return item;
             } else {
                 throw new SyntaxError(`name ${lookupName} should be template function`
                     + ` but it is a ${rawItem.constructor.name}`, this);
@@ -232,16 +237,4 @@ export class Identifier extends Expression {
         }
         throw new InternalError(`unreachable`);
     }
-}
-
-function getTextFromIDType(idtype: IDType): string {
-    switch (idtype) {
-        case IDType.ID: return "variable";
-        case IDType.TYPE: return "type";
-        case IDType.T_FUNC: return "function template";
-        case IDType.T_FUNC_INS: return "function instance";
-        case IDType.T_CLASS: return "class template";
-        case IDType.T_CLASS_INS: return "class instance";
-    }
-    return "";
 }

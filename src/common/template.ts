@@ -60,7 +60,6 @@ export class ClassTemplate extends Symbol {
     public fileName: string;
     public templateParams: TemplateParameter[];
     public classBody: ClassSpecifier;
-    public instanceMap: Map<string, ClassType>;
     public specializationMap: Map<string, ClassSpecifier>;
     public scopeContext: ScopeContext;
     constructor(shortName: string, fullName: string, fileName: string,
@@ -72,7 +71,6 @@ export class ClassTemplate extends Symbol {
         this.shortName = shortName;
         this.fileName = fileName;
         this.fullName = fullName;
-        this.instanceMap = new Map<string, ClassType>();
         this.specializationMap = new Map<string, ClassSpecifier>();
         this.scopeContext = scopeContext;
     }
