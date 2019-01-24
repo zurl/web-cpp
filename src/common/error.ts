@@ -4,7 +4,7 @@
  *  Created at 16/06/2018
  */
 
-import {Node, Position, SourceLocation} from "./Node";
+import {Node, Position, SourceLocation} from "./node";
 
 export class FatalError extends Error {
 }

@@ -6,7 +6,7 @@
 import {SourceMapConsumer} from "source-map";
 import {Scope} from "../codegen/scope";
 import {EmitError} from "../common/error";
-import {SourceLocation} from "../common/Node";
+import {SourceLocation} from "../common/node";
 import {SourceMap} from "../common/object";
 import {WType} from "./constant";
 import {writeLeb128Int, writeLeb128Uint} from "./leb128";
@@ -214,7 +214,7 @@ export class WASMEmitter implements Emitter {
         if (this.sourceMap && loc && loc.start.line >= 1) {
             if (!this.lastFile || loc.fileName !== this.lastFile) {
                 this.lastFile = loc.fileName;
-                if ( this.sourceMap.has(this.lastFile)) {
+                if ( this.sourceMap.has(this.lastFile!)) {
                     const item = this.sourceMap!.get(this.lastFile)!;
                     this.sourceMapItem = item;
                     this.source = item.source;

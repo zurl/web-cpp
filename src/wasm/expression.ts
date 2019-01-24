@@ -5,7 +5,7 @@
  */
 import * as Long from "long";
 import {EmitError} from "../common/error";
-import {SourceLocation} from "../common/Node";
+import {SourceLocation} from "../common/node";
 import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "./calculator";
 import {
     BinaryOperator,

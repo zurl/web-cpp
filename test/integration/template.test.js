@@ -96,7 +96,6 @@ int main(){
         const expectOutput = `4 4,8 4,1 12,`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
-    /*
     it('test class template inside class template', async function () {
         const testCode = `
 #include <stdio.h>
@@ -131,5 +130,5 @@ int main(){
         `;
         const expectOutput = `4 4,8 4,1 12,`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
-    });*/
+    });
 });
