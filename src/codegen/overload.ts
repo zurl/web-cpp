@@ -136,10 +136,12 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
         const mockFunctionType = new FunctionType(PrimitiveTypes.void, templateArgus, false);
         const params = deduceFunctionTemplateParameters(item, mockFunctionType, funcs.templateArguments, true);
         if (params !== null) {
-            // apply instance creation
-            instantiateFunctionTemplate(ctx, item, params, node);
             const signature = params.map((x) => x.toString()).join(",");
-            return item.instanceMap.get(signature)!;
+            if (!item.instanceMap.get(signature)) {
+                // apply instance creation
+                instantiateFunctionTemplate(ctx, item, params, node);
+                return item.instanceMap.get(signature)!;
+            }
         }
     }
 

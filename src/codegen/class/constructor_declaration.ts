@@ -43,8 +43,8 @@ export class ConstructorDeclaration extends ClassDirective {
 
     public getFunctionConfig(ctx: CompileContext, classType: ClassType, accessControl: AccessControl): FunctionConfig {
         const name = this.name.getPlainName(ctx);
-        if (classType.shortName.split("<")[0] !== name) {
-            throw new SyntaxError(`invaild ctor name ${name}`, this);
+        if (classType.shortName.split("<")[0] !== name.split("<")[0]) {
+            throw new SyntaxError(`invaild ctor name ${name.split("<")[0]}`, this);
         }
         const parameterTypes = [new PointerType(classType), ...this.param.getTypeList(ctx)];
         const parameterNames = ["this", ...this.param.getNameList(ctx)];

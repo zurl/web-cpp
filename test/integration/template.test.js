@@ -17,7 +17,7 @@ int main(){
     printf("%f", foo(1));
     printf("%f", foo<int>(1));
     printf("%f", foo<int, 8>(1));
-    printf("%f", foo<float, 8>(1.5));
+    printf("%f", foo<float, 8>(1.5f));
     return 0;
 }
         `;
@@ -36,7 +36,7 @@ int main(){
     printf("%f", foo(1));
     printf("%f", foo<int>(1));
     printf("%f", foo<int, 8>(1));
-    printf("%f", foo<float, 8>(1.5));
+    printf("%f", foo<float, 8>(1.5f));
     return 0;
 }
         `;
@@ -61,7 +61,7 @@ int main(){
     printf("%f", foo(1));
     printf("%f", foo<int>(1));
     printf("%f", foo<int, 8>(1));
-    printf("%f", foo<float, 8>(1.5));
+    printf("%f", foo<float, 8>(1.5f));
     printf("%f", foo<double, 12>(1.5));
     return 0;
 }

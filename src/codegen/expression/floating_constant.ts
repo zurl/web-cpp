@@ -28,7 +28,7 @@ export class FloatingConstant extends Constant {
     }
 
     public deduceType(ctx: CompileContext): Type {
-        if (this.suffix && this.suffix.toUpperCase() === "f") {
+        if (this.suffix && this.suffix.toUpperCase() === "F") {
             return PrimitiveTypes.float;
         } else {
             return PrimitiveTypes.double;
