@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/web-cpp/main.8d2f5044.css">
     <link rel="stylesheet" href="/web-cpp/material.indigo-pink.min.1dba2244.css">
     <script defer="" src="/web-cpp/material.min.f2ed4c87.js"></script>
-    <script defer="" src="/web-cpp/main.8160cebc.js"></script>
+    <script defer="" src="/web-cpp/main.afdbb10f.js"></script>
 </head>
 <body>
 <!-- Uses a header that scrolls with the text, rather than staying
@@ -16,11 +16,29 @@ locked at the top -->
     <header class="mdl-layout__header">
         <div class="mdl-layout__header-row">
             <!-- Title -->
-            <span class="mdl-layout-title">C++ Compiler in Browser <span id="version-text"></span></span>
+            <span class="mdl-layout-title">
+                <span id="ui-title"> </span>
+                <span id="ui-version"> </span>
+            </span>
             <!-- Add spacer, to align navigation to the right -->
             <div class="mdl-layout-spacer"></div>
             <!-- Navigation -->
             <nav class="mdl-navigation" style="margin-right: 40px;">
+                <div class="nav-button">
+                    <button onclick="doFormat()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">format_align_left</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="doFileOpen()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">add</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="doFileDownload()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">get_app</i>
+                    </button>
+                </div>
                 <div class="nav-button">
                     <button onclick="run()" class="mdl-button mdl-js-button mdl-button--icon">
                         <i class="material-icons">play_arrow</i>
@@ -36,16 +54,22 @@ locked at the top -->
                         <i class="material-icons">save</i>
                     </button>
                 </div>
+                <div class="nav-button">
+                    <button onclick="document.getElementById('setting-dialog').showModal();" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">build</i>
+                    </button>
+                </div>
             </nav>
         </div>
     </header>
     <div class="mdl-layout__drawer">
-        <span class="mdl-layout-title">Title</span>
+        <span class="mdl-layout-title" id="ui-menu"> </span>
         <nav class="mdl-navigation">
-
-            <a class="mdl-navigation__link" href="">Link</a>
-            <a class="mdl-navigation__link" href="">Link</a>
-            <a class="mdl-navigation__link" href="">Link</a>
+            <a id="ui-run" class="mdl-navigation__link" onclick="run()"></a>
+            <a id="ui-save" class="mdl-navigation__link" onclick="doSave()"></a>
+            <a id="ui-file-open" class="mdl-navigation__link" onclick="doFileOpen()"></a>
+            <a id="ui-file-download" class="mdl-navigation__link" onclick="doFileDownload()"></a>
+            <a id="ui-setting" class="mdl-navigation__link" onclick="document.getElementById('setting-dialog').showModal();"></a>
         </nav>
     </div>
     <main class="mdl-layout__content">
@@ -64,9 +88,9 @@ int main(){
                     <div id="message-div">
                         <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
                             <div class="mdl-tabs__tab-bar" style="justify-content: left;">
-                                <a id="input-href" href="#input-panel" class="mdl-tabs__tab is-active">Input</a>
-                                <a id="output-href" href="#output-panel" class="mdl-tabs__tab">Output</a>
-                                <a id="message-href" href="#message-panel" class="mdl-tabs__tab">Message</a>
+                                <a id="ui-input" href="#input-panel" class="mdl-tabs__tab is-active"></a>
+                                <a id="ui-output" href="#output-panel" class="mdl-tabs__tab"></a>
+                                <a id="ui-message" href="#message-panel" class="mdl-tabs__tab"></a>
                             </div>
 
                             <div class="mdl-tabs__panel is-active" id="input-panel">
@@ -87,16 +111,16 @@ int main(){
                             <div class="right-card-title">
                                 <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="var-ins-switcter">
                                     <input type="checkbox" id="var-ins-switcter" class="mdl-switch__input">
-                                    <span class="mdl-switch__label">Variables Inspector</span>
+                                    <span class="mdl-switch__label" id="ui-inspector"></span>
                                 </label>
                             </div>
                             <div id="var-ins-content" class="right-card-content">
                                 <table id="right-table" class="fixed_header mdl-data-table">
                                     <thead>
                                     <tr>
-                                        <th>Key</th>
-                                        <th>Type</th>
-                                        <th>Value</th>
+                                        <th id="ui-key"></th>
+                                        <th id="ui-type"></th>
+                                        <th id="ui-value"></th>
                                     </tr>
                                     </thead>
                                     <tbody id="inspector-tbody">
@@ -109,6 +133,16 @@ int main(){
             </div>
         </div>
     </main>
+    <dialog class="mdl-dialog" id="setting-dialog">
+        <h4 class="mdl-dialog__title" id="ui-setting-title"></h4>
+        <div class="mdl-dialog__content" id="setting-dialog-body">
+
+        </div>
+        <div class="mdl-dialog__actions">
+            <button type="button" class="mdl-button" id="ui-setting-apply" onclick="applySetting()"></button>
+            <button type="button" class="mdl-button" id="ui-setting-discard" onclick="cancelSetting()"></button>
+        </div>
+    </dialog>
 </div>
 </body>
 </html>
