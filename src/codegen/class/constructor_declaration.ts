@@ -43,7 +43,7 @@ export class ConstructorDeclaration extends ClassDirective {
 
     public getFunctionConfig(ctx: CompileContext, classType: ClassType, accessControl: AccessControl): FunctionConfig {
         const name = this.name.getPlainName(ctx);
-        if (classType.shortName !== name) {
+        if (classType.shortName.split("<")[0] !== name) {
             throw new SyntaxError(`invaild ctor name ${name}`, this);
         }
         const parameterTypes = [new PointerType(classType), ...this.param.getTypeList(ctx)];
@@ -53,7 +53,7 @@ export class ConstructorDeclaration extends ClassDirective {
         functionType.cppFunctionType = CppFunctionType.Constructor;
         functionType.referenceClass = classType;
         return {
-            name: "#" + name,
+            name: "#" + classType.shortName,
             functionType,
             parameterNames,
             parameterInits,
@@ -68,12 +68,9 @@ export class ConstructorDeclaration extends ClassDirective {
     }
 
     public codegen(ctx: CompileContext) {
-        const classType = ctx.scopeManager.lookup(this.name.getLookupName(ctx));
+        const classType = ctx.scopeManager.currentContext.scope.classType;
         if (!classType) {
             throw new SyntaxError(`unresolved name ${this.name.getLookupName(ctx)}`, this);
-        }
-        if (!(classType instanceof ClassType)) {
-            throw new SyntaxError(`name ${this.name.getLookupName(ctx)} is not a class`, this);
         }
         const functionConfig = this.getFunctionConfig(ctx, classType, AccessControl.Unknown);
         if (this.body) {

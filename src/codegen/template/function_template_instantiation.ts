@@ -85,6 +85,7 @@ export function instantiateFunctionTemplate(ctx: CompileContext,
     if (spec) {
         funcBody = spec.body.body;
     }
+    type.isTemplateInstance = true;
     const functionConfig: FunctionConfig = {
         name: instanceName,
         functionType: type,

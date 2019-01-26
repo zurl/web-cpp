@@ -9,8 +9,12 @@ import {EvaluatedTemplateArgument} from "./template_argument";
 export function deduceFunctionTypeOfTemplate(type: Type,
                                              params: EvaluatedTemplateArgument[]): Type {
     if (type instanceof FunctionType) {
-        return new FunctionType(deduceFunctionTypeOfTemplate(type.returnType, params),
+        const result = new FunctionType(deduceFunctionTypeOfTemplate(type.returnType, params),
             type.parameterTypes.map((x) => deduceFunctionTypeOfTemplate(x, params)), type.variableArguments);
+        result.cppFunctionType = type.cppFunctionType;
+        result.referenceClass = type.referenceClass;
+        result.isVirtual = type.isVirtual;
+        return result;
     } else if (type instanceof PointerType) {
         return new PointerType(deduceFunctionTypeOfTemplate(type.elementType, params));
     } else if (type instanceof RightReferenceType) {

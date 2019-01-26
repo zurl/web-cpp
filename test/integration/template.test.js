@@ -96,6 +96,39 @@ int main(){
         const expectOutput = `4 4,8 4,1 12,`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
+    it('test class template template member function', async function () {
+        const testCode = `
+#include <stdio.h>
+
+template <typename T = int, int Y = 4>
+class Foo{
+public:
+    int x;
+    Foo(int g): x(g){}
+
+    template <typename U>
+    int getSize(U p){
+        return sizeof(T) + sizeof(U) + Y + x;
+    }
+    
+};
+
+int main(){
+    Foo f1(1);
+    Foo<double> f2(2);
+    Foo<char, 12> f3(3);
+    int a = 1;
+    char b = 2;
+    short c = 3;
+    printf("%d %d %d,", f1.getSize(a), f1.getSize(b), f1.getSize(c));
+    printf("%d %d %d,", f2.getSize(a), f2.getSize(b), f2.getSize(c));
+    printf("%d %d %d,", f3.getSize(a), f3.getSize(b), f3.getSize(c));
+    return 0;
+}
+        `;
+        const expectOutput = `13 10 11,18 15 16,20 17 18,`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
     it('test class template inside class template', async function () {
         const testCode = `
 #include <stdio.h>
@@ -130,6 +163,6 @@ int main(){
 }
         `;
         const expectOutput = `12 4,12 8,5 12,`;
-        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true, debug: true});
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
     });
 });

@@ -2,9 +2,27 @@ import * as Poly from 'babel-polyfill';
 import * as Ace from "./ace/ace";
 import * as AceTomorrow from "./ace/theme-tomorrow"
 import * as AceCCpp from "./ace/mode-c_cpp";
-import {version} from "./version";
+import * as AceBeatify from "./ace/ext-beautify";
+import * as FileUtil from "./file_util";
 import {updateInspector} from "./inspector";
-document.getElementById("version-text").innerText = "v" + version;
+import {getText, loadAllUIText} from "./ui_text";
+
+window.setting = {
+    "auto_save_interval": 30,
+    "language": 1,
+    "cpp": 1,
+    "expert": 0,
+};
+
+function loadSetting() {
+    // load setting from load storage'
+    const item = window.localStorage.getItem('setting');
+    if(item){
+        window.setting = item;
+    }
+}
+
+loadSetting();
 
 const editor = ace.edit("editor", {
     theme: "ace/theme/tomorrow",
@@ -24,8 +42,13 @@ document.getElementById("var-ins-switcter").addEventListener('change', function(
      }
 });
 
+function doFormat(){
+    const beautify = ace.require("ace/ext/beautify");
+    beautify.beautify(editor.session);
+}
+
 function selectDiv(divName) {
-    document.getElementById(`${divName}-href`).click();
+    document.getElementById(`ui-${divName}`).click();
 }
 
 const inputTA = document.getElementById("input-textarea");
@@ -36,7 +59,7 @@ const messageTA = document.getElementById("message-textarea");
 
 function showMessage(type, message){
     selectDiv("message");
-    messageTA.value += `[${type}] : ${message}\n`;
+    messageTA.value += `[${getText(type)}] : ${message}\n`;
     messageTA.scrollTop = 1000000;
 }
 
@@ -68,7 +91,7 @@ function reportError(errorJson){
 }
 
 async function downloadCompiler(){
-    showMessage("compiler", "downloading compiler");
+    showMessage("compiler", getText("download_message"));
     return await import("../../src/tools/compiler");
 }
 
@@ -194,7 +217,7 @@ async function run() {
         selectDiv("output");
         // todo::
         await runtime.run();
-        showMessage("runtime", "code return with code 0");
+        showMessage("runtime", getText("end_message"));
         selectDiv("output");
     }catch(e){
         processError(e, CompilerError);
@@ -205,14 +228,74 @@ async function run() {
 
 function doSave(){
     window.localStorage.setItem("code", editor.getValue());
+    selectDiv("message");
+    showMessage("editor", getText("save_message"));
 }
-window.run = run;
-window.runSingleStep = runSingleStep;
-window.doSave = doSave;
-window.aceeditor = editor;
 
-setInterval(doSave, 1000 * 15); // save per 15 seconds
+setInterval(doSave, 1000 * window.setting.auto_save_interval); // save per 30 seconds
 
 if( window.localStorage.getItem("code")){
     editor.setValue(window.localStorage.getItem("code"));
 }
+
+window.addEventListener('load', function(){
+    loadAllUIText();
+});
+
+
+const settingDialog = document.getElementById("setting-dialog");
+const settingDialogBody = document.getElementById("setting-dialog-body");
+const settings = [
+    {
+        type: 'toggle',
+        name: 'cpp',
+    },
+    {
+        type: 'toggle',
+        name: 'language',
+    },
+    {
+        type: 'toggle',
+        name: 'expert',
+    },
+];
+function generateSettings(){
+    settingDialogBody.innerHTML = settings.map((item) => {
+        return `
+        <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+          <span style="width: 60px;" id="ui-setting-${item.name}-left"></span>
+          <label style="width: auto;margin: 0 20px;" class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="switch-${item.name}">
+              <input type="checkbox" id="switch-${item.name}" class="mdl-switch__input" checked>
+          </label>
+          <span style="width: 60px;" id="ui-setting-${item.name}-right"></span>
+        </div>
+        `
+    }).join("\n");
+}
+generateSettings();
+function applySetting() {
+    Object.keys(window.setting).map((name) => {
+        const item = document.getElementById(`switch-${name}`);
+        if(item){
+            if(item.type === "checkbox"){
+                window.setting[name] = +item.checked;
+            }
+        }
+    });
+    window.localStorage.setItem('setting', window.setting);
+    settingDialog.close();
+    loadSetting();
+    loadAllUIText();
+}
+
+function cancelSetting() {
+    settingDialog.close();
+}
+
+window.run = run;
+window.runSingleStep = runSingleStep;
+window.doSave = doSave;
+window.aceeditor = editor;
+window.applySetting = applySetting;
+window.cancelSetting = cancelSetting;
+window.doFormat = doFormat;

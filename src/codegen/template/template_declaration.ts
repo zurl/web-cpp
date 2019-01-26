@@ -69,7 +69,9 @@ export class TemplateDeclaration extends ClassDirective {
         const classType = savedContext.scope.classType;
         ctx.scopeManager.enterUnnamedScope(true);
         this.loadTemplateParameters(ctx);
-        const config = this.decl.getFunctionConfig(ctx);
+        const config = classType === null ?
+            this.decl.getFunctionConfig(ctx) :
+            this.decl.getMemberFunctionConfig(ctx, classType);
         const realName = getShortName(config.name) + "@" + config.functionType.toMangledName();
         const fullName = ctx.scopeManager.getFullName(realName);
         const functionTemplate = new FunctionTemplate(
@@ -150,14 +152,14 @@ export class TemplateDeclaration extends ClassDirective {
             if (this.decl instanceof ClassSpecifier) {
                 this.declareClassTemplateSpecialization(ctx);
             } else {
-                throw new InternalError(`todo`);
+                this.declareFunctionTemplateSpecialization(ctx);
             }
             return;
         } else {
             if (this.decl instanceof ClassSpecifier) {
                 this.declareClassTemplate(ctx);
             } else {
-                throw new InternalError(`todo`);
+                this.declareFunctionTemplate(ctx);
             }
         }
     }

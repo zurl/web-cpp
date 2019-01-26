@@ -55,6 +55,8 @@ export class FunctionType extends Type {
     public variableArguments: boolean;
     public cppFunctionType: CppFunctionType;
     public referenceClass: ClassType | null;
+    public isTemplateInstance: boolean;
+
     constructor(returnType: Type, parameterTypes: Type[], variableArguments: boolean = false) {
         super();
         this.returnType = returnType;
@@ -63,6 +65,7 @@ export class FunctionType extends Type {
         this.cppFunctionType = CppFunctionType.Normal;
         this.isVirtual = false;
         this.referenceClass = null;
+        this.isTemplateInstance = false;
         for (let i = 0; i < this.parameterTypes.length; i++) {
             const ty = this.parameterTypes[i];
             if (ty instanceof ArrayType) {

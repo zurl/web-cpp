@@ -108,7 +108,8 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
 
     // 3. weak type match
 
-    const f3 = f1.filter((func) => doFunctionFilter(func, argus, funcs, doWeakTypeMatch));
+    const g0 = f1.filter((func) => !func.type.isTemplateInstance);
+    const f3 = g0.filter((func) => doFunctionFilter(func, argus, funcs, doWeakTypeMatch));
 
     if (f3.length >= 1) {
         if (f3.length > 1) {
@@ -129,9 +130,10 @@ export function doFunctionOverloadResolution(ctx: CompileContext,
         return f4[0];
     }
 
-    // 5. passive template instance
+    // 5. passive template instance\
+    const templateArgus = funcs.instanceType ? [new PointerType(funcs.instanceType), ...argus] : argus;
     for (const item of templates) {
-        const mockFunctionType = new FunctionType(PrimitiveTypes.void, argus, false);
+        const mockFunctionType = new FunctionType(PrimitiveTypes.void, templateArgus, false);
         const params = deduceFunctionTemplateParameters(item, mockFunctionType, funcs.templateArguments, true);
         if (params !== null) {
             // apply instance creation

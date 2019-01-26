@@ -46,14 +46,6 @@ cd ide
 parcel build index.html
 ```
 
-## Demo
-use `./cc` as local runtime (Node.js)
-
-```shell
-./cc run resource/testcodes/demo.cpp
-```
-
-
 # How to develop/extend
 
 Our Compiler is designed as a loosely coupled,
@@ -213,32 +205,31 @@ of WebAssembly.
 - [ ] cast overload， like if(object) { ... }
 - [not support by wasm] exception handling
 - [X] function template
-- [ ] member function template in class
-- [ ] class template
+- [X] member function template in class
+- [X] class template
 - [ ] const/override/virtual member function
 - [ ] typeinfo
 - [ ] static_cast / dynamic_cast / reinterpret_cast
-- [ ] mangled/demangled
+- [X] mangled/demangled
 - [ ] virtual inheriant
 - [ ] seperate define class function
 - [ ] operator new/ placement new
 - [ ] warning
 - [ ] using template
+- [ ] A a[50] decons
+- [X] template class in template class
+- [X] template member function
+- [ ] seperate delaration => to be test
+- [ ] id could not be keyword => special judge
+- [ ] subclass B A::a => set children?
+- [ ] class spec
+- [ ] explicit class ins
+
 ## ide
 - [ ] multi-language
 - [ ] config
 - [ ] help
 
-
-## temporary problems
-- [ ] A a[50] decons
-- [ ] template class in template class
-- [ ] template member function
-- [ ] seperate delaration
-- [ ] only declare template (template declar)
-- [ ] id could not be keyword
-- [ ] function lookup result not elegant
-- [ ] subclass B A::a
 
 ## Miscellaneous
 
