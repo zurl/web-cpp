@@ -83,6 +83,8 @@ export class WASMEmitter implements Emitter {
     public source?: string[];
     public sourceMapItem?: SourceMap;
 
+    public dumpInfo: string;
+
     constructor() {
         this.buffer = new ArrayBuffer(20000);
         this.view = new DataView(this.buffer);
@@ -95,6 +97,7 @@ export class WASMEmitter implements Emitter {
         this.dumpIndent = 0;
         this.lastLine = 0;
         this.funcTypeEncodingMap = new Map<string, number>();
+        this.dumpInfo = "";
     }
 
     public writeByte(byte: number): void {
@@ -202,7 +205,7 @@ export class WASMEmitter implements Emitter {
 
     public dumpSource(st: number, ed: number) {
         for (let i = st; i <= ed; i++) {
-            console.log("# " + this.source![i].trim());
+            this.dumpInfo += "# " + this.source![i].trim() + "\n";
         }
     }
 
@@ -243,7 +246,7 @@ export class WASMEmitter implements Emitter {
                 }
             }
         }
-        console.log(indent + str);
+        this.dumpInfo += indent + str + "\n";
     }
 
     public changeDumpIndent(delta: number): void {

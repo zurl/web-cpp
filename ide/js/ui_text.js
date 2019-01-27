@@ -76,10 +76,10 @@ const UI_TEXT = {
         "简体中文", "简体中文"
     ],
     "setting-expert-left":[
-        "normal", "普通"
+        "normal mode", "普通模式"
     ],
     "setting-expert-right":[
-        "expert", "专家"
+        "expert mode", "专家模式"
     ],
     "menu":[
         "Menu", "菜单"
@@ -103,6 +103,26 @@ const UI_TEXT = {
     "file-download":[
         "Download File",
         "下载文件"
+    ],
+    "expert-dialog-title":[
+        "Expert Mode",
+        "专家模式",
+    ],
+    "expert-switch":[
+        "Expert Mode Options",
+        "专家模式选项",
+    ],
+    "expert-dialog-close":[
+        "Close",
+        "关闭",
+    ],
+    "expert-asm-btn":[
+        "Show Web Assembly",
+        "显示汇编代码(WebAssembly)"
+    ],
+    "expert-pre-btn":[
+        "Show Preprocessed Code",
+        "显示预处理后的代码"
     ]
 };
 

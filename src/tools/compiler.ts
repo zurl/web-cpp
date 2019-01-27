@@ -15,6 +15,30 @@ import {CallbackOutputFile, StringInputFile} from "../runtime/vmfile";
  *  Created at 04/08/2018
  */
 
+export function getDebugSymbols(name: string, source: string, options: any = {}) {
+    options.fileName = name;
+    const {code, map} = preprocess(name, source);
+    try {
+        const translationUnit = CParser.parse(code, options);
+        const ctx = new CompileContext(name, options, source, map);
+        codegen(translationUnit, ctx);
+        const binary = link("main.cpp", [...precompiledObjects, ctx.toCompiledObject()], options);
+        return {
+            pre: code,
+            asm: binary.dumpInfo,
+        };
+    } catch (e) {
+        const sm = new SourceMapConsumer(map.toString());
+        if (e instanceof CompilerError) {
+            const newStart = sm.originalPositionFor(e.location.start);
+            e.errorLine = source.split("\n")[newStart.line];
+            e.location.start.line = newStart.line;
+            e.location.start.column = newStart.column;
+        }
+        throw e;
+    }
+}
+
 function compile(name: string, source: string, options: any = {}) {
     options.fileName = name;
     const {code, map} = preprocess(name, source);
@@ -38,8 +62,8 @@ const precompiledObjects = Array.from(Impls.keys()).map((x) => compile(x, Impls.
 
 // const LibraryObjects = precompileLibrarys();
 
-export function compileFile(sourceFileName: string, source: string): BinaryObject {
-    const object = compile(sourceFileName, source, {isCpp: true});
+export function compileFile(sourceFileName: string, source: string, isCpp: boolean = true): BinaryObject {
+    const object = compile(sourceFileName, source, {isCpp});
     const binary = link("main.cpp", [...precompiledObjects, object], {});
     return binary;
 }

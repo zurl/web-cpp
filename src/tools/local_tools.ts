@@ -42,6 +42,7 @@ export function loadBinaryFile(fileName: string): BinaryObject {
         heapStart,
         fileName,
         json,
+        dumpInfo: "",
         scope: new Scope("", null, true),
     };
 }

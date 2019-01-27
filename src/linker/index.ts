@@ -161,10 +161,12 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     jsonEmitter.sourceMap = sourceMap;
     mod.emitJSON(jsonEmitter);
 
+    let dumpInfo = "";
     if (option.debug) {
         const dumper = new WASMEmitter();
         dumper.sourceMap = sourceMap;
         mod.dump(dumper);
+        dumpInfo = dumper.dumpInfo;
     }
 
     const heapStart = (parseInt((bssNow + 1) / 4 as any) + 1) * 4;
@@ -177,5 +179,6 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         scope,
         binary: emitter.buffer.slice(0, emitter.now),
         json: jsonEmitter.getJSON(),
+        dumpInfo,
     };
 }

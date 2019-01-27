@@ -116,7 +116,7 @@ of WebAssembly.
 - [X] 0.4 Classic C with class support
 - [X] 0.5 With interpreter runtime
 - [X] 0.6 With function template
-- [ ] 0.7 With class template
+- [X] 0.7 With class template
 - [ ] 0.8 With std library (some)
 
 ## C language
@@ -202,33 +202,39 @@ of WebAssembly.
 - [X] using
 - [X] namespace
 - [X] virtual member function
-- [ ] cast overload， like if(object) { ... }
 - [not support by wasm] exception handling
 - [X] function template
 - [X] member function template in class
 - [X] class template
-- [ ] const/override/virtual member function
-- [ ] typeinfo
-- [ ] static_cast / dynamic_cast / reinterpret_cast
 - [X] mangled/demangled
-- [ ] virtual inheriant
-- [ ] seperate define class function
-- [ ] operator new/ placement new
-- [ ] warning
-- [ ] using template
-- [ ] A a[50] decons
 - [X] template class in template class
 - [X] template member function
-- [ ] seperate delaration => to be test
-- [ ] id could not be keyword => special judge
-- [ ] subclass B A::a => set children?
-- [ ] class spec
-- [ ] explicit class ins
 
+## TODO LIST
+    High
+- [ ] cast overload， like if(object) { ... }
+- [ ] const/override/virtual member function
+- [ ] warning
+- [ ] class specialization
+- [ ] using template
+- [ ] A a[50] decons
+- [ ] subclass B A::a => set children?
+- [ ] explicit class ins
+- [ ] C std lib
+- [ ] C++ std lib
+
+    Other
+- [ ] seperate define class function
+- [ ] seperate delaration => to be test
+- [ ] operator new/ placement new
+- [ ] id could not be keyword => special judge
+- [ ] typeinfo
+- [ ] static_cast / dynamic_cast / reinterpret_cast
+- [ ] virtual inheriant
 ## ide
-- [ ] multi-language
-- [ ] config
-- [ ] help
+- [X] multi-language
+- [X] config
+- [X] help
 
 
 ## Miscellaneous

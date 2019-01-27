@@ -3552,6 +3552,11 @@ math-expression-evaluator@^1.2.14:
   resolved "https://registry.yarnpkg.com/math-expression-evaluator/-/math-expression-evaluator-1.2.17.tgz#de819fdbcd84dccd8fae59c6aeb79615b9d266ac"
   integrity sha1-3oGf282E3M2PrlnGrreWFbnSZqw=
 
+math@^0.0.3:
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/math/-/math-0.0.3.tgz#85b020fd54ce10b26abeabfcd7e1f4bdbc46470f"
+  integrity sha1-hbAg/VTOELJqvqv81+H0vbxGRw8=
+
 md5-hex@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/md5-hex/-/md5-hex-2.0.0.tgz#d0588e9f1c74954492ecd24ac0ac6ce997d92e33"

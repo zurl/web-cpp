@@ -14,11 +14,18 @@ window.setting = {
     "expert": 0,
 };
 
+const expert_parent = document.getElementById('expert-parent');
+
 function loadSetting() {
     // load setting from load storage'
     const item = window.localStorage.getItem('setting');
     if(item){
-        window.setting = item;
+        window.setting = JSON.parse(item);
+    }
+    if(window.setting.expert){
+        expert_parent.style.display = "block";
+    } else {
+        expert_parent.style.display = "none";
     }
 }
 
@@ -40,7 +47,17 @@ document.getElementById("var-ins-switcter").addEventListener('change', function(
      } else {
          var_ins_content.style.height = "0";
      }
+
 });
+const expert_content = document.getElementById("expert-content");
+document.getElementById("expert-switcter").addEventListener('change', function(e){
+    if(e.target.checked){
+        expert_content.style.height = "400px";
+    } else {
+        expert_content.style.height = "0";
+    }
+});
+
 
 function doFormat(){
     const beautify = ace.require("ace/ext/beautify");
@@ -115,6 +132,9 @@ function processError(e, CompilerError){
         showMessage("error", e.toString());
     }
     reportError(errorjson);
+    if(window.setting.expert){
+        throw e;
+    }
 }
 let compiler = null;
 let singleRuntime = null;
@@ -132,7 +152,7 @@ async function runSingleStep(){
         outputTA.value = "";
         showMessage("compiler", "cc -o main main.cpp");
         try {
-            const obj = compileFile("main.cpp", editor.getValue());
+            const obj = compileFile("main.cpp", editor.getValue(), window.setting.cpp);
             if (obj == null) {
                 showMessage("runtime", "no compiled object");
                 return;
@@ -159,6 +179,7 @@ async function runSingleStep(){
             markerId = editor.getSession().addMarker(new Range(line, 0, line, 3000), "current-line", "fullLine", true);
             updateInspector(singleRuntime);
         }catch(e){
+            isLock = false;
             console.log(CompilerError);
             processError(e, CompilerError);
         }
@@ -196,7 +217,7 @@ async function run() {
     outputTA.value = "";
     showMessage("compiler", "cc -o main main.cpp");
     try {
-        const obj = compileFile("main.cpp", editor.getValue());
+        const obj = compileFile("main.cpp", editor.getValue(), window.setting.cpp);
         if (obj == null) {
             showMessage("runtime", "no compiled object");
             return;
@@ -220,11 +241,34 @@ async function run() {
         showMessage("runtime", getText("end_message"));
         selectDiv("output");
     }catch(e){
+        isLock = false;
         processError(e, CompilerError);
     }
     isLock = false;
 }
 
+
+async function getDebugInfo() {
+    if(isLock) return;
+    isLock = true;
+    if(!compiler){
+        compiler = await downloadCompiler();
+    }
+    const {getDebugSymbols, CompilerError} = compiler;
+    outputTA.value = "";
+    showMessage("compiler", "cc -o main main.cpp");
+    try {
+        isLock = false;
+        return getDebugSymbols("main.cpp", editor.getValue(), {
+            isCpp: window.setting.cpp,
+            debug: true,
+        });
+    }catch(e){
+        isLock = false;
+        processError(e, CompilerError);
+    }
+    isLock = false;
+}
 
 function doSave(){
     window.localStorage.setItem("code", editor.getValue());
@@ -265,7 +309,8 @@ function generateSettings(){
         <div style="display: flex; justify-content: space-between; padding: 10px 0;">
           <span style="width: 60px;" id="ui-setting-${item.name}-left"></span>
           <label style="width: auto;margin: 0 20px;" class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="switch-${item.name}">
-              <input type="checkbox" id="switch-${item.name}" class="mdl-switch__input" checked>
+              <input type="checkbox" id="switch-${item.name}" class="mdl-switch__input" 
+              ${window.setting[item.name] ? "checked" : ""}>
           </label>
           <span style="width: 60px;" id="ui-setting-${item.name}-right"></span>
         </div>
@@ -282,14 +327,22 @@ function applySetting() {
             }
         }
     });
-    window.localStorage.setItem('setting', window.setting);
-    settingDialog.close();
+    window.localStorage.setItem('setting', JSON.stringify(window.setting));
     loadSetting();
     loadAllUIText();
+    settingDialog.close();
 }
 
 function cancelSetting() {
     settingDialog.close();
+}
+const expertDialog = document.getElementById("expert-dialog");
+const expertDialogBody = document.getElementById("expert-dialog-ta");
+async function showDebugInfo(type){
+    const info = await getDebugInfo();
+    const txt = info[type];
+    expertDialogBody.innerHTML = txt;
+    expertDialog.showModal()
 }
 
 window.run = run;
@@ -299,3 +352,4 @@ window.aceeditor = editor;
 window.applySetting = applySetting;
 window.cancelSetting = cancelSetting;
 window.doFormat = doFormat;
+window.showDebugInfo = showDebugInfo;

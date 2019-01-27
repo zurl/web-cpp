@@ -112,8 +112,8 @@ export class InitDeclarator extends Node {
             declareFunction(ctx, {
                 name: lookupName,
                 functionType: type,
-                parameterNames: functionDeclarator.parameters.getNameList(ctx),
-                parameterInits: functionDeclarator.parameters.getInitList(ctx),
+                parameterNames: [], // functionDeclarator.parameters.getNameList(ctx),
+                parameterInits: [], // functionDeclarator.parameters.getInitList(ctx),
                 accessControl: info.accessControl,
                 isLibCall: info.isLibCall,
             }, this);

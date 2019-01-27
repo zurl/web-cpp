@@ -226,8 +226,8 @@ export class JSRuntime extends Runtime {
             } else if (ins[0] === I64.store16) { this.memory.setUint16(addr, (data as Long).toNumber(), true);
             } else if (ins[0] === I64.store32) { this.memory.setUint32(addr, (data as Long).toNumber(), true);
             } else if (ins[0] === I64.store) {
-                this.memory.setUint32(addr, (data as Long).high, true);
-                this.memory.setUint32(addr + 4, (data as Long).low, true);
+                this.memory.setUint32(addr, (data as Long).low, true);
+                this.memory.setUint32(addr + 4, (data as Long).high, true);
             }
         } else if (ins[0] === Control.set_local) {
             this.stackTop.locals[ins[1] as number] = this.stackTop.stack.pop() as WASMNumber;

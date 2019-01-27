@@ -50,9 +50,14 @@ function doPreprocessCommand(ctx: PreprocessContext, line: string, lineIdx: numb
                     throw new PreprocessError(`illegal include: ${line}`);
                 }
             }
-            const header = Headers.get(fileName);
+            let header = Headers.get(fileName);
             if (!header) {
-                throw new PreprocessError(`header ${fileName} does not exist`);
+                if (fileName.charAt(0) === "c") {
+                    header = Headers.get(fileName.slice(1) + ".h");
+                }
+                if (!header) {
+                    throw new PreprocessError(`header ${fileName} does not exist`);
+                }
             }
             const {code} = doPreprocess(fileName, header, ctx.marcoMap);
             ctx.append(code, {line: lineIdx, column: 0});

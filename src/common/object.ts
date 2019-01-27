@@ -57,5 +57,5 @@ export interface BinaryObject {
     // debug only
     sourceMap?: Map<string, SourceMap>;
     json: WASMJSON;
-
+    dumpInfo: string;
 }
