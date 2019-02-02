@@ -48,7 +48,9 @@ export class SpecifierList extends Node {
             throw new SyntaxError("Illegal Return Type", this);
         }
         if (stringNodes.indexOf("const") !== -1) {
-            resultType.isConst = true;
+            // TODO:: big bug
+            // alter on type may result in pollution
+            // resultType.isConst = true;
         }
         return resultType;
     }

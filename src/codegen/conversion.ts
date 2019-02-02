@@ -18,13 +18,11 @@ import {
     PrimitiveTypes,
     UnsignedInt64Type, UnsignedIntegerType,
 } from "../type/primitive_type";
-import {getTypeConvertOpe} from "../wasm/constant";
-import {WConst, WCovertOperation, WGetFunctionAddress} from "../wasm/expression";
-import {WExpression} from "../wasm/node";
 import {WAddressHolder} from "./address";
 import {CompileContext} from "./context";
 import {ExpressionResult} from "./expression/expression";
 import {doFunctionOverloadResolution} from "./overload";
+import {getTypeConvertOpe, WConst, WCovertOperation, WExpression, WGetFunctionAddress} from "../wasm";
 
 export function arithmeticDeduce(left: ArithmeticType, right: ArithmeticType): ArithmeticType {
     if (left instanceof FloatingType || right instanceof FloatingType) {

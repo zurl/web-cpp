@@ -3,8 +3,7 @@ import {SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {ArrayType, ReferenceType} from "../../type/compound_type";
 import {IntegerType} from "../../type/primitive_type";
-import {WConst} from "../../wasm";
-import {WExpression} from "../../wasm/node";
+import {WConst, WExpression} from "../../wasm";
 import {CompileContext} from "../context";
 import {Expression} from "../expression/expression";
 import {Declarator} from "./declarator";
@@ -33,9 +32,6 @@ export class ArrayDeclarator extends Declarator {
             return new ArrayType(baseType, 0);
         }
         const length = this.length.codegen(ctx);
-        if (!(length.expr instanceof WExpression)) {
-            throw new SyntaxError("illegal length type", this);
-        }
         length.expr = length.expr.fold();
         if (!(length.expr instanceof WConst)) {
             throw new SyntaxError("var length array is not support currently", this);

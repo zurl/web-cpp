@@ -15,6 +15,7 @@ int main(){
         `;
         const expectOutput = `9 -12 3.5 -7.128`;
         return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true,
+            debug: true,
             input: "9 -12 3.35 -7.128"});
     });
     it('test scanf',async function() {

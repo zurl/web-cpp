@@ -8,6 +8,10 @@ import {Type} from "./index";
  */
 
 export abstract class PrimitiveType extends Type {
+
+    public compatWith(type: Type): boolean {
+        return type instanceof PrimitiveType;
+    }
 }
 
 export class VoidType extends PrimitiveType {
@@ -47,7 +51,7 @@ export class NullptrType extends PrimitiveType {
 }
 
 export abstract class ArithmeticType extends PrimitiveType {
-    public compatWith(type: Type): boolean {
+    public can(type: Type): boolean {
         return type instanceof ArithmeticType;
     }
 }

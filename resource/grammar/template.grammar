@@ -63,8 +63,14 @@ TemplateArgument
 
 ExplicitInstantiation
     = FunctionTemplateInstantiation
+    / ClassTemplateInstantiation
 
 FunctionTemplateInstantiation
     = 'template' _ specifiers:DeclarationSpecifiers _ declarator:Declarator _ ';'{
         return new AST.FunctionTemplateInstantiation(getLocation(), specifiers, declarator);
+    }
+
+ClassTemplateInstantiation
+    = 'template' _ spec:ClassSpecifier _ ';'{
+        return new AST.ClassTemplateInstantiation(getLocation(), spec);
     }

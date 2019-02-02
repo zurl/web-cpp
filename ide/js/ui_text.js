@@ -23,7 +23,7 @@ const UI_TEXT = {
     "message":["message", "消息"],
     "download_message":[
         "downloading compiler",
-        "程序运行已经结束"
+        "正在下载编译器"
     ],
     "save_message":[
         "code have been saved",
@@ -76,10 +76,10 @@ const UI_TEXT = {
         "简体中文", "简体中文"
     ],
     "setting-expert-left":[
-        "normal mode", "普通模式"
+        "Normal mode", "普通模式"
     ],
     "setting-expert-right":[
-        "expert mode", "专家模式"
+        "Expert mode", "专家模式"
     ],
     "menu":[
         "Menu", "菜单"

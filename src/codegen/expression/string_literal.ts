@@ -2,12 +2,11 @@ import {SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {PointerType} from "../../type/compound_type";
 import {CharType} from "../../type/primitive_type";
-import {WGetAddress, WMemoryLocation} from "../../wasm/expression";
 import {CompileContext} from "../context";
 import {Expression, ExpressionResult} from "./expression";
+import {WGetAddress, WMemoryLocation} from "../../wasm";
 
 const __ccharptr = new PointerType(new CharType());
-__ccharptr.isConst = true;
 
 export class StringLiteral extends Expression {
     public prefix: string | null;

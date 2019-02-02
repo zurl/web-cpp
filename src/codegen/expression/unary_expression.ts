@@ -131,7 +131,22 @@ export class UnaryExpression extends Expression {
                 IntegerConstant.OneConstant)
                 .deduceType(ctx);
         }
-        const itemType = doTypeTransfrom(this.operand.deduceType(ctx));
+
+        const leftType = this.operand.deduceType(ctx);
+
+        if (leftType instanceof ClassType) {
+            const item = ctx.scopeManager.lookup(
+                leftType.fullName + "::#" + this.operator,
+            );
+            if (item != null) {
+                return new CallExpression(this.location,
+                    new MemberExpression(this.location, this.operand, false,
+                        Identifier.fromString(this.location, "#" + this.operator)),
+                    []).deduceType(ctx);
+            }
+        }
+
+        const itemType = doTypeTransfrom(leftType);
         if (this.operator === "*") {
             if (itemType instanceof PointerType || itemType instanceof ArrayType) {
                 return itemType.elementType;

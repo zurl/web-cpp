@@ -3,18 +3,16 @@ import {InternalError, SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
 import {Type} from "../../type";
 import {
-    ArithmeticType,
-    CharType, DoubleType, FloatType, Int16Type, Int32Type, Int64Type,
-    PrimitiveTypes,
-    UnsignedCharType,
-    UnsignedInt16Type,
-    UnsignedInt32Type, UnsignedInt64Type,
+    ArithmeticType, CharType, DoubleType,
+    FloatType, Int16Type,
+    Int32Type,
+    Int64Type,
+    PrimitiveTypes, UnsignedCharType, UnsignedInt16Type,
+    UnsignedInt32Type,
+    UnsignedInt64Type,
 } from "../../type/primitive_type";
-import {WConst} from "../../wasm";
-import {WExpression} from "../../wasm/node";
-import {WDrop, WExprStatement} from "../../wasm/statement";
+import {WConst, WDrop, WExpression, WExprStatement} from "../../wasm";
 import {CompileContext} from "../context";
-import {FunctionLookUpResult} from "../scope";
 
 export interface ExpressionResult {
     type: Type;

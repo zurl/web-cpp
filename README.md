@@ -167,12 +167,10 @@ of WebAssembly.
 - [X] function pointer
 - [X] array initial list
 - [X] multi-dim array
-- [ ] #if #elif
 - [ ] bit field of struct
+- [ ] #if #elif
 - [ ] #line __line__ __file__
-- [ ] remove Long.js
 - [X] debuginfo
-- [ ] repeative param name detect
 ## C++ Language
 - [X] default parameter
 - [X] default constructor
@@ -212,24 +210,39 @@ of WebAssembly.
 
 ## TODO LIST
     High
+- [X] repeative param name detect
 - [ ] cast overload， like if(object) { ... }
-- [ ] const/override/virtual member function
 - [ ] warning
-- [ ] class specialization
+- [X] class specialization
 - [ ] using template
 - [ ] A a[50] decons
 - [ ] subclass B A::a => set children?
-- [ ] explicit class ins
-- [ ] C std lib
+- [X] explicit class ins
+- [ ] placement new
+- [X] C std lib
 - [ ] C++ std lib
+- [ ] iostream∂
+- [ ] string
+- [ ] vector
+- [ ] map
+- [ ] queue/stack
+- [ ] priority_queue
+- [ ] algorithm
+- [ ] id could not be keyword => special judge
+- [X] operator []
+- [x] operator ()
+- [ ] static_cast / dynamic_cast / reinterpret_cast
+- [ ] const left value reference
+====== the upper is all plan of web-cpp in 2019
 
     Other
+- [ ] const/override member function
+- [ ] real const
+- [ ] real override
+- [ ] real accessControl
 - [ ] seperate define class function
 - [ ] seperate delaration => to be test
-- [ ] operator new/ placement new
-- [ ] id could not be keyword => special judge
 - [ ] typeinfo
-- [ ] static_cast / dynamic_cast / reinterpret_cast
 - [ ] virtual inheriant
 ## ide
 - [X] multi-language

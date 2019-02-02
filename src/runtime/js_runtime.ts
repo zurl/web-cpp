@@ -9,22 +9,21 @@ import {
     UnsignedInt32Type,
     UnsignedInt64Type,
 } from "../type/primitive_type";
-import {F32Binary, F32Unary, F64Binary, F64Unary, I32Binary, I32Unary, I64Binary, I64Unary, WType} from "../wasm";
-import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "../wasm/calculator";
 import {
     Control,
     F32,
-    F32Convert,
-    F64,
-    F64Convert,
-    I32,
-    I32Convert,
-    I64,
-    I64Convert, OpCodes,
-    WLoadIns,
-    WStoreIns,
-} from "../wasm/constant";
-import {WASMJSON, WASMJSONFunction} from "../wasm/emitter";
+    F32Binary, F32Convert,
+    F32Unary, F64,
+    F64Binary, F64Convert,
+    F64Unary, I32,
+    I32Binary, I32Convert,
+    I32Unary, I64,
+    I64Binary,
+    I64Convert,
+    I64Unary, WASMJSON, WASMJSONFunction, WLoadIns, WStoreIns,
+    WType,
+} from "../wasm";
+import {doBinaryCompute, doLongBinaryCompute, doLongUnaryCompute, doUnaryCompute} from "../wasm/tool/calculator";
 import {Runtime, RuntimeOptions} from "./runtime";
 
 type WASMNumber = number | Long;

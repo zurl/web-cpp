@@ -6,7 +6,6 @@ import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
 import {CppFunctionType, FunctionType} from "../../type/function_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
-import {WGetAddress, WMemoryLocation} from "../../wasm/expression";
 import {CompileContext} from "../context";
 import {ObjectInitializer} from "../declaration/object_initializer";
 import {AnonymousCastExpression, AnonymousExpression} from "../expression/anonymous_expression";
@@ -25,6 +24,7 @@ import {CompoundStatement} from "../statement/compound_statement";
 import {ExpressionStatement} from "../statement/expression_statement";
 import {Statement} from "../statement/statement";
 import {MemberExpression} from "./member_expression";
+import {WGetAddress, WMemoryLocation} from "../../wasm";
 
 export class ConstructorDeclaration extends ClassDirective {
     public name: Identifier;
@@ -75,8 +75,9 @@ export class ConstructorDeclaration extends ClassDirective {
         const functionConfig = this.getFunctionConfig(ctx, classType, AccessControl.Unknown);
         if (this.body) {
             const body: Directive[] = [...this.generateStatements(ctx, functionConfig), ...this.body.body];
-            const oldItem = ctx.scopeManager.getOldOverloadSymbol(functionConfig.name
-                + "@" + functionConfig.functionType.toMangledName());
+            const oldItem = ctx.scopeManager.getOldOverloadSymbol(
+                ctx.scopeManager.currentContext.scope.fullName + "::" +
+                functionConfig.name + "@" + functionConfig.functionType.toMangledName());
             const activeScopes = (oldItem && oldItem instanceof FunctionEntity)
                 ? oldItem.declareActiveScopes : [];
             defineFunction(ctx, functionConfig, body, activeScopes, this);

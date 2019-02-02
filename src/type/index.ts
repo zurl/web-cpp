@@ -2,11 +2,9 @@ import {Symbol} from "../common/symbol";
 import {WType} from "../wasm";
 
 export abstract class Type extends Symbol {
-    public isConst: boolean;
 
     constructor() {
         super(AccessControl.Public);
-        this.isConst = false;
     }
 
     public equals(type: Type) {

@@ -32,6 +32,21 @@ export class TemplateDeclaration extends ClassDirective {
         }
     }
 
+    public declareClassTemplateSpecialization(ctx: CompileContext): void {
+        if (!(this.decl instanceof ClassSpecifier)) {
+            throw new InternalError(`declareFunctionTemplateSpecialization(ctx: CompileContext): void {`);
+        }
+        const name = this.decl.identifier;
+        const lookupName = name.getLookupName(ctx);
+        const classTemplate = ctx.scopeManager.lookup(lookupName);
+        if (!(classTemplate instanceof ClassTemplate)) {
+            throw new SyntaxError(`${name.getLookupName(ctx)} is not a class template`, this);
+        }
+        const args = name.fillInBlank(ctx, name.getLastID().args, classTemplate);
+        const signature = args.map((x) => x.toString).join(",");
+        classTemplate.specializationMap.set(signature, this.decl);
+    }
+
     public declareFunctionTemplateSpecialization(ctx: CompileContext): void {
         if (!(this.decl instanceof FunctionDefinition)) {
             throw new InternalError(`declareFunctionTemplateSpecialization(ctx: CompileContext): void {`);
@@ -84,11 +99,6 @@ export class TemplateDeclaration extends ClassDirective {
         ctx.scopeManager.detachCurrentScope();
         ctx.scopeManager.exitScope();
         ctx.scopeManager.define(functionTemplate.getIndexName(), functionTemplate, this);
-    }
-
-    public declareClassTemplateSpecialization(ctx: CompileContext): void {
-        // TODO:: to impl
-        throw new InternalError(`ClassSpecifier LENGTH=0`);
     }
 
     public declareClassTemplate(ctx: CompileContext): void {

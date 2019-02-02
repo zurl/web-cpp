@@ -1,5 +1,3 @@
-import {WBinaryOperation} from "./expression";
-
 export const OpCodes = new Map<number, string>([
     [0x0, "unreachable"],
     [0x1, "nop"],
@@ -438,6 +436,7 @@ export enum WType {
     u16 = 0x06,
     none = 0x00,
     any = 0x07,
+    str = 0x08,
 }
 
 export enum SectionCode {

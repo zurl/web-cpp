@@ -9,12 +9,18 @@ import {AddressType} from "../common/symbol";
 import {Type} from "../type";
 import {ClassType} from "../type/class_type";
 import {ArrayType} from "../type/compound_type";
-import {I32Binary, WBinaryOperation, WConst, WLoad, WStore, WType} from "../wasm";
-import {getNativeType} from "../wasm/constant";
-import {Emitter} from "../wasm/emitter";
-import {WGetAddress, WGetGlobal, WGetLocal, WMemoryLocation} from "../wasm/expression";
-import {WExpression, WStatement} from "../wasm/node";
-import {WSetGlobal, WSetLocal} from "../wasm/statement";
+import {
+    Emitter,
+    getNativeType,
+    I32Binary,
+    WBinaryOperation,
+    WConst, WExpression, WGetAddress, WGetGlobal, WGetLocal,
+    WLoad,
+    WMemoryLocation,
+    WSetGlobal, WSetLocal, WStatement,
+    WStore,
+    WType,
+} from "../wasm";
 import {CompileContext} from "./context";
 
 export class WAddressHolder extends WExpression {
@@ -275,7 +281,7 @@ export class WAddressHolder extends WExpression {
                 result = new WBinaryOperation(
                     I32Binary.add,
                     new WGetLocal(WType.i32, ctx.currentFuncContext.currentFunction.$sp, this.location),
-                    new WConst(WType.i32, (this.place as number + this.offset).toString()),
+                    new WConst(WType.i32, (this.place as number + this.offset).toString(), this.location),
                     this.location,
                 );
                 break;
@@ -286,7 +292,7 @@ export class WAddressHolder extends WExpression {
                 result = new WBinaryOperation(
                     I32Binary.add,
                     new WGetGlobal(WType.i32, "$sp", this.location),
-                    new WConst(WType.i32, (this.place as number + this.offset).toString()),
+                    new WConst(WType.i32, (this.place as number + this.offset).toString(), this.location),
                     this.location,
                 );
                 break;
@@ -321,24 +327,8 @@ export class WAddressHolder extends WExpression {
         throw new EmitError(`WAddressHolder()`);
     }
 
-    public emitJSON(e: Emitter): void {
-        throw new EmitError(`WAddressHolder()`);
-    }
-
-    public fold(): WExpression {
-        return this;
-    }
-
-    public length(e: Emitter): number {
-        throw new EmitError(`WAddressHolder()`);
-    }
-
     public isPure(): boolean {
         return true;
-    }
-
-    public dump(e: Emitter): void {
-        e.dump("===ADDRESS HOLDER===", this.location);
     }
 
 }

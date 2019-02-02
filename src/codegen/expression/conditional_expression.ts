@@ -5,7 +5,7 @@ import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {LeftReferenceType} from "../../type/compound_type";
 import {ArithmeticType, PrimitiveTypes} from "../../type/primitive_type";
-import {WConditionalExpression} from "../../wasm/expression";
+import {WConditionalExpression} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
 import {arithmeticDeduce, doConversion, doTypeTransfrom} from "../conversion";
@@ -37,6 +37,7 @@ export class ConditionalExpression extends Expression {
                     test,
                     doConversion(ctx, refType, left, this, false, true),
                     doConversion(ctx, refType, right, this, false, true),
+                    this.location,
                 ), AddressType.RVALUE, this.location),
                 isLeft: true,
             };
@@ -47,6 +48,7 @@ export class ConditionalExpression extends Expression {
                     test,
                     doConversion(ctx, targetType, left, this),
                     doConversion(ctx, targetType, right, this),
+                    this.location,
                 ),
                 isLeft: false,
             };

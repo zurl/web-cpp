@@ -1,6 +1,6 @@
 import {SyntaxError} from "../../common/error";
 import {SourceLocation} from "../../common/node";
-import {WBr} from "../../wasm/statement";
+import {WBr} from "../../wasm";
 import {CompileContext} from "../context";
 import {Statement} from "./statement";
 

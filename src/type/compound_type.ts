@@ -37,6 +37,27 @@ export abstract class CompoundType extends Type {
     }
 }
 
+export class ConstType extends CompoundType {
+    public toString() {
+        return "const" + this.elementType.toString();
+    }
+
+    public toWType() {
+        return this.elementType.toWType();
+    }
+
+    public toMangledName(): string {
+        return "c" + this.elementType.toMangledName();
+    }
+
+    public compatWith(type: Type): boolean {
+        return this.elementType.equals(PrimitiveTypes.void)
+            || (type instanceof PointerType && type.elementType.equals(PrimitiveTypes.void))
+            || super.compatWith(type) ||
+            (type instanceof ArrayType && this.elementType.compatWith(type.elementType));
+    }
+}
+
 export class PointerType extends CompoundType {
     public toString() {
         return this.elementType.toString() + "*";

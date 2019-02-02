@@ -43,11 +43,16 @@ export class FunctionDefinition extends ClassDirective {
         if (!functionDeclarator) {
             throw new InternalError(`function is not a functionDeclarator`);
         }
+        const parameterNames = functionDeclarator.parameters.getNameList(ctx);
+        const parameterInits = functionDeclarator.parameters.getInitList(ctx);
+        if (new Set<string>(parameterNames).size !== parameterNames.length) {
+            throw new SyntaxError(`some of the name of parameters are repeative`, this);
+        }
         return {
             name: name.getLookupName(ctx),
             functionType,
-            parameterNames: functionDeclarator.parameters.getNameList(ctx),
-            parameterInits: functionDeclarator.parameters.getInitList(ctx),
+            parameterNames,
+            parameterInits,
             accessControl: AccessControl.Public,
             isLibCall: this.specifiers.specifiers.includes("__libcall"),
         };
@@ -80,6 +85,9 @@ export class FunctionDefinition extends ClassDirective {
                 functionType.isVirtual = true;
                 classType.registerVFunction(ctx, vcallSigature, fullName);
             }
+        }
+        if (new Set<string>(parameterNames).size !== parameterNames.length) {
+            throw new SyntaxError(`some of the name of parameters are repeative`, this);
         }
         return {
             name: name.getLookupName(ctx),

@@ -4,21 +4,21 @@ import {Type} from "./index";
 
 export class TemplateType extends Type {
     public get length(): number {
-        throw new InternalError("unintent behavior");
+        throw new InternalError("undefined behavior");
     }
 
     public static instance: TemplateType;
 
     public toMangledName(): string {
-        throw new InternalError("unintent behavior");
+        throw new InternalError("undefined behavior");
     }
 
     public toWType(): WType {
-        throw new InternalError("unintent behavior");
+        throw new InternalError("undefined behavior");
     }
 
     public toString(): string {
-        throw new InternalError("unintent behavior");
+        throw new InternalError("undefined behavior");
     }
 }
 TemplateType.instance = new TemplateType();
@@ -32,7 +32,7 @@ export class TemplateParameterPlaceHolderType extends Type {
     }
 
     public get length(): number {
-        return 0;
+        throw new InternalError("undefined behavior");
     }
 
     public toMangledName(): string {
@@ -40,7 +40,7 @@ export class TemplateParameterPlaceHolderType extends Type {
     }
 
     public toWType(): WType {
-        throw new InternalError("unintent behavior");
+        throw new InternalError("undefined behavior");
     }
 
     public toString(): string {

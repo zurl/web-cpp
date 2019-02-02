@@ -1,10 +1,10 @@
 import {InternalError, SyntaxError} from "../../common/error";
 import {Node, SourceLocation} from "../../common/node";
-import {Variable} from "../../common/symbol";
+import {FunctionEntity, Variable} from "../../common/symbol";
 import {ClassTemplate, FunctionTemplate} from "../../common/template";
 import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
-import {UnresolvedFunctionOverloadType} from "../../type/function_type";
+import {CppFunctionType, UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {WConst, WType} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {MemberExpression} from "../class/member_expression";
@@ -163,7 +163,8 @@ export class Identifier extends Expression {
 
     public codegen(ctx: CompileContext): ExpressionResult {
         const lookupName = this.getLookupName(ctx);
-        const rawItem = ctx.scopeManager.lookup(lookupName);
+        let rawItem = ctx.scopeManager.lookup(lookupName);
+        rawItem = this.filterMemberFunction(rawItem);
         if (!rawItem) {
             return this.tryLookupImplicitThis(ctx).codegen(ctx);
         } else if (rawItem instanceof Variable) {
@@ -175,7 +176,7 @@ export class Identifier extends Expression {
         } else if (rawItem instanceof FunctionLookUpResult) {
             return {
                 type: new UnresolvedFunctionOverloadType(rawItem),
-                expr: new WConst(WType.any, "0"),
+                expr: new WConst(WType.any, "0", this.location),
                 isLeft: false,
             };
         } else {
@@ -183,9 +184,23 @@ export class Identifier extends Expression {
         }
     }
 
+    public filterMemberFunction(rawItem: LookUpResult): LookUpResult{
+        if (rawItem && rawItem instanceof FunctionLookUpResult) {
+            rawItem.functions = rawItem.functions.filter(
+                (x) =>
+                    !(x instanceof FunctionEntity && x.type.cppFunctionType === CppFunctionType.MemberFunction));
+            if (rawItem.functions.length === 0) {
+                rawItem = null;
+            }
+        }
+        return rawItem;
+    }
+
     public deduceType(ctx: CompileContext): Type {
         const lookupName = this.getLookupName(ctx);
-        const rawItem = ctx.scopeManager.lookup(lookupName);
+        let rawItem = ctx.scopeManager.lookup(lookupName);
+        // fix: member fucntion could not be search here
+        rawItem = this.filterMemberFunction(rawItem);
         if (!rawItem) {
             return this.tryLookupImplicitThis(ctx).deduceType(ctx);
         }

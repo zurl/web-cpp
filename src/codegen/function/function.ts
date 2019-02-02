@@ -1,21 +1,27 @@
 import {SyntaxError} from "../../common/error";
 import {Directive, Node} from "../../common/node";
-import {AddressType, FunctionEntity, OverloadSymbol, Variable} from "../../common/symbol";
+import {AddressType, FunctionEntity, Variable} from "../../common/symbol";
 import {AccessControl} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {ArrayType} from "../../type/compound_type";
 import {FunctionType} from "../../type/function_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
-import {I32Binary, WBinaryOperation, WBlock, WConst, WFunction, WIfElseBlock, WLoop, WReturn, WType} from "../../wasm";
-import {getNativeType} from "../../wasm/constant";
-import {WGetGlobal, WGetLocal} from "../../wasm/expression";
-import {WStatement} from "../../wasm/node";
-import {WFunctionType} from "../../wasm/section";
-import {WSetGlobal, WSetLocal} from "../../wasm/statement";
+import {
+    getNativeType,
+    I32Binary,
+    WBinaryOperation,
+    WBlock,
+    WConst,
+    WFunction, WFunctionType, WGetGlobal, WGetLocal,
+    WIfElseBlock,
+    WLoop,
+    WReturn, WSetGlobal, WSetLocal, WStatement,
+    WType,
+} from "../../wasm";
 import {CompileContext} from "../context";
 import {getInStackSize} from "../conversion";
 import {IntegerConstant} from "../expression/integer_constant";
-import {FunctionLookUpResult, getShortName, Scope} from "../scope";
+import {getShortName, Scope} from "../scope";
 import {ReturnStatement} from "./return_statement";
 
 export interface FunctionConfig {
@@ -62,7 +68,7 @@ export function declareFunction(ctx: CompileContext, config: FunctionConfig, nod
         if (!ctx.scopeManager.lookup(functionEntity.fullName)) {
             ctx.imports.push({
                 name: functionEntity.fullName,
-                type: new WFunctionType(returnTypes, parametersTypes),
+                type: new WFunctionType(returnTypes, parametersTypes, node.location),
             });
         }
     }
@@ -76,8 +82,6 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
         || config.parameterNames.length !== config.functionType.parameterTypes.length) {
         throw new SyntaxError(`parameter length mismatch`, node);
     }
-    const emptyLocation = Node.getEmptyLocation();
-
     const functionEntity = createFunctionEntity(ctx, config, true);
 
     // find out the active scopes when declare
@@ -139,15 +143,15 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
     // bp = $sp
     ctx.submitStatement(
         new WSetLocal(WType.u32, functionEntity.$sp,
-            new WGetGlobal(WType.u32, "$sp", emptyLocation), emptyLocation));
+            new WGetGlobal(WType.u32, "$sp", node.location), node.location));
 
     // $sp = $sp - 0
-    const offsetNode = new WConst(WType.i32, "0", emptyLocation);
+    const offsetNode = new WConst(WType.i32, "0", node.location);
     ctx.submitStatement(
         new WSetGlobal(WType.u32, "$sp",
             new WBinaryOperation(I32Binary.add,
-                new WGetLocal(WType.u32, functionEntity.$sp, emptyLocation),
-                offsetNode, emptyLocation), emptyLocation));
+                new WGetLocal(WType.u32, functionEntity.$sp, node.location),
+                offsetNode, node.location), node.location));
 
     body.map((item) => item.codegen(ctx));
 
@@ -180,7 +184,7 @@ export function defineFunction(ctx: CompileContext, config: FunctionConfig,
         }
         if (bodyStatements.length > 0 && bodyStatements[bodyStatements.length - 1] instanceof WIfElseBlock) {
             // should do auto injection A FAKE RETURN;
-            new ReturnStatement(emptyLocation, IntegerConstant.ZeroConstant).codegen(ctx);
+            new ReturnStatement(node.location, IntegerConstant.ZeroConstant).codegen(ctx);
         }
     }
     const local = ctx.memory.currentState.localTypes;

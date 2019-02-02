@@ -3,7 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 15/07/2018
  */
-import {WNode} from "./node";
+import {WNode} from "../node";
 
 export function printWNode(node: any): string {
     let result = node.constructor.name + "{\n";
@@ -35,4 +35,8 @@ export function printWNode(node: any): string {
     }
     result += "}";
     return result;
+}
+
+export function getArrayLength<T>(array: T[], mapper: (t: T) => number) {
+    return array.map(mapper).reduce((x, y) => x + y, 0);
 }

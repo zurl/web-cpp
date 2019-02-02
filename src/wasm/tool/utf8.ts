@@ -3,12 +3,7 @@
  *  @author zcy <zurl@live.com>
  *  Created at 14/07/2018
  */
-import {getLeb128UintLength, readLeb128Uint, writeLeb128Uint} from "./leb128";
-
-export interface ByteStream {
-    view: DataView;
-    now: number;
-}
+import {ByteStream, getLeb128UintLength, readLeb128Uint, writeLeb128Uint} from "./leb128";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -23,6 +18,7 @@ export function writeUtf8String(stream: ByteStream, input: string) {
     writeLeb128Uint(stream, array.byteLength);
     new Uint8Array(stream.view.buffer).set(array, stream.now);
     stream.now += array.byteLength;
+    stream.nowSize += array.byteLength;
 }
 
 export function getUtf8StringLength(input: string) {

@@ -1,7 +1,6 @@
 import {SourceLocation} from "../../common/node";
 import {PrimitiveTypes} from "../../type/primitive_type";
-import {WStatement} from "../../wasm/node";
-import {WBlock, WBr, WBrIf, WLoop} from "../../wasm/statement";
+import {WBlock, WBr, WBrIf, WLoop, WStatement} from "../../wasm";
 import {CompileContext} from "../context";
 import {doConversion} from "../conversion";
 import {Expression} from "../expression/expression";

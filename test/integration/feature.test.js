@@ -203,4 +203,54 @@ describe('feature integration test', function () {
         const expectOutput = `33`;
         return await TestBase.testRunCompareResult(testCode, expectOutput);
     });
+    /*
+    it('const left value reference', async function () {
+        const testCode = `
+#include <stdio.h>
+        int foo(const int & a){
+
+        }
+        int main(){
+            int a = 0;
+            for(int i = 1; i <10; i++) a+=i;
+            for(int i = 1; i <10; i++) a+=i;
+            printf("%d\\n", a);
+            int q = 20;
+            {
+                int q = 80;
+                printf("%d\\n", q);
+            }
+            printf("%d\\n", q);
+            return 0;
+        }
+        `;
+        const expectOutput = `90\n80\n20`;
+        return await TestBase.testFullCode(testCode, expectOutput, {isCpp: true});
+    });
+    it('test some new overload', async function () {
+        const testCode = `
+#include <stdio.h>
+        class Foo{
+            operator[] (int a){
+                return a;
+            }
+        };
+        int main(){
+            int a = 0;
+            for(int i = 1; i <10; i++) a+=i;
+            for(int i = 1; i <10; i++) a+=i;
+            printf("%d\\n", a);
+            int q = 20;
+            {
+                int q = 80;
+                printf("%d\\n", q);
+            }
+            printf("%d\\n", q);
+            return 0;
+        }
+        `;
+        const expectOutput = `90\n80\n20`;
+        return await TestBase.testFullCode(testCode, expectOutput);
+    });
+    */
 });

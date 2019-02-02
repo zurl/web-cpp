@@ -4,7 +4,7 @@
  *  Created at 14/07/2018
  */
 import * as Long from "long";
-import {RuntimeError} from "../common/error";
+import {RuntimeError} from "../../common/error";
 import {
     BinaryOperator,
     F32Binary,

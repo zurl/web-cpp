@@ -7,20 +7,27 @@ import {ClassType} from "../../type/class_type";
 import {ArrayType, PointerType} from "../../type/compound_type";
 import {CppFunctionType, FunctionType, UnresolvedFunctionOverloadType} from "../../type/function_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
-import {I32Binary, WBinaryOperation, WCall, WConst, WLoad, WType} from "../../wasm";
-import {WCallIndirect, WFakeExpression, WGetGlobal, WMemoryLocation} from "../../wasm/expression";
-import {WExpression, WStatement} from "../../wasm/node";
-import {WSetGlobal} from "../../wasm/statement";
+import {
+    I32Binary,
+    WBinaryOperation, WCall,
+    WCallIndirect,
+    WConst,
+    WExpression, WFakeExpression,
+    WGetGlobal, WLoad, WMemoryLocation,
+    WSetGlobal,
+    WStatement,
+    WType,
+} from "../../wasm";
 import {WAddressHolder} from "../address";
+import {MemberExpression} from "../class/member_expression";
 import {CompileContext} from "../context";
-import {doConversion, doTypePromote, doTypeTransfrom, doValuePromote, getInStackSize} from "../conversion";
+import {doConversion, doTypePromote, doValuePromote, getInStackSize} from "../conversion";
 import {AnonymousExpression} from "../expression/anonymous_expression";
 import {Expression, ExpressionResult} from "../expression/expression";
 import {Identifier} from "../expression/identifier";
 import {IntegerConstant} from "../expression/integer_constant";
 import {UnaryExpression} from "../expression/unary_expression";
 import {doFunctionOverloadResolution, isFunctionExists} from "../overload";
-import {FunctionLookUpResult} from "../scope";
 
 export class CallExpression extends Expression {
     public callee: Expression;
@@ -33,7 +40,13 @@ export class CallExpression extends Expression {
     }
 
     public getTargetFunction(ctx: CompileContext): FunctionType | FunctionEntity {
-        const calleeType = this.callee.deduceType(ctx);
+        let calleeType = this.callee.deduceType(ctx);
+
+        if (calleeType instanceof ClassType) {
+            this.callee = new MemberExpression(this.location, this.callee, false,
+                Identifier.fromString(this.location, "#()"));
+            calleeType = this.callee.deduceType(ctx);
+        }
 
         if (calleeType instanceof PointerType && calleeType.elementType instanceof FunctionType) {
             return calleeType.elementType;
@@ -186,13 +199,13 @@ export class CallExpression extends Expression {
             argus.push(new WFakeExpression(new WSetGlobal(WType.u32, "$sp",
                 new WBinaryOperation(I32Binary.add,
                     new WGetGlobal(WType.u32, "$sp", this.location),
-                    new WConst(WType.i32, stackOffset.toString()),
-                    this.location)), this.location));
+                    new WConst(WType.i32, stackOffset.toString(), this.location),
+                    this.location), this.location), this.location));
             afterStatements.push(new WFakeExpression(new WSetGlobal(WType.u32, "$sp",
                 new WBinaryOperation(I32Binary.sub,
                     new WGetGlobal(WType.u32, "$sp", this.location),
-                    new WConst(WType.i32, stackOffset.toString()),
-                    this.location)), this.location));
+                    new WConst(WType.i32, stackOffset.toString(), this.location),
+                    this.location), this.location), this.location));
 
         }
 

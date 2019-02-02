@@ -4,7 +4,7 @@ import {AddressType} from "../../common/symbol";
 import {getAccessControlFromString} from "../../type";
 import {ClassType, Inheritance} from "../../type/class_type";
 import {PrimitiveTypes} from "../../type/primitive_type";
-import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../../wasm/expression";
+import {WGetAddress, WGetFunctionAddress, WMemoryLocation} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
 import {Declaration} from "../declaration/declaration";

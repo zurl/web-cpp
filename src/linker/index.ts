@@ -1,6 +1,7 @@
 /// <reference path="../../node_modules/@types/webassembly-js-api/index.d.ts" />
 
 import {LinkerError} from "../common/error";
+import {EmptyLocation} from "../common/node";
 import {BinaryObject, CompiledObject, SourceMap} from "../common/object";
 import {ImportObject} from "../runtime/runtime";
 import {
@@ -8,19 +9,14 @@ import {
     u32,
     WASMEmitter,
     WCall,
-    WConst,
-    WFunction,
+    WConst, WDataSegment,
+    WFunction, WGetGlobal, WGetLocal,
     WGlobalVariable,
-    WImportFunction,
-    WModule, WReturn,
+    WImportFunction, WImportItem, WImportMemory,
+    WModule, WReturn, WSetGlobal,
     WType,
 } from "../wasm";
-import {printWNode} from "../wasm/tools";
-
-import * as fs from "fs";
-import {WGetGlobal, WGetLocal} from "../wasm/expression";
-import {WDataSegment, WImportItem, WImportMemory} from "../wasm/section";
-import {WSetGlobal} from "../wasm/statement";
+import {dumpWASMJSON} from "../wasm/tool/dumper";
 
 /**
  *  @file
@@ -33,7 +29,6 @@ export interface LinkOptions {
 }
 
 export function link(fileName: string, objects: CompiledObject[], option: LinkOptions): BinaryObject {
-
     const importObjects: string[] = [];
     const imports: WImportItem[] = [];
     const functions: WFunction[] = [];
@@ -67,10 +62,10 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
             }
             functions.push(func);
         }
-        data.push(new WDataSegment(dataNow, object.data.slice(0, object.dataSize)));
+        data.push(new WDataSegment(dataNow, object.data.slice(0, object.dataSize), EmptyLocation));
         const initFuncName = `$init$${object.fileName}`;
         const initFunc = new WFunction(initFuncName, initFuncName,
-            [], [], [], object.globalStatements);
+            [], [], [], object.globalStatements, EmptyLocation);
         initFunc.dataStart = dataNow;
         functions.push(initFunc);
         initFuncNames.push(initFuncName);
@@ -86,7 +81,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
     }
 
     const startFunc = new WFunction("$start", "__start", [], [], [],
-        initFuncNames.map((name) => new WCall(name, [], [])));
+        initFuncNames.map((name) => new WCall(name, [], [], EmptyLocation)), EmptyLocation);
     functions.push(startFunc);
 
     // 2. build extern map
@@ -107,7 +102,7 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
             if ( !importObjects.includes(item.name)) {
                 importObjects.push(item.name);
                 imports.push(new WImportFunction("system", item.name,
-                    item.type.returnTypes, item.type.parameters));
+                    item.type.returnTypes, item.type.parameters, EmptyLocation));
             }
         }
     }
@@ -119,15 +114,15 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
 
     // 5. add import memory
 
-    imports.push(new WImportMemory("system", "memory", 1, 10));
+    imports.push(new WImportMemory("system", "memory", 1, 10, EmptyLocation));
 
     functions.push(new WFunction("$get_sp", "get_sp", [WType.u32], [], [], [
-        new WReturn(new WGetGlobal(WType.u32,  "$sp")),
-    ]));
+        new WReturn(new WGetGlobal(WType.u32,  "$sp", EmptyLocation), EmptyLocation),
+    ], EmptyLocation));
 
     functions.push(new WFunction("$set_sp", "set_sp", [], [WType.u32], [], [
-        new WSetGlobal(WType.u32,  "$sp", new WGetLocal(WType.u32, 0)),
-    ]));
+        new WSetGlobal(WType.u32,  "$sp", new WGetLocal(WType.u32, 0, EmptyLocation), EmptyLocation),
+    ], EmptyLocation));
 
     if ( entry.length === 0) {
         throw new LinkerError(`no main function found`);
@@ -143,41 +138,38 @@ export function link(fileName: string, objects: CompiledObject[], option: LinkOp
         imports,
         exports: ["$start", entry[0], "$get_sp", "$set_sp"],
         globals: [
-            new WGlobalVariable("$sp", u32, new WConst(u32, "1000")),
+            new WGlobalVariable("$sp", u32, new WConst(u32, "1000", EmptyLocation), EmptyLocation),
         ],
         data,
         generateMemory: false,
         requiredFuncTypes: Array.from(requiredFuncTypes.keys()),
-    });
+    }, EmptyLocation);
 
     // fs.writeFileSync("ast.wast", printWNode(mod), "utf-8");
 
-    const emitter = new WASMEmitter();
-    emitter.externMap = externVarMap;
+    const emitter = new WASMEmitter(externVarMap, sourceMap);
     mod.optimize(emitter);
     mod.emit(emitter);
 
-    const jsonEmitter = new JSONEmitter();
-    jsonEmitter.sourceMap = sourceMap;
-    mod.emitJSON(jsonEmitter);
+    const jsonEmitter = new JSONEmitter(externVarMap, sourceMap);
+    mod.optimize(jsonEmitter);
+    mod.emit(jsonEmitter);
 
     let dumpInfo = "";
     if (option.debug) {
-        const dumper = new WASMEmitter();
-        dumper.sourceMap = sourceMap;
-        mod.dump(dumper);
-        dumpInfo = dumper.dumpInfo;
+        // TODO::
+        dumpInfo = dumpWASMJSON(jsonEmitter.getJSON(), sourceMap);
+        console.log(dumpInfo);
     }
 
     const heapStart = (parseInt((bssNow + 1) / 4 as any) + 1) * 4;
-
     return {
         fileName,
         heapStart,
         entry: entry[0],
         sourceMap,
         scope,
-        binary: emitter.buffer.slice(0, emitter.now),
+        binary: emitter.toArrayBuffer(),
         json: jsonEmitter.getJSON(),
         dumpInfo,
     };

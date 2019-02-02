@@ -6,8 +6,7 @@ import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {ArrayType, LeftReferenceType, PointerType} from "../../type/compound_type";
 import {CharType, FloatingType, IntegerType} from "../../type/primitive_type";
-import {WConst} from "../../wasm";
-import {WGetAddress, WMemoryLocation} from "../../wasm/expression";
+import {WConst, WGetAddress, WMemoryLocation} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {MemberExpression} from "../class/member_expression";
 import {CompileContext} from "../context";
@@ -23,7 +22,6 @@ import {UnaryExpression} from "./unary_expression";
 
 const __charptr = new PointerType(new CharType());
 const __ccharptr = new PointerType(new CharType());
-__ccharptr.isConst = true;
 
 export class AssignmentExpression extends Expression {
     public operator: string;
@@ -121,9 +119,11 @@ export class AssignmentExpression extends Expression {
             }
         }
 
+        /*
         if (!this.isInitExpr && left.type.isConst) {
             throw new SyntaxError(`could not assign to const variable`, this);
         }
+        */
 
         ctx.submitStatement(left.expr.createStore(ctx, left.type,
             doConversion(ctx, left.type, right, this).fold()));

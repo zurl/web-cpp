@@ -3,8 +3,7 @@ import {SourceLocation} from "../../common/node";
 import {AddressType} from "../../common/symbol";
 import {IntegerType} from "../../type/primitive_type";
 import {I32Binary, WBinaryOperation, WBlock} from "../../wasm";
-import {WStatement} from "../../wasm/node";
-import {WBr, WBrIf} from "../../wasm/statement";
+import {WStatement, WBr, WBrIf} from "../../wasm";
 import {WAddressHolder} from "../address";
 import {CompileContext} from "../context";
 import {doValueTransform} from "../conversion";
@@ -67,7 +66,8 @@ export class SwitchStatement extends Statement {
                     I32Binary.eq,
                     condExpr,
                     val,
-                )));
+                    this.location,
+                ), this.location));
             }
         }
         currentBlock.body.push(new WBr(defaultBreakLevel, this.location));

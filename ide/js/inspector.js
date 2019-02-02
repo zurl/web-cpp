@@ -16,7 +16,9 @@ export function updateInspector(runtime){
         const item = stack[i];
         result += `<tr><td colspan="3">==>${escapeHTML(item.fn.displayName)} #${i}</td></tr>`;
         for(const subitem of runtime.getScopeInfo(item.fn.scope, item)){
-            result += `<tr><td>${escapeHTML(subitem.name)}</td><td>${escapeHTML(subitem.type)}</td><td>${escapeHTML(subitem.value)}</td></tr>`;
+            if(subitem.name.charAt(0) !== "$") {
+                result += `<tr><td>${escapeHTML(subitem.name)}</td><td>${escapeHTML(subitem.type)}</td><td>${escapeHTML(subitem.value)}</td></tr>`;
+            }
         }
     }
     result += `<tr><td colspan="3">==>global</td></tr>`;

@@ -3,6 +3,7 @@ import Bn = require("bn.js");
 export interface ByteStream {
     view: DataView;
     now: number;
+    nowSize: number;
 }
 
 export function readLeb128Int(stream: ByteStream): Bn {
@@ -36,9 +37,11 @@ export function writeLeb128Int(stream: ByteStream, number: number | string): voi
         if ((isNegOne(num) && (i & 0x40) !== 0) ||
             (num.isZero() && (i & 0x40) === 0)) {
             stream.view.setUint8(stream.now++, i);
+            stream.nowSize++;
             break;
         } else {
             stream.view.setUint8(stream.now++, i | 0x80);
+            stream.nowSize++;
         }
     }
     function isNegOne(x: Bn) {
@@ -69,9 +72,11 @@ export function writeLeb128Uint(stream: ByteStream, number: number | string): vo
         num.ishrn(7);
         if (num.isZero()) {
             stream.view.setUint8(stream.now++, i);
+            stream.nowSize++;
             break;
         } else {
             stream.view.setUint8(stream.now++, i | 0x80);
+            stream.nowSize++;
         }
     }
 }

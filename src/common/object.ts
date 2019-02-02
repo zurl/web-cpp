@@ -1,12 +1,7 @@
 import {SourceMapGenerator} from "source-map";
 import {Scope} from "../codegen/scope";
 import {Type} from "../type";
-import {WFunction} from "../wasm";
-import {WASMJSON} from "../wasm/emitter";
-import {WMemoryLocation} from "../wasm/expression";
-import {WStatement} from "../wasm/node";
-import {WFunctionType} from "../wasm/section";
-
+import {WASMJSON, WFunction, WFunctionType, WMemoryLocation, WStatement} from "../wasm";
 /**
  *  @file
  *  @author zcy <zurl@live.com>

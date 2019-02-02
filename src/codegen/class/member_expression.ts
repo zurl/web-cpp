@@ -72,7 +72,7 @@ export class MemberExpression extends Expression {
             }
             return {
                 type: new UnresolvedFunctionOverloadType(item),
-                expr: new WConst(WType.any, "0"),
+                expr: new WConst(WType.any, "0", this.location),
                 isLeft: false,
             };
         } else {

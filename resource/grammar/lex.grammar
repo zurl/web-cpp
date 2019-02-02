@@ -9,7 +9,7 @@ SingleIdentifier
     } {
         return id;
     }
-    / 'operator' ope:OverloadOperator {
+    / 'operator' _ ope:OverloadOperator {
         return new AST.SingleIdentifier(getLocation(), "#" + ope, AST.IDType.ID, []);
     }
     / '~' name:TypeIdentifier {

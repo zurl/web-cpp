@@ -4,15 +4,13 @@ import {Type} from "../../type";
 import {ClassType} from "../../type/class_type";
 import {PointerType} from "../../type/compound_type";
 import {ArithmeticType, IntegerType, PrimitiveTypes} from "../../type/primitive_type";
-import {WBinaryOperation, WConst} from "../../wasm";
-import {BinaryOperator, getOpFromStr, I32Binary, WType} from "../../wasm/constant";
+import {BinaryOperator, getOpFromStr, I32Binary, WBinaryOperation, WConst, WType} from "../../wasm";
 import {MemberExpression} from "../class/member_expression";
 import {CompileContext} from "../context";
 import {arithmeticDeduce, doConversion, doTypeTransfrom, doValueTransform} from "../conversion";
 import {CallExpression} from "../function/call_expression";
 import {Expression, ExpressionResult, recycleExpressionResult} from "./expression";
 import {Identifier} from "./identifier";
-
 export class BinaryExpression extends Expression {
     public operator: string;
     // + - * / % & | && || < > <= >= == !=
@@ -68,7 +66,7 @@ export class BinaryExpression extends Expression {
                     type: dstType,
                     isLeft: false,
                     expr: new WBinaryOperation(I32Binary.mul, left.expr,
-                        new WConst(WType.u32, dstType.elementType.length.toString(), this.location)),
+                        new WConst(WType.u32, dstType.elementType.length.toString(), this.location), this.location),
                 };
             } else if (right.type instanceof IntegerType) {
                 right = doValueTransform(ctx, right, this);
@@ -76,7 +74,7 @@ export class BinaryExpression extends Expression {
                     type: dstType,
                     isLeft: false,
                     expr: new WBinaryOperation(I32Binary.mul, right.expr,
-                        new WConst(WType.u32, dstType.elementType.length.toString(), this.location)),
+                        new WConst(WType.u32, dstType.elementType.length.toString(), this.location), this.location),
                 };
             }
         }
