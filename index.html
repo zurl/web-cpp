@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title id="ui-real-title"></title>
     <link rel="stylesheet" href="/web-cpp/font.059cb91a.css">
     <link rel="stylesheet" href="/web-cpp/main.8d2f5044.css">
     <link rel="stylesheet" href="/web-cpp/material.indigo-pink.min.1dba2244.css">
     <script defer="" src="/web-cpp/material.min.f2ed4c87.js"></script>
-    <script defer="" src="/web-cpp/main.afdbb10f.js"></script>
+    <script defer="" src="/web-cpp/main.2476bf56.js"></script>
 </head>
 <body>
 <!-- Uses a header that scrolls with the text, rather than staying
@@ -128,6 +128,21 @@ int main(){
                                 </table>
                             </div>
                         </div>
+                        <div class="mdl-shadow--2dp right-card" id="expert-parent" style="display: none">
+                            <div class="right-card-title">
+                                <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="expert-switcter">
+                                    <input type="checkbox" id="expert-switcter" class="mdl-switch__input">
+                                    <span class="mdl-switch__label" id="ui-expert-switch"></span>
+                                </label>
+                            </div>
+                            <div id="expert-content" class="right-card-content" style="padding:0 20px">
+                                <button id="ui-expert-pre-btn" onclick="showDebugInfo('pre')" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+
+                                </button>
+                                <button id="ui-expert-asm-btn" onclick="showDebugInfo('asm')" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -141,6 +156,15 @@ int main(){
         <div class="mdl-dialog__actions">
             <button type="button" class="mdl-button" id="ui-setting-apply" onclick="applySetting()"></button>
             <button type="button" class="mdl-button" id="ui-setting-discard" onclick="cancelSetting()"></button>
+        </div>
+    </dialog>
+    <dialog class="mdl-dialog" id="expert-dialog" style="width: 80%; height: 80%">
+        <h4 class="mdl-dialog__title" id="ui-expert-dialog-title"></h4>
+        <textarea style="width: 80%; height: 80%" id="expert-dialog-ta">
+
+        </textarea>
+        <div class="mdl-dialog__actions">
+            <button type="button" class="mdl-button" id="ui-expert-dialog-close" onclick="document.getElementById('expert-dialog').close()"></button>
         </div>
     </dialog>
 </div>
