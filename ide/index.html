@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title id="ui-real-title"></title>
+    <link rel="stylesheet" href="css/font.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/material.indigo-pink.min.css">
+    <script defer src="js/material.min.js"></script>
+    <script defer src="js/main.js"></script>
+</head>
+<body>
+<!-- Uses a header that scrolls with the text, rather than staying
+locked at the top -->
+<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+    <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+            <!-- Title -->
+            <span class="mdl-layout-title">
+                <span id="ui-title"> </span>
+                <span id="ui-version"> </span>
+            </span>
+            <!-- Add spacer, to align navigation to the right -->
+            <div class="mdl-layout-spacer"></div>
+            <!-- Navigation -->
+            <nav class="mdl-navigation" style="margin-right: 40px;">
+                <div class="nav-button">
+                    <button onclick="doFormat()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">format_align_left</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="doFileOpen()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">add</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="doFileDownload()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">get_app</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="run()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">play_arrow</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="runSingleStep()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">bug_report</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="doSave()" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">save</i>
+                    </button>
+                </div>
+                <div class="nav-button">
+                    <button onclick="document.getElementById('setting-dialog').showModal();" class="mdl-button mdl-js-button mdl-button--icon">
+                        <i class="material-icons">build</i>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <div class="mdl-layout__drawer">
+        <span class="mdl-layout-title" id="ui-menu"> </span>
+        <nav class="mdl-navigation">
+            <a id="ui-run" class="mdl-navigation__link" onclick="run()"></a>
+            <a id="ui-save" class="mdl-navigation__link" onclick="doSave()"></a>
+            <a id="ui-file-open" class="mdl-navigation__link" onclick="doFileOpen()"></a>
+            <a id="ui-file-download" class="mdl-navigation__link" onclick="doFileDownload()"></a>
+            <a id="ui-setting" class="mdl-navigation__link" onclick="document.getElementById('setting-dialog').showModal();"></a>
+        </nav>
+    </div>
+    <main class="mdl-layout__content">
+        <div class="page-content">
+            <!-- Your content goes here -->
+            <div id="main-container">
+                <div id="left-part">
+                    <div id="editor-div">
+                        <pre id="editor">
+#include "stdio.h"
+int main(){
+    printf("Hello World!\n");
+    return 0;
+}</pre>
+                    </div>
+                    <div id="message-div">
+                        <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+                            <div class="mdl-tabs__tab-bar" style="justify-content: left;">
+                                <a id="ui-input" href="#input-panel" class="mdl-tabs__tab is-active"></a>
+                                <a id="ui-output" href="#output-panel" class="mdl-tabs__tab"></a>
+                                <a id="ui-message" href="#message-panel" class="mdl-tabs__tab"></a>
+                            </div>
+
+                            <div class="mdl-tabs__panel is-active" id="input-panel">
+                                <textarea class="left-textarea" id="input-textarea" placeholder="input here"></textarea>
+                            </div>
+                            <div class="mdl-tabs__panel" id="output-panel">
+                                <textarea class="left-textarea"id="output-textarea" readonly placeholder="no output"></textarea>
+                            </div>
+                            <div class="mdl-tabs__panel" id="message-panel">
+                                <textarea class="left-textarea"id="message-textarea" readonly placeholder="no message"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="right-part">
+                    <div id="right-container">
+                        <div class="mdl-shadow--2dp right-card" id="var-ins-parent">
+                            <div class="right-card-title">
+                                <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="var-ins-switcter">
+                                    <input type="checkbox" id="var-ins-switcter" class="mdl-switch__input">
+                                    <span class="mdl-switch__label" id="ui-inspector"></span>
+                                </label>
+                            </div>
+                            <div id="var-ins-content" class="right-card-content">
+                                <table id="right-table" class="fixed_header mdl-data-table">
+                                    <thead>
+                                    <tr>
+                                        <th id="ui-key"></th>
+                                        <th id="ui-type"></th>
+                                        <th id="ui-value"></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="inspector-tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mdl-shadow--2dp right-card" id="expert-parent" style="display: none">
+                            <div class="right-card-title">
+                                <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="expert-switcter">
+                                    <input type="checkbox" id="expert-switcter" class="mdl-switch__input">
+                                    <span class="mdl-switch__label" id="ui-expert-switch"></span>
+                                </label>
+                            </div>
+                            <div id="expert-content" class="right-card-content" style="padding:0 20px">
+                                <button
+                                        id="ui-expert-pre-btn"
+                                        onclick="showDebugInfo('pre')"
+                                        class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+
+                                </button>
+                                <button   id="ui-expert-asm-btn"
+                                          onclick="showDebugInfo('asm')"
+                                          class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <dialog class="mdl-dialog" id="setting-dialog">
+        <h4 class="mdl-dialog__title" id="ui-setting-title"></h4>
+        <div class="mdl-dialog__content" id="setting-dialog-body">
+
+        </div>
+        <div class="mdl-dialog__actions">
+            <button type="button" class="mdl-button" id="ui-setting-apply" onclick="applySetting()"></button>
+            <button type="button" class="mdl-button" id="ui-setting-discard" onclick="cancelSetting()"></button>
+        </div>
+    </dialog>
+    <dialog class="mdl-dialog" id="expert-dialog" style="width: 80%; height: 80%">
+        <h4 class="mdl-dialog__title" id="ui-expert-dialog-title"></h4>
+        <textarea style="width: 80%; height: 80%" id="expert-dialog-ta">
+
+        </textarea>
+        <div class="mdl-dialog__actions">
+            <button type="button" class="mdl-button" id="ui-expert-dialog-close"
+                    onclick="document.getElementById('expert-dialog').close()"></button>
+        </div>
+    </dialog>
+</div>
+</body>
+</html>

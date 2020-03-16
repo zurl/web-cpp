@@ -1,0 +1,75 @@
+{
+    function newPosition(position) {
+        // For compatibility with source map.
+        return new AST.Position(position.offset, position.line, position.column - 1);
+    }
+
+    function getLocation() {
+        const location_ = location();
+        return new AST.SourceLocation(options.fileName, text(), newPosition(location_.start), newPosition(location_.end));
+    }
+
+    function extractOptional(optional, index) {
+        return optional ? optional[index] : null;
+    }
+
+    function extractList(list, index) {
+        return list.map(element => element[index]);
+    }
+
+    function buildList(head, tail, index) {
+        return [head].concat(extractList(tail, index));
+    }
+
+    function buildBinaryExpression(head, tail) {
+        return tail.reduce((result, element) => new AST.BinaryExpression(getLocation(), element[1], result, element[3]), head);
+    }
+
+    /**
+     * @param {string} hexSequence
+     */
+    function parseUniversalCharacter(hexSequence) {
+        // SAFE_NUMBER: At most 0xFFFFFFFF.
+        const charCode = Number.parseInt(hexSequence, 16);
+        // The disallowed characters are the characters in the basic character set and the code positions reserved by
+        // ISO/IEC 10646 for control characters, the character DELETE, and the S-zone (reserved for use by UTF−16).
+        if ((charCode >= 0x0000 && charCode <= 0x001F)
+                || (charCode >= 0x007F && charCode <= 0x009F)
+                || (charCode >= 0xD800 && charCode <= 0xDFFF)) {
+            error('Disallowed character in universal character name: 0x' + hexSequence, getLocation());
+        }
+        return String.fromCharCode(charCode);
+    }
+
+    let scopeRoot = { parent: null, names: new Map() };
+    let currScope = scopeRoot;
+    let globalMap = new Map();
+
+    function enterScope() {
+        currScope = { parent: currScope, names: new Map() };
+    }
+
+    function exitScope() {
+        currScope = currScope.parent;
+    }
+
+    let ID_NAME = 0;
+    let TYPE_NAME = 1;
+    let TEMPLATE_FUNC_NAME = 2;
+    let TEMPLATE_CLASS_NAME = 3;
+
+    function getTypeOfName(name, type) {
+        let c = currScope;
+        while(c != null) {
+            if (c.names.has(name)) {
+                return c.names.get(name);
+            }
+            c = c.parent;
+        }
+        if(globalMap.has(name)){
+            return globalMap.get(name);
+        }
+        return ID_NAME;
+    }
+}
+Start = TranslationUnit

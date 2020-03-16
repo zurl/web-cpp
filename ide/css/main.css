@@ -1,0 +1,125 @@
+.ace_editor {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    height: 200px;
+    width: 100%;
+}
+
+#main-container{
+    height: calc(100vh - 64px);
+    width: 100%;
+    display: flex;
+}
+
+#left-part{
+    width: 70%;
+}
+
+#right-part{
+    width: 30%;
+}
+
+.scrollmargin {
+    height: 80px;
+    text-align: center;
+}
+
+.no-margin-no-padding{
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#editor-div{
+    height: 480px;
+}
+
+.left-textarea{
+    border: 0;
+    font-family: monospace;
+    font-size: 14px;
+    padding: 10px;
+    width: calc(100% - 20px);
+    height: calc(100vh - 64px - 480px - 50px - 20px - 8px);
+    resize: none;
+}
+
+#inspector-text{
+    font-size: 20px;
+    padding: 10px;
+}
+
+#right-container{
+    height: calc(100vh - 64px - 12px - 20px);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 5px;
+    align-items: center;
+}
+
+#table-container{
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    overflow: scroll;
+}
+#left-container{
+    display: flex;
+    flex-direction: column;
+}
+
+.right-card{
+    width: 90%;
+}
+
+.right-card-content{
+    height: 0;
+    overflow: hidden;
+    transition: all 0.7s;
+}
+.fixed_header{
+    border: none !important;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.fixed_header tbody{
+    display:block;
+    width: 100%;
+    overflow: auto;
+    height: 340px;
+    transition: all 0.7s;
+}
+
+.fixed_header thead tr {
+    display: block;
+}
+
+.right-card-title{
+    padding: 10px;
+}
+
+.fixed_header th, .fixed_header td {
+    padding: 5px;
+    text-align: left;
+    width: 200px;
+}
+
+.current-line{
+    position:absolute;
+    background:rgba(100,200,100,0.5);
+    z-index:20
+}
+
+.mdl-data-table td {
+    text-align: left !important;
+}
+
+.mdl-data-table th {
+    text-align: left !important;
+}
+
+.nav-button{
+    margin: 10px 10px;
+}

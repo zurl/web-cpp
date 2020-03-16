@@ -1,0 +1,224 @@
+Id
+    = !Keyword head:IdentifierNondigit tail:IdentifierPart* {
+        return new AST.SingleIdentifier(getLocation(), head + tail.join(''), AST.IDType.ID, []);
+    }
+
+SingleIdentifier
+    = id:Id &{
+        return getTypeOfName(id.name) === ID_NAME;
+    } {
+        return id;
+    }
+    / 'operator' _ ope:OverloadOperator {
+        return new AST.SingleIdentifier(getLocation(), "#" + ope, AST.IDType.ID, []);
+    }
+    / 'operator' _ ope:SingleTypeIdentifier {
+        ope.getLastID().type = AST.IDType.OPE_TYPE;
+        return ope;
+    }
+    / 'operator' _ ope:PrimitiveTypeSpecifiers {
+        return new AST.SingleIdentifier(getLocation(), "#" + ope.toString(), AST.IDType.ID, []);
+    }
+    / '~' name:TypeIdentifier {
+        const result = name.clone();
+        result.getLastID().name = '~' + result.identifier.name;
+        result.getLastID().type = AST.IDType.ID;
+        return result;
+    }
+
+SingleTypeIdentifier
+    =  id:Id &{
+        return getTypeOfName(id.name) === TYPE_NAME;
+    } {
+        id.type = AST.IDType.TYPE;
+        return id;
+    }
+
+SingleTemplateFuncIdentifier
+    =  id:Id &{
+        return getTypeOfName(id.name) === TEMPLATE_FUNC_NAME;
+    } {
+        id.type = AST.IDType.T_FUNC;
+        return id;
+    }
+
+SingleTemplateClassIdentifier
+    =  id:Id &{
+        return getTypeOfName(id.name) === TEMPLATE_CLASS_NAME;
+    } {
+        id.type = AST.IDType.T_CLASS;
+        return id;
+    }
+
+UnifiedIdentifier
+    = SingleTypeIdentifier/ TemplateClassInstanceIdentifier
+
+Identifier
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:(SingleIdentifier/TemplateFuncInstanceIdentifier) {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
+    }
+
+TypeIdentifier
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:UnifiedIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
+    }
+
+TemplateFuncIdentifier
+    = isFullName:'::'? namespace:(UnifiedIdentifier '::')* name:SingleTemplateFuncIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
+    }
+
+TemplateClassIdentifier
+    = isFullName:'::'? namespace:(SingleTypeIdentifier '::')* name:SingleTemplateClassIdentifier {
+        return new AST.Identifier(getLocation(), namespace.map(x=>x[0]).concat([name]), isFullName);
+    }
+
+TypeDeclarationIdentifier
+    = identifier:Identifier{
+        if( options.isCpp ) {
+            globalMap.set(identifier.getLastID().name, TYPE_NAME);
+            currScope.names.set(identifier.getLastID().name, TYPE_NAME);
+        }
+        return identifier;
+    }
+
+WhiteSpace = [ \\t\\n\\v\\f]
+
+_ = WhiteSpace*
+
+Keyword
+    = ('auto'
+    / 'break'
+    / 'case'
+    / 'char'
+    / 'const'
+    / 'continue'
+    / 'default'
+    / 'double'
+    / 'do'
+    / 'else'
+    / 'enum'
+    / 'extern'
+    / 'float'
+    / 'for'
+    / 'goto'
+    / 'if'
+    / 'inline'
+    / 'int'
+    / 'long'
+    / 'register'
+    / 'restrict'
+    / 'return'
+    / 'short'
+    / 'signed'
+    / 'sizeof'
+    / 'static'
+    / 'struct'
+    / 'switch'
+    / 'typedef'
+    / 'union'
+    / 'unsigned'
+    / 'void'
+    / 'volatile'
+    / 'while'
+    / 'class'
+    / 'new'
+    / 'delete'
+    / 'operator'
+    / 'override'
+    / 'template'
+    / 'typename'
+    / 'namespace'
+    / 'using') !IdentifierPart
+
+StorageClassSpecifier
+    = ('typedef'
+    / 'extern'
+    / 'static'
+    / 'virtual'
+    / 'auto'
+    / 'register') !IdentifierPart {
+        return text();
+    }
+
+PrimitiveTypeSpecifier
+    = ('void'
+    / 'char'
+    / 'short'
+    / 'int'
+    / 'long'
+    / 'float'
+    / 'double'
+    / 'signed'
+    / 'unsigned'
+    / 'bool') !IdentifierPart {
+        return text();
+     }
+
+OverloadOperator
+    = '+' / '-' / '*' / '/' / '%' / '&' / '<' / '>' / '<=' / '>=' / '==' / '!='
+    / '|' / '^' / '!' / '~' / '&&' / '||' / '>>' / '<<' / '++' / '--'
+    /'()' / '[]' / '->'
+    / AssignmentOperator
+
+AssignmentOperator
+    = '=' !'=' {
+        return text();
+    }
+    / '*='
+    / '/='
+    / '%='
+    / '+='
+    / '-='
+    / '<<='
+    / '>>='
+    / '&='
+    / '^='
+    / '|='
+
+AndAnd
+    = '&&'
+
+SingleAnd
+    = '&'!'&'
+
+HexadecimalPrefix
+    = '0x'
+    / '0X'
+
+NonzeroDigit
+    = [1-9]
+
+OctalDigit
+    = [0-7]
+
+HexadecimalDigit
+    = [0-9a-fA-F]
+
+IntegerSuffix
+    = UnsignedSuffix (LongLongSuffix / LongSuffix)?
+    / (LongLongSuffix / LongSuffix) UnsignedSuffix?
+
+UnsignedSuffix
+    = [uU]
+
+LongSuffix
+    = [lL]
+
+LongLongSuffix
+    = 'll'
+    / 'LL'
+
+IdentifierPart
+    = IdentifierNondigit
+    / Digit
+
+IdentifierNondigit
+    = UniversalCharacterName
+    / Nondigit
+
+Nondigit
+    = [_a-zA-Z]
+
+Digit
+    = [0-9]

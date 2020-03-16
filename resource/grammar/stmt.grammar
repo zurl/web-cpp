@@ -1,0 +1,110 @@
+Statement
+    = CaseStatement
+    / SelectionStatement
+    / IterationStatement
+    / JumpStatement
+    / CompoundStatement
+    / LabeledStatement
+    / ExpressionStatement
+    / UsingStatements
+
+// ADDED
+CaseStatement
+    = 'case' !IdentifierPart _ test:ConstantExpression _ &!':' _ body:Statement {
+        return new AST.CaseStatement(getLocation(), test, body);
+    }
+    / 'default' !IdentifierPart _ &!':' _ body:Statement {
+        return new AST.CaseStatement(getLocation(), null, body)
+    }
+
+// MODIFICATION: No case or default.
+LabeledStatement
+    = label:Identifier _ ':' _ body:Statement {
+        return new AST.LabeledStatement(getLocation(), label, body);
+    }
+
+ScopeStart
+    = '{' {
+        enterScope();
+        return getLocation();
+    }
+
+ScopeEnd
+    = &!'}' {
+        exitScope();
+        return getLocation();
+    }
+
+CompoundStatement
+    = left:ScopeStart _ body:BlockItemList? _ right:ScopeEnd {
+        return new AST.CompoundStatement(getLocation(), body || []);
+    }
+
+BlockItemList
+    = head:BlockItem tail:(_ BlockItem)* {
+        return buildList(head, tail, 1);
+    }
+
+BlockItem
+    = Statement
+    / Declaration
+    / Expression { // ExpressionStatementMissingSemicolon
+        error('Missing \\';\\' at end of statement');
+    }
+    / DeclarationMissingSemicolon
+
+ExpressionStatement
+    = expression:(Expression _)? ';' {
+        return expression ? new AST.ExpressionStatement(getLocation(), extractOptional(expression, 0))
+                : new AST.NullStatement(getLocation());
+    }
+
+SelectionStatement
+    = 'if' !IdentifierPart _ &!'(' _ test:Expression _ &!')' _ consequent:Statement alternate:(_ 'else' !IdentifierPart _ Statement)? {
+        return new AST.IfStatement(getLocation(), test, consequent, extractOptional(alternate, 4));
+    }
+    / 'switch' !IdentifierPart _ &!'(' _ discriminant:Expression _ &!')' _ body:Statement {
+        return new AST.SwitchStatement(getLocation(), discriminant, body);
+    }
+
+IterationStatement
+    = 'while' !IdentifierPart _ &!'(' _ test:Expression _ &!')' _ body:Statement {
+        return new AST.WhileStatement(getLocation(), test, body);
+    }
+    / 'do' !IdentifierPart _ body:Statement _ 'while' !IdentifierPart _ &!'(' _ test:Expression _ &!')' _ &!';' {
+        return new AST.DoWhileStatement(getLocation(), body, test);
+    }
+    / 'for' !IdentifierPart _ &!'(' _ init:(Declaration / expression:Expression? _ ';' {
+        return expression;
+    } / (DeclarationWithoutSemicolon / Expression) {
+        error('Missing \\';\\'');
+    }) _ test:Expression? _ &!';' _ update:Expression? _ &!')' _ body:Statement {
+        return new AST.ForStatement(getLocation(), init, test, update, body);
+    }
+
+JumpStatement
+    = 'goto' !IdentifierPart _ label:Identifier _ &!';' {
+        return new AST.GotoStatement(getLocation(), label);
+    }
+    / 'continue' !IdentifierPart _ &!';' {
+        return new AST.ContinueStatement(getLocation());
+    }
+    / 'break' !IdentifierPart _ &!';' {
+        return new AST.BreakStatement(getLocation());
+    }
+    / 'return' !IdentifierPart _ argument:Expression? _ &!';' {
+        return new AST.ReturnStatement(getLocation(), argument);
+    }
+
+
+UsingStatements
+    = 'using' _ name:Identifier _ '=' _ decl:TypeName _ ';'{
+        currScope.names.set(name.getLastID().name, TYPE_NAME);
+        return new AST.UsingStatement(getLocation(), name, decl);
+    }
+    / 'using' _ name:(Identifier/TypeIdentifier/TemplateClassIdentifier/TemplateFuncIdentifier) _ ';'{
+        return new AST.UsingStatement(getLocation(), name);
+    }
+    / 'using' _ 'namespace' _ name:TypeIdentifier _ ';'{
+        return new AST.UsingNamespaceStatement(getLocation(), name);
+    }
